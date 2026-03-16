@@ -1,0 +1,11 @@
+@TourGuideHCM.API_HostAddress = http://localhost:5095
+
+GET {{TourGuideHCM.API_HostAddress}}/todos/
+Accept: application/json
+
+###
+
+GET {{TourGuideHCM.API_HostAddress}}/todos/1
+Accept: application/json
+
+###
