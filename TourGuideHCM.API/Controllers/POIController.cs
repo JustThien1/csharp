@@ -1,15 +1,23 @@
-﻿namespace TourGuideHCM.API
+﻿using Microsoft.AspNetCore.Mvc;
+using TourGuideHCM.API.Services;
+
+namespace TourGuideHCM.API.Controllers
 {
-    public class POI
+    [ApiController]
+    [Route("api/[controller]")]
+    public class POIController : ControllerBase
     {
-        public int Id { get; set; }
-        public string Name { get; set; }
-        public double Latitude { get; set; }
-        public double Longitude { get; set; }
-        public int Radius { get; set; }
-        public string Description { get; set; }
-        public string ImageUrl { get; set; }
-        public string AudioUrl { get; set; }
-        public int Priority { get; set; }
+        private readonly POIService _service;
+
+        public POIController(POIService service)
+        {
+            _service = service;
+        }
+
+        [HttpGet]
+        public IActionResult GetAll()
+        {
+            return Ok(_service.GetAll());
+        }
     }
 }

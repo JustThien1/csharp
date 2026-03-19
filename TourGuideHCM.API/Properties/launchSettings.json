@@ -8,7 +8,7 @@
         "ASPNETCORE_ENVIRONMENT": "Development"
       },
       "dotnetRunMessages": true,
-      "applicationUrl": "http://localhost:5095"
+      "applicationUrl": "http://localhost:5284"
     },
     "Container (Dockerfile)": {
       "commandName": "Docker",
@@ -19,23 +19,7 @@
       },
       "publishAllPorts": true,
       "useSSL": false
-    },
-    "IIS Express": {
-      "commandName": "IISExpress",
-      "launchBrowser": true,
-      "launchUrl": "todos",
-      "environmentVariables": {
-        "ASPNETCORE_ENVIRONMENT": "Development"
-      }
     }
   },
-  "$schema": "https://json.schemastore.org/launchsettings.json",
-  "iisSettings": {
-    "windowsAuthentication": false,
-    "anonymousAuthentication": true,
-    "iisExpress": {
-      "applicationUrl": "http://localhost:58272/",
-      "sslPort": 44336
-    }
-  }
+  "$schema": "https://json.schemastore.org/launchsettings.json"
 }

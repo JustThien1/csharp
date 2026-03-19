@@ -1,3 +1,7 @@
 <Solution>
-  <Project Path="TourGuideHCM.API/TourGuideHCM.API.csproj" />
+  <Project Path="TourGuideHCM.API/TourGuideHCM.API.csproj" Id="995632d2-1c42-43f9-a11f-639c66a82d90" />
+  <Project Path="TourGuideHCM.Mobile/TourGuideHCM.Mobile.csproj" Id="8a3facc7-be33-4dbe-8bbe-ef2044e1097f">
+    <Deploy Solution="Debug|*" />
+  </Project>
+  <Project Path="TourGuideHCM.Web/TourGuideHCM.Web.csproj" Id="6eecb4fe-3875-4bce-bc3e-09edae4ca4d1" />
 </Solution>
