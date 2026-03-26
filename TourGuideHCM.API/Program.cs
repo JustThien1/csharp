@@ -1,36 +1,30 @@
-using TourGuideHCM.API.Repositories;
 using TourGuideHCM.API.Services;
 
 var builder = WebApplication.CreateBuilder(args);
 
-// ======================
-// SERVICES
-// ======================
-
-builder.Services.AddControllers()
-    .AddNewtonsoftJson(); // 🔥 FIX JSON
-
+builder.Services.AddControllers();
 builder.Services.AddEndpointsApiExplorer();
 builder.Services.AddSwaggerGen();
 
-// DI
-builder.Services.AddScoped<IPOIRepository, POIRepository>();
+// CORS
+builder.Services.AddCors(options =>
+{
+    options.AddPolicy("AllowAll",
+        policy => policy.AllowAnyOrigin()
+                        .AllowAnyMethod()
+                        .AllowAnyHeader());
+});
+
+// Service
 builder.Services.AddScoped<POIService>();
 
 var app = builder.Build();
 
-// ======================
-// MIDDLEWARE
-// ======================
-
 app.UseSwagger();
 app.UseSwaggerUI();
 
-app.UseStaticFiles();
+app.UseCors("AllowAll");
 
 app.MapControllers();
-
-// Test route
-app.MapGet("/", () => "API OK");
 
 app.Run();

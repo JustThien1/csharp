@@ -1,0 +1,85 @@
+﻿<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="utf-8" />
+    <title>Tour Guide HCM</title>
+
+    <!-- Leaflet CSS -->
+    <link rel="stylesheet" href="https://unpkg.com/leaflet/dist/leaflet.css" />
+
+    <style>
+        body {
+            margin: 0;
+        }
+
+        #map {
+            height: 100vh;
+        }
+    </style>
+</head>
+
+<body>
+
+    <div id="map"></div>
+
+    <!-- Leaflet JS -->
+    <script src="https://unpkg.com/leaflet/dist/leaflet.js"></script>
+
+    <script>
+        // 🚀 Khởi tạo map
+        const map = L.map('map').setView([10.7769, 106.7009], 13);
+
+        // 🌍 Load bản đồ
+        L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+            attribution: '&copy; OpenStreetMap contributors'
+        }).addTo(map);
+
+        // 🔥 Load POI từ API
+        async function loadPOI() {
+            try {
+                const res = await fetch("http://localhost:5284/api/poi"); // 👉 dùng HTTP
+                const data = await res.json();
+
+                console.log("DATA:", data); // debug
+
+                data.forEach(poi => {
+
+                    // 📍 Marker
+                    L.marker([poi.lat, poi.lng])
+                        .addTo(map)
+                        .bindPopup(`<b>${poi.name}</b><br>${poi.description}`);
+
+                    // 🔴 Vòng bán kính
+                    L.circle([poi.lat, poi.lng], {
+                        radius: poi.radius,
+                        color: 'red',
+                        fillColor: '#f03',
+                        fillOpacity: 0.2
+                    }).addTo(map);
+                });
+
+            } catch (err) {
+                console.error("❌ Lỗi fetch API:", err);
+            }
+        }
+
+        loadPOI();
+
+        // 📍 Vị trí hiện tại
+        if (navigator.geolocation) {
+            navigator.geolocation.getCurrentPosition(pos => {
+                const lat = pos.coords.latitude;
+                const lng = pos.coords.longitude;
+
+                L.marker([lat, lng])
+                    .addTo(map)
+                    .bindPopup("📍 Bạn đang ở đây")
+                    .openPopup();
+
+                map.setView([lat, lng], 15);
+            });
+        }
+    </script>
+
+</body>
+</html>
