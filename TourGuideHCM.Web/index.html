@@ -448,133 +448,133 @@
 
     <script src="https://unpkg.com/leaflet/dist/leaflet.js"></script>
     <script>
-// @ts-nocheck
-/* global L */
-var pois = [];
-var markers = [];
-var currentAudio = null;
-var userMarker = null;
+        // @ts-nocheck
+        /* global L */
+        var pois = [];
+        var markers = [];
+        var currentAudio = null;
+        var userMarker = null;
 
-var leafletMap = L.map('map', { zoomControl: false }).setView([10.7769, 106.7009], 13);
+        var leafletMap = L.map('map', { zoomControl: false }).setView([10.7769, 106.7009], 13);
 
-L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
-    attribution: '&copy; OpenStreetMap'
-}).addTo(leafletMap);
-
-L.control.zoom({ position: 'topright' }).addTo(leafletMap);
-
-function makeIcon(active) {
-    var border = active ? '#fff' : 'rgba(255,255,255,0.5)';
-    var shadow = active ? '12px' : '6px';
-    var op = active ? 0.9 : 0.5;
-    return L.divIcon({
-        className: '',
-        html: '<div style="width:14px;height:14px;border-radius:50%;background:#e8a850;border:3px solid ' + border + ';box-shadow:0 0 ' + shadow + ' rgba(232,168,80,' + op + ');"></div>',
-        iconSize: [14, 14],
-        iconAnchor: [7, 7],
-        popupAnchor: [0, -10]
-    });
-}
-
-async function loadPOI() {
-    var res = await fetch('http://localhost:5284/api/poi');
-    pois = await res.json();
-    renderList(pois);
-    pois.forEach(function(poi) {
-        var marker = L.marker([poi.lat, poi.lng], { icon: makeIcon(false) }).addTo(leafletMap);
-        marker.bindPopup(
-            '<div class="popup-name">' + poi.name + '</div>' +
-            '<div class="popup-desc">' + poi.description + '</div>' +
-            '<div class="popup-actions">' +
-                '<button class="popup-btn popup-btn-audio" onclick="playAudio(\'' + poi.audioUrl + '\',\'' + poi.name + '\')">🎧 Nghe</button>' +
-                '<a class="popup-btn popup-btn-nav" href="https://www.google.com/maps/dir/?api=1&destination=' + poi.lat + ',' + poi.lng + '" target="_blank">🧭 Chỉ đường</a>' +
-            '</div>'
-        );
-        markers.push({ marker: marker, poi: poi });
-        L.circle([poi.lat, poi.lng], {
-            radius: poi.radius,
-            color: '#e8a850',
-            weight: 1,
-            fillColor: '#e8a850',
-            fillOpacity: 0.08
+        L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+            attribution: '&copy; OpenStreetMap'
         }).addTo(leafletMap);
-    });
-}
 
-loadPOI();
+        L.control.zoom({ position: 'topright' }).addTo(leafletMap);
 
-function renderList(data) {
-    var list = document.getElementById('poi-list');
-    if (!list) return;
-    list.innerHTML = '';
-    data.forEach(function(poi) {
-        var div = document.createElement('div');
-        div.className = 'poi-item';
-        div.id = 'poi-' + (poi.id != null ? String(poi.id) : poi.name);
-        div.innerHTML =
-            '<div class="poi-dot"></div>' +
-            '<div class="poi-info">' +
-                '<div class="poi-name">' + poi.name + '</div>' +
-                '<div class="poi-desc">' + poi.description + '</div>' +
-            '</div>';
-        div.onclick = function() { goToPOI(poi); };
-        list.appendChild(div);
-    });
-}
-
-var searchEl = /** @type {HTMLInputElement} */ (document.getElementById('search'));
-if (searchEl) {
-    searchEl.addEventListener('input', function() {
-        var keyword = searchEl.value.toLowerCase();
-        var filtered = pois.filter(function(p) { return p.name.toLowerCase().includes(keyword); });
-        renderList(filtered);
-    });
-}
-
-function goToPOI(poi) {
-    leafletMap.setView([poi.lat, poi.lng], 17);
-    var entry = markers.find(function(m) { return m.poi === poi; });
-    if (entry) { entry.marker.openPopup(); }
-}
-
-function playAudio(url, name) {
-    if (!url) return;
-    if (currentAudio) { currentAudio.pause(); }
-    currentAudio = new Audio(url);
-    currentAudio.play();
-    var el = document.getElementById('now-playing');
-    if (el) { el.innerText = name || url; }
-}
-
-function stopAudio() {
-    if (currentAudio) {
-        currentAudio.pause();
-        currentAudio.currentTime = 0;
-        currentAudio = null;
-    }
-    var el = document.getElementById('now-playing');
-    if (el) { el.innerText = 'Chưa phát âm thanh'; }
-}
-
-function goToMyLocation() {
-    if (!navigator.geolocation) return;
-    navigator.geolocation.getCurrentPosition(function(pos) {
-        var lat = pos.coords.latitude;
-        var lng = pos.coords.longitude;
-        var userIcon = L.divIcon({
-            className: '',
-            html: '<div style="width:16px;height:16px;border-radius:50%;background:#4fc3f7;border:3px solid #fff;box-shadow:0 0 0 6px rgba(79,195,247,0.2);"></div>',
-            iconSize: [16, 16],
-            iconAnchor: [8, 8]
-        });
-        if (userMarker) {
-            userMarker.setLatLng([lat, lng]);
-        } else {
-            userMarker = L.marker([lat, lng], { icon: userIcon }).addTo(leafletMap);
+        function makeIcon(active) {
+            var border = active ? '#fff' : 'rgba(255,255,255,0.5)';
+            var shadow = active ? '12px' : '6px';
+            var op = active ? 0.9 : 0.5;
+            return L.divIcon({
+                className: '',
+                html: '<div style="width:14px;height:14px;border-radius:50%;background:#e8a850;border:3px solid ' + border + ';box-shadow:0 0 ' + shadow + ' rgba(232,168,80,' + op + ');"></div>',
+                iconSize: [14, 14],
+                iconAnchor: [7, 7],
+                popupAnchor: [0, -10]
+            });
         }
-        leafletMap.setView([lat, lng], 15);
-    });
-}
+
+        async function loadPOI() {
+            var res = await fetch('http://localhost:5284/api/poi');
+            pois = await res.json();
+            renderList(pois);
+            pois.forEach(function (poi) {
+                var marker = L.marker([poi.lat, poi.lng], { icon: makeIcon(false) }).addTo(leafletMap);
+                marker.bindPopup(
+                    '<div class="popup-name">' + poi.name + '</div>' +
+                    '<div class="popup-desc">' + poi.description + '</div>' +
+                    '<div class="popup-actions">' +
+                    '<button class="popup-btn popup-btn-audio" onclick="playAudio(\'' + poi.audioUrl + '\',\'' + poi.name + '\')">🎧 Nghe</button>' +
+                    '<a class="popup-btn popup-btn-nav" href="https://www.google.com/maps/dir/?api=1&destination=' + poi.lat + ',' + poi.lng + '" target="_blank">🧭 Chỉ đường</a>' +
+                    '</div>'
+                );
+                markers.push({ marker: marker, poi: poi });
+                L.circle([poi.lat, poi.lng], {
+                    radius: poi.radius,
+                    color: '#e8a850',
+                    weight: 1,
+                    fillColor: '#e8a850',
+                    fillOpacity: 0.08
+                }).addTo(leafletMap);
+            });
+        }
+
+        loadPOI();
+
+        function renderList(data) {
+            var list = document.getElementById('poi-list');
+            if (!list) return;
+            list.innerHTML = '';
+            data.forEach(function (poi) {
+                var div = document.createElement('div');
+                div.className = 'poi-item';
+                div.id = 'poi-' + (poi.id != null ? String(poi.id) : poi.name);
+                div.innerHTML =
+                    '<div class="poi-dot"></div>' +
+                    '<div class="poi-info">' +
+                    '<div class="poi-name">' + poi.name + '</div>' +
+                    '<div class="poi-desc">' + poi.description + '</div>' +
+                    '</div>';
+                div.onclick = function () { goToPOI(poi); };
+                list.appendChild(div);
+            });
+        }
+
+        var searchEl = /** @type {HTMLInputElement} */ (document.getElementById('search'));
+        if (searchEl) {
+            searchEl.addEventListener('input', function () {
+                var keyword = searchEl.value.toLowerCase();
+                var filtered = pois.filter(function (p) { return p.name.toLowerCase().includes(keyword); });
+                renderList(filtered);
+            });
+        }
+
+        function goToPOI(poi) {
+            leafletMap.setView([poi.lat, poi.lng], 17);
+            var entry = markers.find(function (m) { return m.poi === poi; });
+            if (entry) { entry.marker.openPopup(); }
+        }
+
+        function playAudio(url, name) {
+            if (!url) return;
+            if (currentAudio) { currentAudio.pause(); }
+            currentAudio = new Audio(url);
+            currentAudio.play();
+            var el = document.getElementById('now-playing');
+            if (el) { el.innerText = name || url; }
+        }
+
+        function stopAudio() {
+            if (currentAudio) {
+                currentAudio.pause();
+                currentAudio.currentTime = 0;
+                currentAudio = null;
+            }
+            var el = document.getElementById('now-playing');
+            if (el) { el.innerText = 'Chưa phát âm thanh'; }
+        }
+
+        function goToMyLocation() {
+            if (!navigator.geolocation) return;
+            navigator.geolocation.getCurrentPosition(function (pos) {
+                var lat = pos.coords.latitude;
+                var lng = pos.coords.longitude;
+                var userIcon = L.divIcon({
+                    className: '',
+                    html: '<div style="width:16px;height:16px;border-radius:50%;background:#4fc3f7;border:3px solid #fff;box-shadow:0 0 0 6px rgba(79,195,247,0.2);"></div>',
+                    iconSize: [16, 16],
+                    iconAnchor: [8, 8]
+                });
+                if (userMarker) {
+                    userMarker.setLatLng([lat, lng]);
+                } else {
+                    userMarker = L.marker([lat, lng], { icon: userIcon }).addTo(leafletMap);
+                }
+                leafletMap.setView([lat, lng], 15);
+            });
+        }
     </script>
 </body>
 </html>
