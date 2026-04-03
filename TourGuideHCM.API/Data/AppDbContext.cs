@@ -14,6 +14,8 @@ namespace TourGuideHCM.API.Data
         public DbSet<User> Users { get; set; }
         public DbSet<Review> Reviews { get; set; }
         public DbSet<Favorite> Favorites { get; set; }
+        public DbSet<PlaybackLog> PlaybackLogs { get; set; }
+        public DbSet<RouteLog> RouteLogs { get; set; }
 
         protected override void OnModelCreating(ModelBuilder modelBuilder)
         {
@@ -61,6 +63,11 @@ namespace TourGuideHCM.API.Data
                 new Category { Id = 2, Name = "Ẩm thực" },
                 new Category { Id = 3, Name = "Mua sắm" }
             );
+            modelBuilder.Entity<PlaybackLog>()
+                .HasOne(p => p.POI)
+                .WithMany()
+                .HasForeignKey(p => p.POIId)
+                .OnDelete(DeleteBehavior.Cascade);
         }
     }
 }

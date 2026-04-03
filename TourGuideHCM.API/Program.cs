@@ -1,21 +1,91 @@
 using Microsoft.EntityFrameworkCore;
+using Microsoft.AspNetCore.Authentication.JwtBearer;
+using Microsoft.IdentityModel.Tokens;
+using System.Text;
+using System.Text.Json.Serialization;
 using TourGuideHCM.API.Data;
 using TourGuideHCM.API.Services;
 
 var builder = WebApplication.CreateBuilder(args);
 
+// ====================== Database ======================
 builder.Services.AddDbContext<AppDbContext>(options =>
 {
-    options.UseSqlServer(builder.Configuration.GetConnectionString("DefaultConnection"));
+    options.UseSqlite("Data Source=tourguide.db");
 });
 
-builder.Services.AddControllers();
+// ====================== Services ======================
+builder.Services.AddScoped<POIService>();
+builder.Services.AddScoped<GeofenceService>();
+builder.Services.AddScoped<FavoriteService>();
+builder.Services.AddScoped<ReviewService>();
+
+// ====================== JWT Authentication ======================
+builder.Services.AddAuthentication(options =>
+{
+    options.DefaultAuthenticateScheme = JwtBearerDefaults.AuthenticationScheme;
+    options.DefaultChallengeScheme = JwtBearerDefaults.AuthenticationScheme;
+})
+.AddJwtBearer(options =>
+{
+    options.TokenValidationParameters = new TokenValidationParameters
+    {
+        ValidateIssuerSigningKey = true,
+        IssuerSigningKey = new SymmetricSecurityKey(
+            Encoding.ASCII.GetBytes(
+                builder.Configuration["Jwt:Key"]
+                ?? "your-super-secret-key-here-at-least-32-characters-long"
+            )),
+
+        ValidateIssuer = false,
+        ValidateAudience = false,
+        ValidateLifetime = true,
+        ClockSkew = TimeSpan.Zero
+    };
+});
+
+builder.Services.AddAuthorization();
+
+// ====================== FIX JSON LOOP (QUAN TRỌNG) ======================
+builder.Services.AddControllers()
+    .AddJsonOptions(options =>
+    {
+        options.JsonSerializerOptions.ReferenceHandler = ReferenceHandler.IgnoreCycles;
+        options.JsonSerializerOptions.WriteIndented = true;
+    });
+
+// ====================== Swagger ======================
 builder.Services.AddEndpointsApiExplorer();
 builder.Services.AddSwaggerGen(c =>
 {
     c.SwaggerDoc("v1", new() { Title = "TourGuideHCM API", Version = "v1" });
+
+    c.AddSecurityDefinition("Bearer", new Microsoft.OpenApi.Models.OpenApiSecurityScheme
+    {
+        In = Microsoft.OpenApi.Models.ParameterLocation.Header,
+        Description = "Nhập JWT Token: Bearer {token}",
+        Name = "Authorization",
+        Type = Microsoft.OpenApi.Models.SecuritySchemeType.ApiKey,
+        Scheme = "Bearer"
+    });
+
+    c.AddSecurityRequirement(new Microsoft.OpenApi.Models.OpenApiSecurityRequirement
+    {
+        {
+            new Microsoft.OpenApi.Models.OpenApiSecurityScheme
+            {
+                Reference = new Microsoft.OpenApi.Models.OpenApiReference
+                {
+                    Type = Microsoft.OpenApi.Models.ReferenceType.SecurityScheme,
+                    Id = "Bearer"
+                }
+            },
+            Array.Empty<string>()
+        }
+    });
 });
 
+// ====================== CORS ======================
 builder.Services.AddCors(options =>
 {
     options.AddPolicy("AllowAll",
@@ -24,10 +94,9 @@ builder.Services.AddCors(options =>
                         .AllowAnyHeader());
 });
 
-builder.Services.AddScoped<POIService>();
-
 var app = builder.Build();
 
+// ====================== Middleware ======================
 if (app.Environment.IsDevelopment())
 {
     app.UseSwagger();
@@ -40,28 +109,34 @@ if (app.Environment.IsDevelopment())
 
 app.UseHttpsRedirection();
 app.UseCors("AllowAll");
+
+app.UseAuthentication();   // 🔥 phải trước Authorization
 app.UseAuthorization();
+
 app.MapControllers();
 
-// ====================== Khởi tạo Database ======================
+
+// ====================== Seed Database (FIX CHUẨN) ======================
 using (var scope = app.Services.CreateScope())
 {
     var services = scope.ServiceProvider;
+
     try
     {
         var context = services.GetRequiredService<AppDbContext>();
 
-        context.Database.EnsureCreated();
+        // 🔥 QUAN TRỌNG: dùng Migrate thay vì EnsureCreated
+        context.Database.Migrate();
+
         DbSeeder.Seed(context);
 
-        Console.WriteLine("✅ Kết nối Database thành công với Login 'tourguide'!");
-        Console.WriteLine($"   Số POI: {context.POIs.Count()}");
+        Console.WriteLine("✅ Database OK!");
+        Console.WriteLine($"POI: {context.POIs.Count()}");
+        Console.WriteLine($"Category: {context.Categories.Count()}");
     }
     catch (Exception ex)
     {
-        Console.WriteLine($"❌ Lỗi kết nối Database: {ex.Message}");
-        if (ex.InnerException != null)
-            Console.WriteLine($"   Chi tiết: {ex.InnerException.Message}");
+        Console.WriteLine($"❌ Database Error: {ex.Message}");
     }
 }
 

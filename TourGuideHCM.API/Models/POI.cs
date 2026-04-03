@@ -8,11 +8,17 @@
         public string Address { get; set; } = string.Empty;
         public double Lat { get; set; }
         public double Lng { get; set; }
-        public double? Radius { get; set; } = 100;
+        public double Radius { get; set; } = 100;           // mét
+        public int Priority { get; set; } = 1;              // ưu tiên (cao hơn trigger trước)
+
         public string? ImageUrl { get; set; }
-        public string? AudioUrl { get; set; }
+        public string? AudioUrl { get; set; }               // file thu sẵn
+        public string? NarrationText { get; set; }          // text cho TTS
+        public string Language { get; set; } = "vi";        // vi, en, zh...
+
         public string? OpeningHours { get; set; }
         public decimal? TicketPrice { get; set; }
+        public bool IsActive { get; set; } = true;
 
         public int CategoryId { get; set; }
         public Category? Category { get; set; }
