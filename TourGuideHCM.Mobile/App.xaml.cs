@@ -1,4 +1,4 @@
-﻿using Microsoft.Extensions.DependencyInjection;
+﻿using TourGuideHCM.Mobile.Views.Auth;
 
 namespace TourGuideHCM.Mobile
 {
@@ -11,7 +11,8 @@ namespace TourGuideHCM.Mobile
 
         protected override Window CreateWindow(IActivationState? activationState)
         {
-            return new Window(new AppShell());
+            // 👉 CÁI QUAN TRỌNG BẠN ĐANG THIẾU
+            return new Window(new NavigationPage(new LoginPage()));
         }
     }
 }

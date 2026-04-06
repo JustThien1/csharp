@@ -9,6 +9,7 @@
   <ItemGroup>
     <Folder Include="js\" />
     <Folder Include="css\" />
+    <Folder Include="audio\" />
     <Folder Include="pages\" />
   </ItemGroup>
 

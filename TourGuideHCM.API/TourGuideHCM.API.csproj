@@ -28,6 +28,6 @@
 
   <ItemGroup>
     <Folder Include="DTOs\" />
-    <Folder Include="wwwroot\" />
+    <Folder Include="wwwroot\audio\" />
   </ItemGroup>
 </Project>

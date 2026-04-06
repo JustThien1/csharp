@@ -1,9 +1,6 @@
-﻿using System;
-using Microsoft.EntityFrameworkCore.Migrations;
+﻿using Microsoft.EntityFrameworkCore.Migrations;
 
 #nullable disable
-
-#pragma warning disable CA1814 // Prefer jagged arrays over multidimensional
 
 namespace TourGuideHCM.API.Migrations
 {
@@ -26,22 +23,6 @@ namespace TourGuideHCM.API.Migrations
                 constraints: table =>
                 {
                     table.PrimaryKey("PK_Categories", x => x.Id);
-                });
-
-            migrationBuilder.CreateTable(
-                name: "RouteLogs",
-                columns: table => new
-                {
-                    Id = table.Column<int>(type: "INTEGER", nullable: false)
-                        .Annotation("Sqlite:Autoincrement", true),
-                    Lat = table.Column<double>(type: "REAL", nullable: false),
-                    Lng = table.Column<double>(type: "REAL", nullable: false),
-                    Timestamp = table.Column<DateTime>(type: "TEXT", nullable: false),
-                    DeviceId = table.Column<string>(type: "TEXT", nullable: true)
-                },
-                constraints: table =>
-                {
-                    table.PrimaryKey("PK_RouteLogs", x => x.Id);
                 });
 
             migrationBuilder.CreateTable(
@@ -77,10 +58,10 @@ namespace TourGuideHCM.API.Migrations
                     ImageUrl = table.Column<string>(type: "TEXT", nullable: true),
                     AudioUrl = table.Column<string>(type: "TEXT", nullable: true),
                     NarrationText = table.Column<string>(type: "TEXT", nullable: true),
-                    Language = table.Column<string>(type: "TEXT", nullable: false),
+                    Language = table.Column<string>(type: "TEXT", nullable: false, defaultValue: "vi"),
                     OpeningHours = table.Column<string>(type: "TEXT", nullable: true),
                     TicketPrice = table.Column<decimal>(type: "TEXT", nullable: true),
-                    IsActive = table.Column<bool>(type: "INTEGER", nullable: false),
+                    IsActive = table.Column<bool>(type: "INTEGER", nullable: false, defaultValue: true),
                     CategoryId = table.Column<int>(type: "INTEGER", nullable: false)
                 },
                 constraints: table =>
@@ -146,7 +127,8 @@ namespace TourGuideHCM.API.Migrations
                         name: "FK_PlaybackLogs_Users_UserId",
                         column: x => x.UserId,
                         principalTable: "Users",
-                        principalColumn: "Id");
+                        principalColumn: "Id",
+                        onDelete: ReferentialAction.SetNull);
                 });
 
             migrationBuilder.CreateTable(
@@ -178,16 +160,35 @@ namespace TourGuideHCM.API.Migrations
                         onDelete: ReferentialAction.Cascade);
                 });
 
-            migrationBuilder.InsertData(
-                table: "Categories",
-                columns: new[] { "Id", "Description", "Icon", "Name" },
-                values: new object[,]
+            migrationBuilder.CreateTable(
+                name: "RouteLogs",
+                columns: table => new
                 {
-                    { 1, null, null, "Di tích lịch sử" },
-                    { 2, null, null, "Ẩm thực" },
-                    { 3, null, null, "Mua sắm" }
+                    Id = table.Column<int>(type: "INTEGER", nullable: false)
+                        .Annotation("Sqlite:Autoincrement", true),
+                    Lat = table.Column<double>(type: "REAL", nullable: false),
+                    Lng = table.Column<double>(type: "REAL", nullable: false),
+                    Timestamp = table.Column<DateTime>(type: "TEXT", nullable: false),
+                    DeviceId = table.Column<string>(type: "TEXT", nullable: true)
+                },
+                constraints: table =>
+                {
+                    table.PrimaryKey("PK_RouteLogs", x => x.Id);
                 });
 
+            // Seed Categories
+            migrationBuilder.InsertData(
+                table: "Categories",
+                columns: new[] { "Id", "Name", "Description", "Icon" },
+                values: new object[,]
+                {
+                    { 1, "Di tích lịch sử", null, "🏛️" },
+                    { 2, "Kiến trúc Pháp", null, "🏰" },
+                    { 3, "Ẩm thực", null, "🍜" },
+                    { 4, "Mua sắm & Giải trí", null, "🛍️" }
+                });
+
+            // Indexes
             migrationBuilder.CreateIndex(
                 name: "IX_Favorites_POIId",
                 table: "Favorites",
@@ -228,26 +229,13 @@ namespace TourGuideHCM.API.Migrations
         /// <inheritdoc />
         protected override void Down(MigrationBuilder migrationBuilder)
         {
-            migrationBuilder.DropTable(
-                name: "Favorites");
-
-            migrationBuilder.DropTable(
-                name: "PlaybackLogs");
-
-            migrationBuilder.DropTable(
-                name: "Reviews");
-
-            migrationBuilder.DropTable(
-                name: "RouteLogs");
-
-            migrationBuilder.DropTable(
-                name: "POIs");
-
-            migrationBuilder.DropTable(
-                name: "Users");
-
-            migrationBuilder.DropTable(
-                name: "Categories");
+            migrationBuilder.DropTable(name: "RouteLogs");
+            migrationBuilder.DropTable(name: "Reviews");
+            migrationBuilder.DropTable(name: "PlaybackLogs");
+            migrationBuilder.DropTable(name: "Favorites");
+            migrationBuilder.DropTable(name: "POIs");
+            migrationBuilder.DropTable(name: "Users");
+            migrationBuilder.DropTable(name: "Categories");
         }
     }
 }

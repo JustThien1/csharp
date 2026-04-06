@@ -8,10 +8,10 @@ using TourGuideHCM.API.Services;
 
 var builder = WebApplication.CreateBuilder(args);
 
-// ====================== Database ======================
+// ====================== Database (SQLite) ======================
 builder.Services.AddDbContext<AppDbContext>(options =>
 {
-    options.UseSqlite("Data Source=tourguide.db");
+    options.UseSqlite(builder.Configuration.GetConnectionString("DefaultConnection"));
 });
 
 // ====================== Services ======================
@@ -33,9 +33,7 @@ builder.Services.AddAuthentication(options =>
         ValidateIssuerSigningKey = true,
         IssuerSigningKey = new SymmetricSecurityKey(
             Encoding.ASCII.GetBytes(
-                builder.Configuration["Jwt:Key"]
-                ?? "your-super-secret-key-here-at-least-32-characters-long"
-            )),
+                builder.Configuration["Jwt:Key"] ?? "your-super-secret-key-here-at-least-32-characters-long")),
 
         ValidateIssuer = false,
         ValidateAudience = false,
@@ -46,7 +44,7 @@ builder.Services.AddAuthentication(options =>
 
 builder.Services.AddAuthorization();
 
-// ====================== FIX JSON LOOP (QUAN TRỌNG) ======================
+// ====================== Controllers + JSON ======================
 builder.Services.AddControllers()
     .AddJsonOptions(options =>
     {
@@ -74,11 +72,7 @@ builder.Services.AddSwaggerGen(c =>
         {
             new Microsoft.OpenApi.Models.OpenApiSecurityScheme
             {
-                Reference = new Microsoft.OpenApi.Models.OpenApiReference
-                {
-                    Type = Microsoft.OpenApi.Models.ReferenceType.SecurityScheme,
-                    Id = "Bearer"
-                }
+                Reference = new Microsoft.OpenApi.Models.OpenApiReference { Type = Microsoft.OpenApi.Models.ReferenceType.SecurityScheme, Id = "Bearer" }
             },
             Array.Empty<string>()
         }
@@ -109,35 +103,38 @@ if (app.Environment.IsDevelopment())
 
 app.UseHttpsRedirection();
 app.UseCors("AllowAll");
+app.UseStaticFiles();           // Quan trọng để phục vụ file audio
 
-app.UseAuthentication();   // 🔥 phải trước Authorization
+app.UseAuthentication();
 app.UseAuthorization();
 
 app.MapControllers();
 
-
-// ====================== Seed Database (FIX CHUẨN) ======================
+// ====================== Seed Database ======================
 using (var scope = app.Services.CreateScope())
 {
     var services = scope.ServiceProvider;
-
     try
     {
         var context = services.GetRequiredService<AppDbContext>();
 
-        // 🔥 QUAN TRỌNG: dùng Migrate thay vì EnsureCreated
-        context.Database.Migrate();
+        context.Database.Migrate();   // Tạo bảng theo migration
 
         DbSeeder.Seed(context);
 
-        Console.WriteLine("✅ Database OK!");
-        Console.WriteLine($"POI: {context.POIs.Count()}");
-        Console.WriteLine($"Category: {context.Categories.Count()}");
+        Console.WriteLine("✅ Database SQLite đã sẵn sàng!");
+        Console.WriteLine($"   POI: {context.POIs.Count()} | Category: {context.Categories.Count()}");
     }
     catch (Exception ex)
     {
         Console.WriteLine($"❌ Database Error: {ex.Message}");
+        Console.WriteLine(ex.InnerException?.Message ?? "");
     }
+}
+using (var scope = app.Services.CreateScope())
+{
+    var db = scope.ServiceProvider.GetRequiredService<AppDbContext>();
+    db.Database.EnsureCreated();
 }
 
 app.Run();

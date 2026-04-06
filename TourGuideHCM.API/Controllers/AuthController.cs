@@ -15,28 +15,45 @@ namespace TourGuideHCM.API.Controllers
             _context = context;
         }
 
+        // ================= REGISTER =================
         [HttpPost("register")]
-        public IActionResult Register([FromBody] User user)
+        public IActionResult Register([FromBody] RegisterRequest request)
         {
-            if (string.IsNullOrEmpty(user.Username) || string.IsNullOrEmpty(user.PasswordHash))
+            if (string.IsNullOrEmpty(request.Username) || string.IsNullOrEmpty(request.PasswordHash))
                 return BadRequest("Username và Password không được để trống");
 
-            // Kiểm tra username đã tồn tại chưa
-            if (_context.Users.Any(x => x.Username == user.Username))
+            if (_context.Users.Any(x => x.Username == request.Username))
                 return BadRequest("Username đã tồn tại");
+
+            var user = new User
+            {
+                Username = request.Username,
+                PasswordHash = request.PasswordHash,
+                FullName = request.FullName,
+                Email = request.Email,
+                CreatedAt = DateTime.UtcNow
+            };
 
             _context.Users.Add(user);
             _context.SaveChanges();
 
-            return Ok(new { message = "Đăng ký thành công", userId = user.Id });
+            return Ok(new
+            {
+                message = "Đăng ký thành công",
+                userId = user.Id
+            });
         }
 
+        // ================= LOGIN =================
         [HttpPost("login")]
-        public IActionResult Login([FromBody] User loginUser)
+        public IActionResult Login([FromBody] LoginRequest request)
         {
+            if (string.IsNullOrEmpty(request.Username) || string.IsNullOrEmpty(request.PasswordHash))
+                return BadRequest("Thiếu thông tin đăng nhập");
+
             var user = _context.Users
-                .FirstOrDefault(x => x.Username == loginUser.Username
-                                  && x.PasswordHash == loginUser.PasswordHash);
+                .FirstOrDefault(x => x.Username == request.Username
+                                  && x.PasswordHash == request.PasswordHash);
 
             if (user == null)
                 return Unauthorized("Sai tài khoản hoặc mật khẩu");
