@@ -1,18 +1,24 @@
-﻿using TourGuideHCM.Mobile.Views.Auth;
+﻿using Microsoft.Maui.Controls;
+using Microsoft.Maui.Storage;
+using TourGuideHCM.Mobile.Views.Auth;
 
-namespace TourGuideHCM.Mobile
+namespace TourGuideHCM.Mobile;
+
+public partial class App : Application
 {
-    public partial class App : Application
+    public App()
     {
-        public App()
-        {
-            InitializeComponent();
-        }
+        InitializeComponent();
 
-        protected override Window CreateWindow(IActivationState? activationState)
+        bool isLoggedIn = Preferences.Get("isLoggedIn", false);
+
+        if (isLoggedIn)
         {
-            // 👉 CÁI QUAN TRỌNG BẠN ĐANG THIẾU
-            return new Window(new NavigationPage(new LoginPage()));
+            MainPage = new AppShell();
+        }
+        else
+        {
+            MainPage = new NavigationPage(new LoginPage());
         }
     }
 }

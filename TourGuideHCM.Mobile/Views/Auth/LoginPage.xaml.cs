@@ -1,5 +1,5 @@
 ﻿using TourGuideHCM.Mobile.Services;
-using TourGuideHCM.Mobile.Views; // HomePage nằm ngoài Auth
+using TourGuideHCM.Mobile.Views;
 
 namespace TourGuideHCM.Mobile.Views.Auth;
 
@@ -20,25 +20,25 @@ public partial class LoginPage : ContentPage
             string username = txtUsername.Text?.Trim() ?? "";
             string password = txtPassword.Text?.Trim() ?? "";
 
-            // Validate
             if (string.IsNullOrEmpty(username) || string.IsNullOrEmpty(password))
             {
                 await DisplayAlert("Lỗi", "Vui lòng nhập đầy đủ thông tin", "OK");
                 return;
             }
 
-            // Gọi service
             bool success = await _authService.LoginAsync(username, password);
 
             if (success)
             {
+                // Lưu thông tin đăng nhập
+                Preferences.Set("isLoggedIn", true);
+                Preferences.Set("username", username);
+
                 await DisplayAlert("Thành công", "Đăng nhập thành công!", "OK");
 
-                // 👉 Debug checkpoint
-                Console.WriteLine("Navigate to HomePage");
-
-                // Chuyển trang
-                await Navigation.PushAsync(new HomePage());
+                // 🔥 CHUYỂN SANG AppShell (không dùng PushAsync nữa)
+                // Điều này sẽ thay thế toàn bộ giao diện hiện tại bằng Shell có Tab
+                Application.Current!.MainPage = new AppShell();
             }
             else
             {
@@ -47,13 +47,13 @@ public partial class LoginPage : ContentPage
         }
         catch (Exception ex)
         {
-            // 👉 Bắt lỗi để không crash nữa
-            await DisplayAlert("Lỗi hệ thống", ex.Message, "OK");
+            await DisplayAlert("Lỗi hệ thống", $"Đã xảy ra lỗi: {ex.Message}", "OK");
         }
     }
 
     private async void OnRegisterTapped(object sender, EventArgs e)
     {
+        // Giữ nguyên chức năng đăng ký
         await Navigation.PushAsync(new RegisterPage());
     }
 }

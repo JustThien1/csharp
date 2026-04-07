@@ -14,14 +14,18 @@ public partial class RegisterPage : ContentPage
 
     private async void OnRegisterClicked(object sender, EventArgs e)
     {
-        string username = txtUsername.Text?.Trim();
-        string password = txtPassword.Text?.Trim();
-        string fullName = txtFullName.Text?.Trim();
-        string email = txtEmail.Text?.Trim();
+        string username = txtUsername.Text?.Trim() ?? "";
+        string password = txtPassword.Text?.Trim() ?? "";
+        string fullName = txtFullName.Text?.Trim() ?? "";
+        string email = txtEmail.Text?.Trim() ?? "";
 
-        if (string.IsNullOrEmpty(username) || string.IsNullOrEmpty(password))
+        // Validate
+        if (string.IsNullOrEmpty(username) ||
+            string.IsNullOrEmpty(password) ||
+            string.IsNullOrEmpty(fullName) ||
+            string.IsNullOrEmpty(email))
         {
-            await DisplayAlert("Lỗi", "Tên đăng nhập và mật khẩu không được để trống", "OK");
+            await DisplayAlert("Lỗi", "Vui lòng nhập đầy đủ thông tin", "OK");
             return;
         }
 
@@ -29,17 +33,14 @@ public partial class RegisterPage : ContentPage
 
         if (success)
         {
-            await DisplayAlert("Thành công", "Đăng ký tài khoản thành công!\nBạn có thể đăng nhập ngay bây giờ.", "OK");
-            await Navigation.PopAsync(); // Quay về trang Login
+            await DisplayAlert("Thành công", "Đăng ký thành công!", "OK");
+
+            // 👉 quay lại Login
+            await Navigation.PopAsync();
         }
         else
         {
-            await DisplayAlert("Thất bại", "Đăng ký không thành công.\nUsername có thể đã tồn tại.", "OK");
+            await DisplayAlert("Lỗi", "Đăng ký thất bại", "OK");
         }
-    }
-
-    private async void OnBackToLoginClicked(object sender, EventArgs e)
-    {
-        await Navigation.PopAsync();
     }
 }

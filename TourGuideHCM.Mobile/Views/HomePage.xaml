@@ -2,16 +2,35 @@
 <ContentPage xmlns="http://schemas.microsoft.com/dotnet/2021/maui"
              xmlns:x="http://schemas.microsoft.com/winfx/2009/xaml"
              x:Class="TourGuideHCM.Mobile.Views.HomePage"
-             Title="Trang chủ">
+             Title="Trang chủ"
+             BackgroundColor="White">
 
-    <VerticalStackLayout Padding="30">
+    <VerticalStackLayout Padding="30" Spacing="25" VerticalOptions="CenterAndExpand">
 
-        <Label Text="🎉 Đã vào HomePage"
-               FontSize="24"
-               HorizontalOptions="Center" />
+        <Label 
+            x:Name="lblWelcome"
+            Text="Xin chào, User 👋"
+            FontSize="24"
+            FontAttributes="Bold"
+            HorizontalOptions="Center"
+            HorizontalTextAlignment="Center" />
 
-        <Button Text="Đăng xuất"
-                Clicked="OnLogoutClicked" />
+        <Button 
+            Text="Đăng xuất"
+            Clicked="OnLogoutClicked"
+            BackgroundColor="#5B21B6"
+            TextColor="White"
+            FontAttributes="Bold"
+            CornerRadius="8"
+            HeightRequest="52"
+            HorizontalOptions="Fill" />
+        <Button 
+    Text="Xem bản đồ"
+    Clicked="OnGoToMapClicked"
+    BackgroundColor="#2196F3"
+    TextColor="White"
+    Margin="20"/>
 
     </VerticalStackLayout>
+
 </ContentPage>

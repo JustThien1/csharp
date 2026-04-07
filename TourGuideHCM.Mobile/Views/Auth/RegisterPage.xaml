@@ -2,40 +2,33 @@
 <ContentPage xmlns="http://schemas.microsoft.com/dotnet/2021/maui"
              xmlns:x="http://schemas.microsoft.com/winfx/2009/xaml"
              x:Class="TourGuideHCM.Mobile.Views.Auth.RegisterPage"
-             Title="Đăng ký"
-             BackgroundColor="#F8F9FA">
+             Title="Đăng ký">
 
-    <ScrollView>
-        <VerticalStackLayout Padding="30" Spacing="15" VerticalOptions="CenterAndExpand">
+	<ScrollView>
+		<VerticalStackLayout Padding="30" Spacing="15">
 
-            <Label Text="Tạo tài khoản mới" 
-                   FontSize="24" 
+			<Label Text="Đăng ký tài khoản"
+                   FontSize="24"
                    FontAttributes="Bold"
-                   HorizontalOptions="Center"
-                   TextColor="#2C3E50"/>
+                   HorizontalOptions="Center" />
 
-            <Entry x:Name="txtUsername" Placeholder="Tên đăng nhập" HeightRequest="50" BackgroundColor="White" CornerRadius="10"/>
-            <Entry x:Name="txtPassword" Placeholder="Mật khẩu" IsPassword="True" HeightRequest="50" BackgroundColor="White" CornerRadius="10"/>
-            <Entry x:Name="txtFullName" Placeholder="Họ và tên (không bắt buộc)" HeightRequest="50" BackgroundColor="White" CornerRadius="10"/>
-            <Entry x:Name="txtEmail" Placeholder="Email (không bắt buộc)" Keyboard="Email" HeightRequest="50" BackgroundColor="White" CornerRadius="10"/>
+			<Entry x:Name="txtUsername"
+                   Placeholder="Tên đăng nhập" />
 
-            <Button Text="Đăng ký" 
-                    Clicked="OnRegisterClicked"
-                    BackgroundColor="#28A745"
-                    TextColor="White"
-                    HeightRequest="55"
-                    CornerRadius="10"
-                    FontSize="18"
-                    FontAttributes="Bold"/>
+			<Entry x:Name="txtPassword"
+                   Placeholder="Mật khẩu"
+                   IsPassword="True" />
 
-            <Button Text="Quay lại đăng nhập" 
-                    Clicked="OnBackToLoginClicked"
-                    BackgroundColor="Transparent"
-                    TextColor="#3498DB"
-                    BorderColor="#3498DB"
-                    BorderWidth="1"
-                    HeightRequest="50"
-                    CornerRadius="10"/>
-        </VerticalStackLayout>
-    </ScrollView>
+			<Entry x:Name="txtFullName"
+                   Placeholder="Họ tên" />
+
+			<Entry x:Name="txtEmail"
+                   Placeholder="Email" />
+
+			<Button Text="Đăng ký"
+                    Clicked="OnRegisterClicked" />
+
+		</VerticalStackLayout>
+	</ScrollView>
+
 </ContentPage>

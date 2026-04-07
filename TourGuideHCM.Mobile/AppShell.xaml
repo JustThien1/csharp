@@ -1,14 +1,17 @@
-<?xml version="1.0" encoding="UTF-8" ?>
+<?xml version="1.0" encoding="utf-8" ?>
 <Shell
     x:Class="TourGuideHCM.Mobile.AppShell"
     xmlns="http://schemas.microsoft.com/dotnet/2021/maui"
     xmlns:x="http://schemas.microsoft.com/winfx/2009/xaml"
-    xmlns:local="clr-namespace:TourGuideHCM.Mobile"
-    Title="TourGuideHCM.Mobile">
+    xmlns:views="clr-namespace:TourGuideHCM.Mobile.Views"
+    xmlns:auth="clr-namespace:TourGuideHCM.Mobile.Views.Auth">
 
-    <ShellContent
-        Title="Home"
-        ContentTemplate="{DataTemplate local:MainPage}"
-        Route="MainPage" />
+    <FlyoutItem Title="Trang chủ">
+        <ShellContent ContentTemplate="{DataTemplate views:HomePage}" />
+    </FlyoutItem>
+
+    <FlyoutItem Title="Bản đồ">
+        <ShellContent ContentTemplate="{DataTemplate views:MapPage}" />
+    </FlyoutItem>
 
 </Shell>

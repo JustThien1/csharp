@@ -9,6 +9,12 @@
         <Entry x:Name="txtPassword" Placeholder="Password" IsPassword="True"/>
 
         <Button Text="Login" Clicked="OnLoginClicked"/>
+		<Label Text="Chưa có tài khoản? Đăng ký"
+       TextColor="Blue">
+			<Label.GestureRecognizers>
+				<TapGestureRecognizer Tapped="OnRegisterTapped"/>
+			</Label.GestureRecognizers>
+		</Label>
 
     </VerticalStackLayout>
 </ContentPage>

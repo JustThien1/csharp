@@ -1,0 +1,45 @@
+<?xml version="1.0" encoding="utf-8" ?>
+<ContentPage xmlns="http://schemas.microsoft.com/dotnet/2021/maui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2009/xaml"
+             xmlns:maps="clr-namespace:Microsoft.Maui.Controls.Maps;assembly=Microsoft.Maui.Controls.Maps"
+             x:Class="TourGuideHCM.Mobile.Views.MapPage"
+             Title="Bản đồ Sài Gòn"
+             BackgroundColor="White">
+
+    <Grid>
+        <!-- Bản đồ -->
+        <maps:Map x:Name="MyMap"
+                  MapType="Street"
+                  IsShowingUser="False"
+                  IsZoomEnabled="True"
+                  IsScrollEnabled="True"
+                  HorizontalOptions="Fill"
+                  VerticalOptions="Fill" />
+
+		<!-- Nút vị trí hiện tại -->
+		<Button Text="📍 Vị trí của tôi"
+                HorizontalOptions="End"
+                VerticalOptions="End"
+                Margin="20"
+                WidthRequest="160"
+                HeightRequest="52"
+                BackgroundColor="#3498DB"
+                TextColor="White"
+                CornerRadius="26"
+                FontAttributes="Bold" />
+
+        <!-- Nút tìm kiếm (sau này mở rộng) -->
+        <Button Text="🔍"
+                Clicked="OnSearchClicked"
+                HorizontalOptions="Start"
+                VerticalOptions="Start"
+                Margin="20"
+                WidthRequest="52"
+                HeightRequest="52"
+                BackgroundColor="White"
+                TextColor="#2C3E50"
+                CornerRadius="26"
+                BorderColor="#E0E0E0"
+                BorderWidth="1" />
+    </Grid>
+</ContentPage>
