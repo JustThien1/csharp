@@ -1,35 +1,13 @@
-<?xml version="1.0" encoding="utf-8" ?>
-<ContentPage xmlns="http://schemas.microsoft.com/dotnet/2021/maui"
-             xmlns:x="http://schemas.microsoft.com/winfx/2009/xaml"
-             x:Class="TourGuideHCM.Mobile.Views.HomePage"
-             Title="Trang chủ"
-             BackgroundColor="White">
+<ContentPage 
+    xmlns="http://schemas.microsoft.com/dotnet/2021/maui"
+    xmlns:x="http://schemas.microsoft.com/winfx/2009/xaml"
+    x:Class="TourGuideHCM.Mobile.Views.HomePage">
 
-    <VerticalStackLayout Padding="30" Spacing="25" VerticalOptions="CenterAndExpand">
+    <VerticalStackLayout Padding="30">
 
-        <Label 
-            x:Name="lblWelcome"
-            Text="Xin chào, User 👋"
-            FontSize="24"
-            FontAttributes="Bold"
-            HorizontalOptions="Center"
-            HorizontalTextAlignment="Center" />
+        <Label Text="HOME PAGE" FontSize="24"/>
 
-        <Button 
-            Text="Đăng xuất"
-            Clicked="OnLogoutClicked"
-            BackgroundColor="#5B21B6"
-            TextColor="White"
-            FontAttributes="Bold"
-            CornerRadius="8"
-            HeightRequest="52"
-            HorizontalOptions="Fill" />
-        <Button 
-    Text="Xem bản đồ"
-    Clicked="OnGoToMapClicked"
-    BackgroundColor="#2196F3"
-    TextColor="White"
-    Margin="20"/>
+        <Button Text="Logout" Clicked="OnLogoutClicked"/>
 
     </VerticalStackLayout>
 

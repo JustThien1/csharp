@@ -1,5 +1,11 @@
 <Solution>
   <Project Path="TourGuideHCM.API/TourGuideHCM.API.csproj" Id="995632d2-1c42-43f9-a11f-639c66a82d90" />
+  <Project Path="TourGuideHCM.App/TourGuideHCM.App.csproj" Id="77990da4-2eb1-474d-9afb-8a16fc4b05ee">
+    <Deploy />
+  </Project>
+  <Project Path="TourGuideHCM.Mobile.New/TourGuideHCM.Mobile.New.csproj">
+    <Deploy />
+  </Project>
   <Project Path="TourGuideHCM.Mobile/TourGuideHCM.Mobile.csproj" Id="8a3facc7-be33-4dbe-8bbe-ef2044e1097f">
     <Deploy Solution="Debug|*" />
   </Project>

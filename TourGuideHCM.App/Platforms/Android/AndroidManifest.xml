@@ -1,0 +1,37 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<manifest xmlns:android="http://schemas.android.com/apk/res/android"
+          xmlns:tools="http://schemas.android.com/tools"
+          package="com.tourguide.hcm.app">
+
+	<uses-permission android:name="android.permission.ACCESS_NETWORK_STATE" />
+	<uses-permission android:name="android.permission.INTERNET" />
+
+	<!-- ================== LOCATION PERMISSIONS (BẮT BUỘC CHO GEOFENCE + BACKGROUND) ================== -->
+	<uses-permission android:name="android.permission.ACCESS_COARSE_LOCATION" />
+	<uses-permission android:name="android.permission.ACCESS_FINE_LOCATION" />
+	<uses-permission android:name="android.permission.ACCESS_BACKGROUND_LOCATION" />
+
+	<!-- Foreground Service cho background tracking -->
+	<uses-permission android:name="android.permission.FOREGROUND_SERVICE" />
+	<uses-permission android:name="android.permission.FOREGROUND_SERVICE_LOCATION" />
+
+	<!-- Tùy chọn: khai báo tính năng phần cứng -->
+	<uses-feature android:name="android.hardware.location" android:required="false" />
+	<uses-feature android:name="android.hardware.location.gps" android:required="false" />
+	<uses-feature android:name="android.hardware.location.network" android:required="false" />
+
+	<application
+        android:allowBackup="true"
+        android:supportsRtl="true"
+        android:usesCleartextTraffic="true">
+		<!-- Cho phép http khi test với localhost -->
+
+		<!-- Foreground Service declaration (Android 14+) -->
+		<service
+            android:name="com.shiny.locations.GeofenceService"
+            android:foregroundServiceType="location"
+            android:exported="false" />
+
+	</application>
+
+</manifest>

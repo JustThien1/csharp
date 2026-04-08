@@ -1,8 +1,4 @@
-﻿using Microsoft.Maui.Controls;
-using Microsoft.Maui.Storage;
-using TourGuideHCM.Mobile.Views.Auth;
-
-namespace TourGuideHCM.Mobile;
+﻿namespace TourGuideHCM.Mobile;
 
 public partial class App : Application
 {
@@ -10,15 +6,6 @@ public partial class App : Application
     {
         InitializeComponent();
 
-        bool isLoggedIn = Preferences.Get("isLoggedIn", false);
-
-        if (isLoggedIn)
-        {
-            MainPage = new AppShell();
-        }
-        else
-        {
-            MainPage = new NavigationPage(new LoginPage());
-        }
+        MainPage = new NavigationPage(new Views.LoginPage());
     }
 }
