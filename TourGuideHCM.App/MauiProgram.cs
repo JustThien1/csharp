@@ -8,9 +8,6 @@ namespace TourGuideHCM.App;
 
 public static class MauiProgram
 {
-    // ✅ THÊM DÒNG NÀY
-    public static IServiceProvider Services { get; private set; }
-
     public static MauiApp CreateMauiApp()
     {
         var builder = MauiApp.CreateBuilder();
@@ -25,17 +22,20 @@ public static class MauiProgram
         builder.Services.AddSingleton<IDatabaseService, DatabaseService>();
         builder.Services.AddSingleton<INarrationService, NarrationService>();
         builder.Services.AddSingleton<IGeofenceService, GeofenceService>();
+        builder.Services.AddSingleton<AuthService>();
+
+        builder.Services.AddSingleton(new HttpClient
+        {
+            BaseAddress = new Uri("http://10.0.2.2:5284")
+        });
+        builder.Services.AddTransient<LoginPage>();
+        builder.Services.AddTransient<RegisterPage>();
 
         builder.Services.AddGeofencing<GeofenceDelegate>();
 
         builder.Services.AddTransient<MapViewModel>();
         builder.Services.AddTransient<MapPage>();
 
-        var app = builder.Build();
-
-        // ✅ QUAN TRỌNG
-        Services = app.Services;
-
-        return app;
+        return builder.Build();
     }
 }

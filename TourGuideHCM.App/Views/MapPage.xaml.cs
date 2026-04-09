@@ -11,7 +11,7 @@ public partial class MapPage : ContentPage
     {
         InitializeComponent();
 
-        _viewModel = MauiProgram.Services.GetRequiredService<MapViewModel>();
+        _viewModel = App.Services.GetRequiredService<MapViewModel>();
         BindingContext = _viewModel;
 
         // Cấu hình WebView cho Android

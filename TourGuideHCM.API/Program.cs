@@ -100,8 +100,7 @@ if (app.Environment.IsDevelopment())
         c.RoutePrefix = string.Empty;
     });
 }
-
-app.UseHttpsRedirection();
+// app.UseHttpsRedirection();
 app.UseCors("AllowAll");
 app.UseStaticFiles();           // Quan trọng để phục vụ file audio
 
@@ -136,5 +135,5 @@ using (var scope = app.Services.CreateScope())
     var db = scope.ServiceProvider.GetRequiredService<AppDbContext>();
     db.Database.EnsureCreated();
 }
-
+app.Run("http://0.0.0.0:5284"); // 🔥 BẮT BUỘC
 app.Run();

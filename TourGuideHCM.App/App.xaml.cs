@@ -1,19 +1,21 @@
-﻿namespace TourGuideHCM.App
+﻿using TourGuideHCM.App.Views;
+
+namespace TourGuideHCM.App
 {
     public partial class App : Application
     {
-        public static IServiceProvider Services { get; private set; }
+        public static IServiceProvider Services { get; private set; } // 🔥 PHẢI CÓ
 
         public App(IServiceProvider serviceProvider)
         {
             InitializeComponent();
-
-            Services = serviceProvider;
+            Services = serviceProvider; // 🔥 PHẢI CÓ
         }
 
         protected override Window CreateWindow(IActivationState? activationState)
         {
-            return new Window(new AppShell());
+            var loginPage = Services.GetService<LoginPage>();
+            return new Window(new NavigationPage(loginPage));
         }
     }
 }

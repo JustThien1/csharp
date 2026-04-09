@@ -1,4 +1,5 @@
 ﻿using Microsoft.EntityFrameworkCore;
+using TourGuideHCM.Api.Models;
 using TourGuideHCM.App.Models;
 
 namespace TourGuideHCM.App.Data;
@@ -6,6 +7,7 @@ namespace TourGuideHCM.App.Data;
 public class AppDbContext : DbContext
 {
     public DbSet<Poi> Pois { get; set; } = null!;
+    public DbSet<User> Users { get; set; }
 
     public AppDbContext(DbContextOptions<AppDbContext> options) : base(options) { }
 
