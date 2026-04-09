@@ -1,19 +1,49 @@
 ﻿@using Microsoft.AspNetCore.Components.Routing
 @using MudBlazor
 
-<MudNavMenu>
+<MudNavMenu Dense="true">
 
-    <MudNavLink Href="/" Match="NavLinkMatch.All">
+    <!-- DASHBOARD -->
+    <MudNavLink Href="/" Match="NavLinkMatch.All" Icon="@Icons.Material.Filled.Dashboard">
         Dashboard
     </MudNavLink>
 
-    <MudNavLink Href="/poi">
-        POI Admin
+    <MudDivider Class="my-2" />
+
+    <!-- CMS -->
+    <MudText Class="px-3 mt-2 mb-1 text-secondary">CMS</MudText>
+
+    <MudNavLink Href="/poi" Icon="@Icons.Material.Filled.Place">
+        POI
     </MudNavLink>
 
-    <MudNavLink Href="/analytics">
-        Analytics
+    <MudNavLink Href="/audio" Icon="@Icons.Material.Filled.MusicNote">
+        Audio
     </MudNavLink>
 
+    <MudNavLink Href="/translation" Icon="@Icons.Material.Filled.Language">
+        Bản dịch
+    </MudNavLink>
+
+    <MudNavLink Href="/tour" Icon="@Icons.Material.Filled.Map">
+        Tour
+    </MudNavLink>
+
+    <MudNavLink Href="/history" Icon="@Icons.Material.Filled.History">
+        Lịch sử
+    </MudNavLink>
+
+    <MudDivider Class="my-2" />
+
+    <!-- ANALYTICS -->
+    <MudText Class="px-3 mt-2 mb-1 text-secondary">Analytics</MudText>
+
+    <MudNavLink Href="/dashboard" Icon="@Icons.Material.Filled.BarChart">
+        Dashboard Analytics
+    </MudNavLink>
+
+    <MudNavLink Href="/heatmap" Icon="@Icons.Material.Filled.Whatshot">
+        Heatmap
+    </MudNavLink>
 
 </MudNavMenu>

@@ -3,7 +3,8 @@
 
 @using MudBlazor
 @using TourGuideHCM.Admin.Services
-@inject PoiService PoiService
+@using TourGuideHCM.Admin.Models
+
 @inject AnalyticsService AnalyticsService
 
 <MudText Typo="Typo.h4" Class="mb-4">📊 Dashboard</MudText>
@@ -43,14 +44,18 @@ else
 
     </MudGrid>
 
+    <!-- CHART -->
     <MudPaper Class="pa-4 mt-6">
         <MudText Typo="Typo.h6">📈 Lượt nghe</MudText>
 
         <MudChart ChartType="ChartType.Line"
                   Labels="@labels"
-                  Datasets="@datasets" />
+                  Datasets="@datasets"
+                  Width="100%"
+                  Height="300px" />
     </MudPaper>
 
+    <!-- TOP POI -->
     <MudPaper Class="pa-4 mt-6">
         <MudText Typo="Typo.h6">🔥 Top POI</MudText>
 
@@ -77,7 +82,7 @@ else
     string[] labels = { "Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun" };
 
     List<ChartSeries> datasets = new();
-    List<TopPoi> topPois = new();
+    List<TopPoiDto> topPois = new();
 
     protected override async Task OnInitializedAsync()
     {
@@ -89,15 +94,20 @@ else
             topPoi = data.TopPoi;
             avgTime = data.AvgTime;
 
+            // ✅ FIX CHART
             datasets = new()
-        {
-            new ChartSeries
             {
-                Name = "Lượt nghe",
-                Data = new double[] { 5, 8, 12, 6, 10, 15, 20 }
-            }
-        };
+                new ChartSeries
+                {
+                    Name = "Lượt nghe",
+                    Data = data.DailyViews != null && data.DailyViews.Length > 0
+                        ? data.DailyViews.Select(x => (double)x).ToArray()
+                        : new double[] { 0, 0, 0, 0, 0, 0, 0 }
+                }
+            };
 
+            // ✅ FIX TOP POI (QUAN TRỌNG)
+            topPois = data.TopPois ?? new();
 
         }
         catch (Exception ex)
@@ -108,11 +118,5 @@ else
         {
             loading = false;
         }
-    }
-
-    class TopPoi
-    {
-        public string Name { get; set; } = "";
-        public int Count { get; set; }
     }
 }

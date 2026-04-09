@@ -14,7 +14,8 @@ namespace TourGuideHCM.Admin.Services
 
         public async Task<DashboardDto> GetDashboard()
         {
-            return await _http.GetFromJsonAsync<DashboardDto>("api/analytics/dashboard");
+            return await _http.GetFromJsonAsync<DashboardDto>("api/analytics/dashboard")
+                ?? new DashboardDto(); // 👈 FIX;
         }
     }
 }

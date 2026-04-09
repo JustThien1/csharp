@@ -1,5 +1,32 @@
 ﻿@inherits LayoutComponentBase
+@using MudBlazor
 
-<div>
-    @Body
-</div>
+<MudThemeProvider />
+<MudDialogProvider />
+<MudSnackbarProvider />
+
+<MudLayout>
+
+    <!-- SIDEBAR -->
+    <MudDrawer Open="true" Elevation="2" Variant="DrawerVariant.Mini" Class="pa-2" Width="250px">
+        <MudText Typo="Typo.h6" Class="mb-4 px-2">🚀 Admin</MudText>
+
+        <NavMenu />
+    </MudDrawer>
+
+    <!-- MAIN -->
+    <MudMainContent>
+
+        <!-- HEADER -->
+        <MudAppBar Elevation="1" Color="Color.Primary">
+            <MudText Typo="Typo.h6">TourGuide HCM Admin</MudText>
+        </MudAppBar>
+
+        <!-- CONTENT -->
+        <MudContainer MaxWidth="MaxWidth.False" Class="pa-4">
+            @Body
+        </MudContainer>
+
+    </MudMainContent>
+
+</MudLayout>
