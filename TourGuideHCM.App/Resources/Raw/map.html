@@ -4,8 +4,10 @@
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
     <title>TourGuide Map</title>
+
     <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
     <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+
     <style>
         html, body, #map {
             height: 100%;
@@ -15,17 +17,22 @@
         }
     </style>
 </head>
+
 <body>
     <div id="map"></div>
-    <script src="leaflet.js"></script>
+
     <script>
-        console.log("✅ MAP HTML LOADED - Version FIXED 2026-04-09");
+        console.log("✅ MAP HTML LOADED - FINAL VERSION");
+
+        // ===== INIT MAP =====
         var map = L.map('map').setView([10.7769, 106.7009], 13);
+
         L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
             attribution: '&copy; OpenStreetMap contributors',
             maxZoom: 19
         }).addTo(map);
 
+        // ===== FIX ICON =====
         delete L.Icon.Default.prototype._getIconUrl;
         L.Icon.Default.mergeOptions({
             iconRetinaUrl: 'images/marker-icon-2x.png',
@@ -33,21 +40,69 @@
             shadowUrl: 'images/marker-shadow.png'
         });
 
+        // ===== DATA =====
+        var poiMarkers = [];
+        var currentMarker = null;
+
+        // ===== LOAD POI FROM APP =====
         window.loadFromApp = function (pois) {
-            console.log("📥 loadFromApp called with " + pois.length + " POIs");
-            map.eachLayer(l => { if (l instanceof L.Marker) map.removeLayer(l); });
+            console.log("📥 loadFromApp:", pois);
+
+            // Xóa marker cũ
+            poiMarkers.forEach(m => map.removeLayer(m));
+            poiMarkers = [];
+
+            // Thêm marker mới
             pois.forEach(p => {
-                if (p.lat && p.lng) L.marker([p.lat, p.lng]).addTo(map).bindPopup("<b>" + p.name + "</b><br>" + (p.description || ""));
+                if (p.lat && p.lng) {
+                    var marker = L.marker([p.lat, p.lng])
+                        .addTo(map)
+                        .bindPopup("<b>" + p.name + "</b><br>" + (p.description || ""));
+
+                    poiMarkers.push(marker);
+                }
             });
-            console.log("✅ Markers added");
+
+            console.log("✅ POI markers added:", poiMarkers.length);
         };
 
+        // ===== GO TO USER LOCATION =====
         window.goToLocation = function (lat, lng) {
-            console.log("🚀 goToLocation: " + lat + ", " + lng);
+            console.log("🚀 goToLocation:", lat, lng);
+
+            // Bay tới vị trí
             map.flyTo([lat, lng], 17);
+
+            // Xóa marker cũ
+            if (currentMarker) {
+                map.removeLayer(currentMarker);
+            }
+
+            // Tạo icon xanh giống Google Maps
+            var userIcon = L.circleMarker([lat, lng], {
+                radius: 8,
+                color: "#fff",
+                weight: 2,
+                fillColor: "#007bff",
+                fillOpacity: 1
+            }).addTo(map);
+
+            // Thêm vòng tròn nhẹ xung quanh
+            var accuracyCircle = L.circle([lat, lng], {
+                radius: 30,
+                color: "#007bff",
+                fillColor: "#007bff",
+                fillOpacity: 0.2
+            }).addTo(map);
+
+            currentMarker = userIcon;
+
+            userIcon.bindPopup("📍 Bạn đang ở đây").openPopup();
+
+            console.log("✅ User marker added");
         };
 
-        console.log("✅ MAP READY - Leaflet initialized");
+        console.log("✅ MAP READY");
     </script>
 </body>
 </html>

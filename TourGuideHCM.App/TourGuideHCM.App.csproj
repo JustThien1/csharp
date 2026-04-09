@@ -33,8 +33,8 @@
 
 	<!-- ✅ THÊM Ở ĐÂY -->
 	<ItemGroup>
-		<MauiAsset Include="Resources\Raw\map.html" />
-		<MauiAsset Include="Resources\Raw\**" />
+		<MauiAsset Include="Resources\Raw\**\*.*"
+				   LogicalName="%(RecursiveDir)%(Filename)%(Extension)" />
 	</ItemGroup>
 
 </Project>

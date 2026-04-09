@@ -103,6 +103,13 @@ public partial class MapPage : ContentPage
     {
         try
         {
+            var status = await Permissions.RequestAsync<Permissions.LocationWhenInUse>();
+            if (status != PermissionStatus.Granted)
+            {
+                await DisplayAlert("Quyền", "Cần cấp quyền vị trí", "OK");
+                return;
+            }
+
             var location = await Geolocation.GetLastKnownLocationAsync()
                          ?? await Geolocation.GetLocationAsync();
 
@@ -110,7 +117,8 @@ public partial class MapPage : ContentPage
             {
                 await MainThread.InvokeOnMainThreadAsync(async () =>
                 {
-                    await MyWebView.EvaluateJavaScriptAsync($"goToLocation({location.Latitude}, {location.Longitude})");
+                    await MyWebView.EvaluateJavaScriptAsync(
+                        $"goToLocation({location.Latitude}, {location.Longitude})");
                 });
             }
         }
