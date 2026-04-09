@@ -34,6 +34,7 @@
 	<!-- ✅ THÊM Ở ĐÂY -->
 	<ItemGroup>
 		<MauiAsset Include="Resources\Raw\map.html" />
+		<MauiAsset Include="Resources\Raw\**" />
 	</ItemGroup>
 
 </Project>

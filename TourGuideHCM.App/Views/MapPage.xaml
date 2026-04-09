@@ -5,17 +5,27 @@
 
     <Grid>
 
-        <WebView x:Name="MyWebView" />
+        <!-- 🗺️ WebView full màn hình -->
+        <WebView x:Name="MyWebView"
+                 HorizontalOptions="Fill"
+                 VerticalOptions="Fill" />
 
+        <!-- 🎛️ Button nổi -->
         <VerticalStackLayout VerticalOptions="End"
                              HorizontalOptions="End"
                              Margin="20"
                              Spacing="10">
 
             <Button Text="📍 Vị trí"
+                    BackgroundColor="#6C4CF1"
+                    TextColor="White"
+                    CornerRadius="12"
                     Clicked="OnGoToLocationClicked"/>
 
             <Button Text="🔄 Reload"
+                    BackgroundColor="#6C4CF1"
+                    TextColor="White"
+                    CornerRadius="12"
                     Clicked="OnReloadClicked"/>
         </VerticalStackLayout>
 
