@@ -1,4 +1,8 @@
 <Solution>
+  <Folder Name="/Solution Items/">
+    <File Path=".editorconfig" />
+  </Folder>
+  <Project Path="TourGuideHCM.Admin/TourGuideHCM.Admin.csproj" Id="73fc80c4-fac4-4181-8ce2-4b25251ebeae" />
   <Project Path="TourGuideHCM.API/TourGuideHCM.API.csproj" Id="995632d2-1c42-43f9-a11f-639c66a82d90" />
   <Project Path="TourGuideHCM.App/TourGuideHCM.App.csproj" Id="77990da4-2eb1-474d-9afb-8a16fc4b05ee">
     <Deploy />

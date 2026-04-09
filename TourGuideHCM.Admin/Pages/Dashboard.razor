@@ -1,0 +1,118 @@
+﻿@page "/"
+@page "/dashboard"
+
+@using MudBlazor
+@using TourGuideHCM.Admin.Services
+@inject PoiService PoiService
+@inject AnalyticsService AnalyticsService
+
+<MudText Typo="Typo.h4" Class="mb-4">📊 Dashboard</MudText>
+
+@if (loading)
+{
+    <MudProgressCircular Indeterminate="true" Color="Color.Primary" />
+}
+else if (!string.IsNullOrEmpty(error))
+{
+    <MudAlert Severity="Severity.Error">@error</MudAlert>
+}
+else
+{
+    <MudGrid>
+
+        <MudItem xs="12" md="4">
+            <MudPaper Class="pa-4">
+                <MudText>Tổng POI</MudText>
+                <MudText Typo="Typo.h5">@totalPoi</MudText>
+            </MudPaper>
+        </MudItem>
+
+        <MudItem xs="12" md="4">
+            <MudPaper Class="pa-4">
+                <MudText>Top POI</MudText>
+                <MudText Typo="Typo.h6">@topPoi</MudText>
+            </MudPaper>
+        </MudItem>
+
+        <MudItem xs="12" md="4">
+            <MudPaper Class="pa-4">
+                <MudText>Avg Time</MudText>
+                <MudText Typo="Typo.h6">@avgTime phút</MudText>
+            </MudPaper>
+        </MudItem>
+
+    </MudGrid>
+
+    <MudPaper Class="pa-4 mt-6">
+        <MudText Typo="Typo.h6">📈 Lượt nghe</MudText>
+
+        <MudChart ChartType="ChartType.Line"
+                  Labels="@labels"
+                  Datasets="@datasets" />
+    </MudPaper>
+
+    <MudPaper Class="pa-4 mt-6">
+        <MudText Typo="Typo.h6">🔥 Top POI</MudText>
+
+        <MudList Dense="true">
+            @foreach (var p in topPois)
+            {
+                <MudListItem>
+                    <MudText>@p.Name (@p.Count lượt)</MudText>
+                </MudListItem>
+            }
+        </MudList>
+    </MudPaper>
+}
+
+@code {
+
+    bool loading = true;
+    string error = "";
+
+    int totalPoi = 0;
+    string topPoi = "";
+    int avgTime = 0;
+
+    string[] labels = { "Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun" };
+
+    List<ChartSeries> datasets = new();
+    List<TopPoi> topPois = new();
+
+    protected override async Task OnInitializedAsync()
+    {
+        try
+        {
+            var data = await AnalyticsService.GetDashboard();
+
+            totalPoi = data.TotalPoi;
+            topPoi = data.TopPoi;
+            avgTime = data.AvgTime;
+
+            datasets = new()
+        {
+            new ChartSeries
+            {
+                Name = "Lượt nghe",
+                Data = new double[] { 5, 8, 12, 6, 10, 15, 20 }
+            }
+        };
+
+
+        }
+        catch (Exception ex)
+        {
+            error = ex.Message;
+        }
+        finally
+        {
+            loading = false;
+        }
+    }
+
+    class TopPoi
+    {
+        public string Name { get; set; } = "";
+        public int Count { get; set; }
+    }
+}

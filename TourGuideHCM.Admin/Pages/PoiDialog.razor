@@ -1,0 +1,52 @@
+﻿@using TourGuideHCM.Admin.Models
+@using TourGuideHCM.Admin.Services
+
+@inject PoiService Service
+@inject MudDialogInstance MudDialog
+
+<MudDialog>
+
+    <DialogContent>
+
+        <MudTextField Label="Tên"
+                      @bind-Value="Poi.Name" />
+
+        <MudTextField Label="Mô tả"
+                      @bind-Value="Poi.Description" />
+
+        <MudTextField Label="Image URL"
+                      @bind-Value="Poi.ImageUrl" />
+
+        <MudNumericField Label="Latitude"
+                         @bind-Value="Poi.Lat" />
+
+        <MudNumericField Label="Longitude"
+                         @bind-Value="Poi.Lng" />
+
+    </DialogContent>
+
+    <DialogActions>
+        <MudButton OnClick="Save" Color="Color.Primary">Lưu</MudButton>
+        <MudButton OnClick="Cancel">Hủy</MudButton>
+    </DialogActions>
+
+</MudDialog>
+
+@code {
+    [Parameter] public Poi Poi { get; set; } = new();
+
+    async Task Save()
+    {
+        if (Poi.Id == 0)
+            await Service.Create(Poi);
+        else
+            await Service.Update(Poi);
+
+        MudDialog.Close(DialogResult.Ok(true));
+    }
+
+    void Cancel()
+    {
+        MudDialog.Cancel();
+    }
+}

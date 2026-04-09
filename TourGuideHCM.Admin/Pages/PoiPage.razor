@@ -1,0 +1,89 @@
+﻿@page "/poi"
+@using TourGuideHCM.Admin.Models
+@using TourGuideHCM.Admin.Services
+
+@inject PoiService Service
+@inject IDialogService DialogService
+
+<MudText Typo="Typo.h4">📍 POI Admin</MudText>
+
+<MudTextField @bind-Value="search" Placeholder="Tìm kiếm..." Class="mb-2" />
+
+<MudButton Color="Color.Primary" Variant="Variant.Filled" OnClick="NewPoi" Class="mb-4">
+    ➕ Thêm POI
+</MudButton>
+
+<MudTable Items="@filteredPois" Hover="true" Bordered="true">
+
+    <!-- HEADER -->
+    <HeaderContent>
+        <MudTh>Ảnh</MudTh>
+        <MudTh>Tên</MudTh>
+        <MudTh>Mô tả</MudTh>
+        <MudTh>Action</MudTh>
+    </HeaderContent>
+
+    <!-- ROW -->
+    <RowTemplate Context="poi">
+        <MudTd>
+            <img src="@poi.ImageUrl" width="100" />
+        </MudTd>
+
+        <MudTd>@poi.Name</MudTd>
+        <MudTd>@poi.Description</MudTd>
+
+        <MudTd>
+            <MudButton Color="Color.Warning" OnClick="() => Edit(poi)">✏️</MudButton>
+            <MudButton Color="Color.Error" OnClick="() => Delete(poi.Id)">🗑</MudButton>
+        </MudTd>
+    </RowTemplate>
+
+</MudTable>
+
+@code {
+    List<Poi> pois = new();
+    string search = "";
+
+    IEnumerable<Poi> filteredPois =>
+        pois.Where(p => string.IsNullOrWhiteSpace(search) ||
+                        p.Name.Contains(search, StringComparison.OrdinalIgnoreCase));
+
+    protected override async Task OnInitializedAsync()
+    {
+        await Load();
+    }
+
+    async Task Load()
+    {
+        pois = await Service.GetAll() ?? new();
+    }
+
+    async Task NewPoi()
+    {
+        var dialog = DialogService.Show<PoiDialog>("Thêm POI");
+        var result = await dialog.Result;
+
+        if (!result.Cancelled)
+            await Load();
+    }
+
+    async Task Edit(Poi poi)
+    {
+        var parameters = new DialogParameters
+        {
+            ["Poi"] = poi
+        };
+
+        var dialog = DialogService.Show<PoiDialog>("Sửa POI", parameters);
+        var result = await dialog.Result;
+
+        if (!result.Cancelled)
+            await Load();
+    }
+
+    async Task Delete(int id)
+    {
+        await Service.Delete(id);
+        await Load();
+    }
+}

@@ -21,4 +21,21 @@ public partial class PoiDetailPage : ContentPage
     {
         await _narrationService.PlayNarrationForPoi(_poi.Id.ToString());
     }
+    private async void OnItemSelected(object sender, SelectionChangedEventArgs e)
+    {
+        var collection = sender as CollectionView;
+
+        if (collection?.SelectedItem is not Poi poi)
+            return;
+
+        // 🔥 reset trước (fix bug click)
+        collection.SelectedItem = null;
+
+        // 🔥 delay nhẹ để UI mượt hơn
+        await Task.Delay(100);
+
+        await Navigation.PushAsync(new PoiDetailPage(poi));
+    }
+
+
 }
