@@ -103,6 +103,7 @@ public partial class MapPage : ContentPage
     {
         try
         {
+            // 1. Xin quyền
             var status = await Permissions.RequestAsync<Permissions.LocationWhenInUse>();
             if (status != PermissionStatus.Granted)
             {
@@ -110,17 +111,24 @@ public partial class MapPage : ContentPage
                 return;
             }
 
-            var location = await Geolocation.GetLastKnownLocationAsync()
-                         ?? await Geolocation.GetLocationAsync();
+            // 2. Luôn lấy GPS mới (KHÔNG dùng LastKnown)
+            var request = new GeolocationRequest(GeolocationAccuracy.Best, TimeSpan.FromSeconds(10));
+            var location = await Geolocation.GetLocationAsync(request);
 
-            if (location != null)
+            // 3. Fallback nếu fail
+            if (location == null)
             {
-                await MainThread.InvokeOnMainThreadAsync(async () =>
-                {
-                    await MyWebView.EvaluateJavaScriptAsync(
-                        $"goToLocation({location.Latitude}, {location.Longitude})");
-                });
+                location = new Location(10.7769, 106.7009);
             }
+
+            Console.WriteLine($"📍 LAT: {location.Latitude}, LNG: {location.Longitude}");
+
+            // 4. Gửi qua JS
+            await MainThread.InvokeOnMainThreadAsync(async () =>
+            {
+                await MyWebView.EvaluateJavaScriptAsync(
+                    $"goToLocation({location.Latitude}, {location.Longitude})");
+            });
         }
         catch (Exception ex)
         {
