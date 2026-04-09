@@ -29,6 +29,7 @@ public partial class LoginPage : ContentPage
 
             if (ok)
             {
+                Preferences.Set("username", UsernameEntry.Text);
                 await DisplayAlert("OK", "Login success", "OK");
                 Application.Current.MainPage = new AppShell();
             }
