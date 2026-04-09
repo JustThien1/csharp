@@ -1,34 +1,50 @@
 ﻿using System.Net.Http.Json;
 using TourGuideHCM.Admin.Models;
 
-namespace TourGuideHCM.Admin.Services;
-
-public class PoiService
+namespace TourGuideHCM.Admin.Services
 {
-    private readonly HttpClient _http;
-
-    public PoiService(HttpClient http)
+    public class PoiService
     {
-        _http = http;
-    }
+        private readonly HttpClient _http;
 
-    public async Task<List<Poi>> GetAll()
-    {
-        return await _http.GetFromJsonAsync<List<Poi>>("api/poi") ?? new();
-    }
+        public PoiService(HttpClient http)
+        {
+            _http = http;
+        }
 
-    public async Task Create(Poi poi)
-    {
-        await _http.PostAsJsonAsync("api/poi", poi);
-    }
+        // ✅ GET ALL
+        public async Task<List<PoiDto>> GetAll()
+        {
+            try
+            {
+                return await _http.GetFromJsonAsync<List<PoiDto>>("api/poi")
+                       ?? new List<PoiDto>();
+            }
+            catch
+            {
+                return new List<PoiDto>();
+            }
+        }
 
-    public async Task Update(Poi poi)
-    {
-        await _http.PutAsJsonAsync($"api/poi/{poi.Id}", poi);
-    }
+        // ✅ CREATE
+        public async Task<bool> Create(PoiDto poi)
+        {
+            var res = await _http.PostAsJsonAsync("api/poi", poi);
+            return res.IsSuccessStatusCode;
+        }
 
-    public async Task Delete(int id)
-    {
-        await _http.DeleteAsync($"api/poi/{id}");
+        // ✅ UPDATE
+        public async Task<bool> Update(PoiDto poi)
+        {
+            var res = await _http.PutAsJsonAsync($"api/poi/{poi.Id}", poi);
+            return res.IsSuccessStatusCode;
+        }
+
+        // ✅ DELETE
+        public async Task<bool> Delete(int id)
+        {
+            var res = await _http.DeleteAsync($"api/poi/{id}");
+            return res.IsSuccessStatusCode;
+        }
     }
 }

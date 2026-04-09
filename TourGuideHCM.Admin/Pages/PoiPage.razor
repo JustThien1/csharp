@@ -1,21 +1,29 @@
 ﻿@page "/poi"
+
 @using TourGuideHCM.Admin.Models
 @using TourGuideHCM.Admin.Services
+@using MudBlazor
 
 @inject PoiService Service
 @inject IDialogService DialogService
 
-<MudText Typo="Typo.h4">📍 POI Admin</MudText>
+<MudText Typo="Typo.h4" Class="mb-2">📍 POI Admin</MudText>
 
-<MudTextField @bind-Value="search" Placeholder="Tìm kiếm..." Class="mb-2" />
+<MudTextField @bind-Value="search"
+              Placeholder="Tìm kiếm..."
+              Adornment="Adornment.Start"
+              AdornmentIcon="@Icons.Material.Filled.Search"
+              Class="mb-3" />
 
-<MudButton Color="Color.Primary" Variant="Variant.Filled" OnClick="NewPoi" Class="mb-4">
+<MudButton Color="Color.Primary"
+           Variant="Variant.Filled"
+           OnClick="NewPoi"
+           Class="mb-4">
     ➕ Thêm POI
 </MudButton>
 
-<MudTable Items="@filteredPois" Hover="true" Bordered="true">
+<MudTable Items="@filteredPois" Hover="true" Bordered="true" Dense="true">
 
-    <!-- HEADER -->
     <HeaderContent>
         <MudTh>Ảnh</MudTh>
         <MudTh>Tên</MudTh>
@@ -23,28 +31,49 @@
         <MudTh>Action</MudTh>
     </HeaderContent>
 
-    <!-- ROW -->
     <RowTemplate Context="poi">
+
+        <!-- IMAGE -->
         <MudTd>
-            <img src="@poi.ImageUrl" width="100" />
+            <img src="@poi.ImageUrl"
+                 width="100"
+                 style="border-radius:8px"
+                 onerror="this.src='https://via.placeholder.com/100'" />
         </MudTd>
 
+        <!-- NAME -->
         <MudTd>@poi.Name</MudTd>
-        <MudTd>@poi.Description</MudTd>
 
-        <MudTd>
-            <MudButton Color="Color.Warning" OnClick="() => Edit(poi)">✏️</MudButton>
-            <MudButton Color="Color.Error" OnClick="() => Delete(poi.Id)">🗑</MudButton>
+        <!-- DESC -->
+        <MudTd style="max-width:250px; overflow:hidden; text-overflow:ellipsis">
+            @poi.Description
         </MudTd>
+
+        <!-- ACTION -->
+        <MudTd>
+            <MudButton Size="Size.Small"
+                       Color="Color.Warning"
+                       OnClick="() => Edit(poi)">
+                ✏️
+            </MudButton>
+
+            <MudButton Size="Size.Small"
+                       Color="Color.Error"
+                       OnClick="() => Delete(poi.Id)">
+                🗑
+            </MudButton>
+        </MudTd>
+
     </RowTemplate>
 
 </MudTable>
 
 @code {
-    List<Poi> pois = new();
+
+    List<PoiDto> pois = new();   // ✅ FIX MODEL
     string search = "";
 
-    IEnumerable<Poi> filteredPois =>
+    IEnumerable<PoiDto> filteredPois =>
         pois.Where(p => string.IsNullOrWhiteSpace(search) ||
                         p.Name.Contains(search, StringComparison.OrdinalIgnoreCase));
 
@@ -63,11 +92,11 @@
         var dialog = DialogService.Show<PoiDialog>("Thêm POI");
         var result = await dialog.Result;
 
-        if (!result.Cancelled)
+        if (!result.Canceled)   // ✅ FIX
             await Load();
     }
 
-    async Task Edit(Poi poi)
+    async Task Edit(PoiDto poi)
     {
         var parameters = new DialogParameters
         {
@@ -77,13 +106,22 @@
         var dialog = DialogService.Show<PoiDialog>("Sửa POI", parameters);
         var result = await dialog.Result;
 
-        if (!result.Cancelled)
+        if (!result.Canceled)   // ✅ FIX
             await Load();
     }
 
     async Task Delete(int id)
     {
-        await Service.Delete(id);
-        await Load();
+        bool? confirm = await DialogService.ShowMessageBox(
+            "Xác nhận",
+            "Bạn có chắc muốn xóa POI này?",
+            yesText: "Xóa",
+            cancelText: "Hủy");
+
+        if (confirm == true)
+        {
+            await Service.Delete(id);
+            await Load();
+        }
     }
 }

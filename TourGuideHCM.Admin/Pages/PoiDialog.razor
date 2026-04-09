@@ -1,46 +1,95 @@
 ﻿@using TourGuideHCM.Admin.Models
 @using TourGuideHCM.Admin.Services
+@using MudBlazor
 
 @inject PoiService Service
 @inject MudDialogInstance MudDialog
 
-<MudDialog>
+<MudDialog MaxWidth="MaxWidth.Small" FullWidth="true">
 
     <DialogContent>
 
-        <MudTextField Label="Tên"
-                      @bind-Value="Poi.Name" />
+        <MudForm @ref="form">
 
-        <MudTextField Label="Mô tả"
-                      @bind-Value="Poi.Description" />
+            <MudTextField Label="Tên"
+                          @bind-Value="model.Name"
+                          Required="true" />
 
-        <MudTextField Label="Image URL"
-                      @bind-Value="Poi.ImageUrl" />
+            <MudTextField Label="Mô tả"
+                          @bind-Value="model.Description"
+                          Lines="3" />
 
-        <MudNumericField Label="Latitude"
-                         @bind-Value="Poi.Lat" />
+            <MudTextField Label="Image URL"
+                          @bind-Value="model.ImageUrl" />
 
-        <MudNumericField Label="Longitude"
-                         @bind-Value="Poi.Lng" />
+            <MudNumericField Label="Latitude"
+                             @bind-Value="model.Lat" />
+
+            <MudNumericField Label="Longitude"
+                             @bind-Value="model.Lng" />
+
+            <!-- PREVIEW IMAGE -->
+            @if (!string.IsNullOrWhiteSpace(model.ImageUrl))
+            {
+                <img src="@model.ImageUrl"
+                     style="width:100%; margin-top:10px; border-radius:8px"
+                     onerror="this.style.display='none'" />
+            }
+
+        </MudForm>
 
     </DialogContent>
 
     <DialogActions>
-        <MudButton OnClick="Save" Color="Color.Primary">Lưu</MudButton>
-        <MudButton OnClick="Cancel">Hủy</MudButton>
+
+        <MudButton OnClick="Save"
+                   Color="Color.Primary"
+                   Variant="Variant.Filled">
+            💾 Lưu
+        </MudButton>
+
+        <MudButton OnClick="Cancel"
+                   Variant="Variant.Outlined">
+            Hủy
+        </MudButton>
+
     </DialogActions>
 
 </MudDialog>
 
 @code {
-    [Parameter] public Poi Poi { get; set; } = new();
+
+    [Parameter] public PoiDto Poi { get; set; } = new();   // ✅ FIX DTO
+
+    MudForm form;
+
+    PoiDto model = new();   // 👉 dùng model riêng
+
+    protected override void OnInitialized()
+    {
+        // 👉 COPY DATA (tránh bug edit trực tiếp)
+        model = new PoiDto
+        {
+            Id = Poi.Id,
+            Name = Poi.Name,
+            Description = Poi.Description,
+            ImageUrl = Poi.ImageUrl,
+            Lat = Poi.Lat,
+            Lng = Poi.Lng
+        };
+    }
 
     async Task Save()
     {
-        if (Poi.Id == 0)
-            await Service.Create(Poi);
+        await form.Validate();
+
+        if (!form.IsValid)
+            return;
+
+        if (model.Id == 0)
+            await Service.Create(model);
         else
-            await Service.Update(Poi);
+            await Service.Update(model);
 
         MudDialog.Close(DialogResult.Ok(true));
     }

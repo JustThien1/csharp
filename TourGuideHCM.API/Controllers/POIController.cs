@@ -1,5 +1,4 @@
-﻿using Microsoft.AspNetCore.Authorization;
-using Microsoft.AspNetCore.Mvc;
+﻿using Microsoft.AspNetCore.Mvc;
 using System.Security.Claims;
 using TourGuideHCM.API.Models;
 using TourGuideHCM.API.Services;
@@ -19,9 +18,12 @@ namespace TourGuideHCM.API.Controllers
             _geofenceService = geofenceService;
         }
 
+        // ✅ GET ALL
         [HttpGet]
-        public IActionResult GetAll() => Ok(_service.GetAll());
+        public IActionResult GetAll()
+            => Ok(_service.GetAll());
 
+        // ✅ GET BY ID
         [HttpGet("{id}")]
         public IActionResult GetById(int id)
         {
@@ -29,43 +31,46 @@ namespace TourGuideHCM.API.Controllers
             return poi == null ? NotFound("Không tìm thấy POI") : Ok(poi);
         }
 
+        // ✅ CREATE (⚠️ bỏ Authorize để Admin dùng)
         [HttpPost]
-        [Authorize]
         public IActionResult Create([FromBody] POI poi)
         {
-            if (poi == null || string.IsNullOrEmpty(poi.Name))
+            if (poi == null || string.IsNullOrWhiteSpace(poi.Name))
                 return BadRequest("Tên POI không hợp lệ");
 
-            try
-            {
-                var created = _service.Add(poi);
-                return CreatedAtAction(nameof(GetById), new { id = created.Id }, created);
-            }
-            catch (Exception ex)
-            {
-                return BadRequest(ex.Message);
-            }
+            var created = _service.Add(poi);
+
+            return CreatedAtAction(nameof(GetById),
+                new { id = created.Id },
+                created);
         }
 
+        // ✅ UPDATE
         [HttpPut("{id}")]
-        [Authorize]
         public IActionResult Update(int id, [FromBody] POI updated)
         {
             if (updated == null)
                 return BadRequest("Dữ liệu không hợp lệ");
 
             var result = _service.Update(id, updated);
-            return !result ? NotFound("Không tìm thấy POI") : Ok(updated);
+
+            return !result
+                ? NotFound("Không tìm thấy POI")
+                : Ok(updated);
         }
 
+        // ✅ DELETE
         [HttpDelete("{id}")]
-        [Authorize]
         public IActionResult Delete(int id)
         {
             var result = _service.Delete(id);
-            return !result ? NotFound("Không tìm thấy POI") : Ok(new { message = "Xóa thành công" });
+
+            return !result
+                ? NotFound("Không tìm thấy POI")
+                : Ok(new { message = "Xóa thành công" });
         }
 
+        // 🔥 NEARBY
         [HttpGet("nearby")]
         public IActionResult GetNearby([FromQuery] double lat, [FromQuery] double lng)
         {
@@ -76,19 +81,18 @@ namespace TourGuideHCM.API.Controllers
             var nearest = _geofenceService.GetNearestPOI(lat, lng, pois);
 
             return nearest == null
-                ? Ok(new { message = "Không tìm thấy POI gần vị trí này" })
+                ? Ok(new { message = "Không tìm thấy POI gần" })
                 : Ok(nearest);
         }
 
+        // 🔥 GEOFENCE TRIGGER
         [HttpPost("trigger")]
-        [Authorize]
         public IActionResult TriggerGeofence([FromBody] LocationRequest request)
         {
-            var userId = GetCurrentUserId();
-            if (userId == 0) return Unauthorized();
-
             if (request == null || request.Lat == 0 || request.Lng == 0)
                 return BadRequest("Tọa độ không hợp lệ");
+
+            var userId = GetCurrentUserId();
 
             var poi = _geofenceService.GetTriggeredPOI(request.Lat, request.Lng, userId);
 
@@ -107,19 +111,26 @@ namespace TourGuideHCM.API.Controllers
             });
         }
 
+        // 🔥 QR
         [HttpGet("qr/{code}")]
         public IActionResult GetByQRCode(string code)
         {
-            if (string.IsNullOrEmpty(code))
+            if (string.IsNullOrWhiteSpace(code))
                 return BadRequest("QR Code không hợp lệ");
 
             var poi = _service.GetByQRCode(code);
-            return poi == null ? NotFound("Không tìm thấy POI") : Ok(poi);
+
+            return poi == null
+                ? NotFound("Không tìm thấy POI")
+                : Ok(poi);
         }
 
+        // 🔧 HELPER
         private int GetCurrentUserId()
         {
-            var claim = User.FindFirst(ClaimTypes.NameIdentifier)?.Value ?? User.FindFirst("id")?.Value;
+            var claim = User.FindFirst(ClaimTypes.NameIdentifier)?.Value
+                     ?? User.FindFirst("id")?.Value;
+
             return int.TryParse(claim, out int id) ? id : 0;
         }
     }
