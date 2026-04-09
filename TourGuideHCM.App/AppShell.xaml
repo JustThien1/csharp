@@ -6,11 +6,18 @@
     xmlns:views="clr-namespace:TourGuideHCM.App.Views"
     Title="TourGuideHCM">
 
-    <!-- 📍 Menu chính -->
+    <!-- 📍 Trang Map -->
     <FlyoutItem Title="Bản đồ">
         <ShellContent
             Title="Map"
             ContentTemplate="{DataTemplate views:MapPage}" />
+    </FlyoutItem>
+
+    <!-- 📋 Danh sách POI -->
+    <FlyoutItem Title="Danh sách POI">
+        <ShellContent
+            Title="POI List"
+            ContentTemplate="{DataTemplate views:PoiListPage}" />
     </FlyoutItem>
 
     <!-- 🚪 Logout -->

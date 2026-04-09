@@ -1,11 +1,12 @@
 ﻿using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
 using Microsoft.Maui.Controls.Maps;
-using Microsoft.Maui.Maps;
 using Microsoft.Maui.Devices.Sensors; // 🔥 QUAN TRỌNG (Geolocation)
+using Microsoft.Maui.Maps;
 using System.Collections.ObjectModel;
 using TourGuideHCM.App.Models;
 using TourGuideHCM.App.Services;
+using TourGuideHCM.App.Views;
 
 namespace TourGuideHCM.App.ViewModels;
 
@@ -62,7 +63,8 @@ public partial class MapViewModel : ObservableObject
 
                 pin.InfoWindowClicked += async (s, e) =>
                 {
-                    await Application.Current.MainPage.DisplayAlert(poi.Name, poi.Description ?? "", "OK");
+                    await Application.Current.MainPage.Navigation
+                        .PushAsync(new PoiDetailPage(poi));
                 };
 
                 MapPins.Add(pin);
@@ -114,6 +116,22 @@ public partial class MapViewModel : ObservableObject
     // 🔥 GEOFENCE LOGIC
     private void CheckNearbyPOI(double userLat, double userLng)
     {
+        // 🔥 tìm POI gần nhất
+        var nearest = _pois
+            .Select(p => new
+            {
+                Poi = p,
+                Distance = GetDistance(userLat, userLng, p.Lat, p.Lng)
+            })
+            .OrderBy(x => x.Distance)
+            .FirstOrDefault();
+
+        if (nearest != null)
+        {
+            HighlightPOI(nearest.Poi);
+        }
+
+        // 🔥 check geofence như cũ
         foreach (var poi in _pois)
         {
             var distance = GetDistance(userLat, userLng, poi.Lat, poi.Lng);
@@ -124,6 +142,14 @@ public partial class MapViewModel : ObservableObject
                 break;
             }
         }
+    }
+    private void HighlightPOI(Poi poi)
+    {
+        MapSpan = MapSpan.FromCenterAndRadius(
+            new Location(poi.Lat, poi.Lng),
+            Distance.FromMeters(300));
+
+        Console.WriteLine($"⭐ Highlight: {poi.Name}");
     }
 
     // 🔊 TRIGGER

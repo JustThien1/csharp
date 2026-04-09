@@ -12,4 +12,5 @@ public class Poi
     public string? AudioUrl { get; set; }
     public string? NarrationText { get; set; }
     public string Language { get; set; } = "vi";
+    public string? ImageUrl { get; set; }
 }
