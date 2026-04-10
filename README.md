@@ -296,8 +296,4 @@ TourGuideHCM
 │ └── style.css
 │
 └── index.html
-cd TourGuideHCM.Admin 
-dotnet add package MudBlazor
- dotnet add package Microsoft.AspNetCore.Components.WebAssembly.Authentication
- dotnet add package Refit
-dotnet add package MudBlazor --version 6.11.2
+
