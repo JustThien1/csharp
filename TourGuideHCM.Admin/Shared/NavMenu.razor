@@ -1,49 +1,33 @@
-﻿@using Microsoft.AspNetCore.Components.Routing
-@using MudBlazor
+﻿@using MudBlazor
 
-<MudNavMenu Dense="true">
-
-    <!-- DASHBOARD -->
-    <MudNavLink Href="/" Match="NavLinkMatch.All" Icon="@Icons.Material.Filled.Dashboard">
+<MudNavMenu Dense="true" Color="Color.Inherit">
+    <MudNavLink Href="/" Icon="@Icons.Material.Filled.Dashboard" Match="NavLinkMatch.All">
         Dashboard
     </MudNavLink>
 
-    <MudDivider Class="my-2" />
-
-    <!-- CMS -->
-    <MudText Class="px-3 mt-2 mb-1 text-secondary">CMS</MudText>
-
     <MudNavLink Href="/poi" Icon="@Icons.Material.Filled.Place">
-        POI
+        📍 Quản lý POI
     </MudNavLink>
 
     <MudNavLink Href="/audio" Icon="@Icons.Material.Filled.MusicNote">
-        Audio
+        🎵 Quản lý Audio
     </MudNavLink>
 
-    <MudNavLink Href="/translation" Icon="@Icons.Material.Filled.Language">
-        Bản dịch
+    <MudNavLink Href="/translation" Icon="@Icons.Material.Filled.Translate">
+        🌐 Bản dịch
     </MudNavLink>
 
     <MudNavLink Href="/tour" Icon="@Icons.Material.Filled.Map">
-        Tour
+        🗺️ Quản lý Tour
     </MudNavLink>
+
+    <MudDivider Class="my-4" />
 
     <MudNavLink Href="/history" Icon="@Icons.Material.Filled.History">
-        Lịch sử
-    </MudNavLink>
-
-    <MudDivider Class="my-2" />
-
-    <!-- ANALYTICS -->
-    <MudText Class="px-3 mt-2 mb-1 text-secondary">Analytics</MudText>
-
-    <MudNavLink Href="/dashboard" Icon="@Icons.Material.Filled.BarChart">
-        Dashboard Analytics
+        📜 Lịch sử sử dụng
     </MudNavLink>
 
     <MudNavLink Href="/heatmap" Icon="@Icons.Material.Filled.Whatshot">
-        Heatmap
+        🔥 Heatmap vị trí
     </MudNavLink>
-
 </MudNavMenu>

@@ -1,0 +1,186 @@
+﻿@using MudBlazor
+@using TourGuideHCM.Admin.Models
+@using TourGuideHCM.Admin.Services
+@using System.Net.Http.Headers
+@using Microsoft.AspNetCore.Components.Forms
+
+@inject AudioService AudioService
+@inject MudDialogInstance MudDialog
+@inject ISnackbar Snackbar
+
+<MudDialog MaxWidth="MaxWidth.Medium" FullWidth="true">
+    <DialogContent>
+        <MudForm @ref="form">
+
+            @* Chọn POI *@
+            <MudSelect T="int"
+                       Label="Chọn POI *"
+                       @bind-Value="model.PoiId"
+                       Required="true"
+                       RequiredError="Vui lòng chọn POI"
+                       Class="mb-4">
+                @foreach (var poi in Pois)
+                {
+                    <MudSelectItem T="int" Value="@poi.Id">@poi.Name</MudSelectItem>
+                }
+            </MudSelect>
+
+            @* Ngôn ngữ *@
+            <MudSelect T="string"
+                       Label="Ngôn ngữ *"
+                       @bind-Value="model.Language"
+                       Required="true"
+                       RequiredError="Vui lòng chọn ngôn ngữ"
+                       Class="mb-4">
+                <MudSelectItem T="string" Value="@("vi")">Tiếng Việt</MudSelectItem>
+                <MudSelectItem T="string" Value="@("en")">English</MudSelectItem>
+                <MudSelectItem T="string" Value="@("zh")">Tiếng Trung</MudSelectItem>
+                <MudSelectItem T="string" Value="@("ko")">Tiếng Hàn</MudSelectItem>
+            </MudSelect>
+
+            @* Upload file audio *@
+            <MudText Typo="Typo.body2" Class="mb-1 mud-text-secondary">Chọn file audio (.mp3, .wav, .m4a, .ogg)</MudText>
+            <MudFileUpload T="IBrowserFile"
+                           FilesChanged="UploadFile"
+                           Accept=".mp3,.wav,.m4a,.ogg"
+                           Class="mb-2">
+                <ActivatorContent>
+                    <MudButton Variant="Variant.Filled"
+                               Color="Color.Primary"
+                               StartIcon="@Icons.Material.Filled.CloudUpload"
+                               Disabled="@uploading"
+                               FullWidth="true">
+                        @if (uploading)
+                        {
+                            <MudProgressCircular Size="Size.Small" Indeterminate="true" Class="mr-2" />
+                            <span>Dang upload...</span>
+                        }
+                        else
+                        {
+                            <span>Chon file audio</span>
+                        }
+                    </MudButton>
+                </ActivatorContent>
+            </MudFileUpload>
+
+            @* Preview audio sau khi upload *@
+            @if (!string.IsNullOrEmpty(model.AudioUrl))
+            {
+                <MudPaper Elevation="0" Class="pa-3 mb-4" Style="background:#f5f5f5; border-radius:8px;">
+                    <MudText Typo="Typo.caption" Class="mb-1">Xem truoc audio:</MudText>
+                    <audio src="@model.AudioUrl" controls style="width:100%;"></audio>
+                </MudPaper>
+            }
+
+            @* Thời lượng *@
+            <MudNumericField T="int"
+                             Label="Thoi luong (giay) *"
+                             @bind-Value="model.DurationSeconds"
+                             Required="true"
+                             RequiredError="Vui long nhap thoi luong"
+                             Min="0"
+                             Class="mb-4" />
+
+            @* Mô tả *@
+            <MudTextField T="string"
+                          Label="Mo ta"
+                          @bind-Value="model.Description"
+                          Lines="3"
+                          Class="mb-4" />
+
+            @* Kích hoạt *@
+            <MudSwitch T="bool"
+                       @bind-Value="model.IsActive"
+                       Label="Kich hoat"
+                       Color="Color.Success" />
+
+        </MudForm>
+    </DialogContent>
+
+    <DialogActions>
+        <MudButton OnClick="@(() => MudDialog.Cancel())"
+                   Variant="Variant.Text">
+            Huy
+        </MudButton>
+        <MudButton OnClick="Save"
+                   Color="Color.Primary"
+                   Variant="Variant.Filled"
+                   StartIcon="@Icons.Material.Filled.Save"
+                   Disabled="@uploading">
+            Luu
+        </MudButton>
+    </DialogActions>
+</MudDialog>
+
+@code {
+    [Parameter] public AudioDto Audio { get; set; } = new();
+    [Parameter] public List<PoiDto> Pois { get; set; } = new();
+
+    private MudForm form = default!;
+    private AudioDto model = new();
+    private bool uploading = false;
+
+    protected override void OnInitialized()
+    {
+        model = new AudioDto
+        {
+            Id              = Audio.Id,
+            PoiId           = Audio.PoiId,
+            Language        = string.IsNullOrEmpty(Audio.Language) ? "vi" : Audio.Language,
+            AudioUrl        = Audio.AudioUrl,
+            DurationSeconds = Audio.DurationSeconds,
+            Description     = Audio.Description,
+            IsActive        = Audio.IsActive
+        };
+    }
+
+    private async Task UploadFile(IBrowserFile? file)
+    {
+        if (file is null) return;
+
+        uploading = true;
+        StateHasChanged();
+
+        try
+        {
+            var content     = new MultipartFormDataContent();
+            var fileContent = new StreamContent(file.OpenReadStream(maxAllowedSize: 10 * 1024 * 1024));
+            fileContent.Headers.ContentType = new MediaTypeHeaderValue(file.ContentType ?? "audio/mpeg");
+            content.Add(fileContent, "file", file.Name);
+
+            var (success, url) = await AudioService.UploadAudioAsync(content);
+
+            if (success && !string.IsNullOrEmpty(url))
+            {
+                model.AudioUrl = url;
+                Snackbar.Add("Upload file audio thanh cong!", Severity.Success);
+            }
+            else
+            {
+                Snackbar.Add("Upload file that bai!", Severity.Error);
+            }
+        }
+        catch (Exception ex)
+        {
+            Snackbar.Add($"Loi upload: {ex.Message}", Severity.Error);
+        }
+        finally
+        {
+            uploading = false;
+            StateHasChanged();
+        }
+    }
+
+    private async Task Save()
+    {
+        await form.Validate();
+        if (!form.IsValid) return;
+
+        if (model.Id == 0)
+            await AudioService.CreateAsync(model);
+        else
+            await AudioService.UpdateAsync(model);
+
+        MudDialog.Close(DialogResult.Ok(true));
+    }
+}

@@ -1,8 +1,10 @@
 ﻿<Router AppAssembly="@typeof(Program).Assembly">
     <Found Context="routeData">
-        <RouteView RouteData="@routeData" />
+        <RouteView RouteData="@routeData" DefaultLayout="@typeof(MainLayout)" />
     </Found>
     <NotFound>
-        <h3>Not found</h3>
+        <LayoutView Layout="@typeof(MainLayout)">
+            <p class="mud-text-h4 pa-4">Không tìm thấy trang</p>
+        </LayoutView>
     </NotFound>
 </Router>

@@ -1,3 +1,110 @@
 ﻿@page "/audio"
 
-<MudText Typo="Typo.h4">🎵 Audio</MudText>
+@using MudBlazor
+@using TourGuideHCM.Admin.Models
+@using TourGuideHCM.Admin.Services
+@using System.Net.Http.Headers
+
+@inject AudioService AudioService
+@inject IDialogService DialogService
+@inject PoiService PoiService
+
+<MudText Typo="Typo.h4" Class="mb-4">🎵 Quản lý Audio Guide</MudText>
+
+<div class="d-flex justify-space-between align-center mb-4">
+    <MudTextField @bind-Value="search"
+                  Placeholder="Tìm kiếm theo POI hoặc ngôn ngữ..."
+                  Adornment="Adornment.Start"
+                  AdornmentIcon="@Icons.Material.Filled.Search"
+                  Style="min-width: 400px;" />
+
+    <MudButton Color="Color.Success" Variant="Variant.Filled" OnClick="NewAudio">
+        ➕ Thêm Audio mới
+    </MudButton>
+</div>
+
+<MudTable Items="@filteredAudios" Hover="true" Bordered="true" Dense="true" Loading="@loading">
+    <HeaderContent>
+        <MudTh>POI</MudTh>
+        <MudTh>Ngôn ngữ</MudTh>
+        <MudTh>Audio</MudTh>
+        <MudTh>Thời lượng</MudTh>
+        <MudTh>Trạng thái</MudTh>
+        <MudTh>Hành động</MudTh>
+    </HeaderContent>
+    <RowTemplate Context="audio">
+        <MudTd>@audio.PoiName</MudTd>
+        <MudTd><MudChip Color="Color.Primary">@audio.Language.ToUpper()</MudChip></MudTd>
+        <MudTd>
+            @if (!string.IsNullOrEmpty(audio.AudioUrl))
+            {
+                <audio src="@audio.AudioUrl" controls style="width: 260px; height: 40px;"></audio>
+            }
+            else
+            {
+                <MudText Color="Color.Error">Chưa có audio</MudText>
+            }
+        </MudTd>
+        <MudTd>@audio.DurationSeconds giây</MudTd>
+        <MudTd>
+            <MudSwitch @bind-Value="audio.IsActive" Disabled="true" Color="Color.Success" />
+        </MudTd>
+        <MudTd>
+            <MudButton Size="Size.Small" Color="Color.Warning" OnClick="() => EditAudio(audio)">✏️</MudButton>
+            <MudButton Size="Size.Small" Color="Color.Error" OnClick="() => DeleteAudio(audio.Id)">🗑</MudButton>
+        </MudTd>
+    </RowTemplate>
+</MudTable>
+
+@code {
+    private List<AudioDto> audios = new();
+    private string search = "";
+    private bool loading = true;
+
+    private IEnumerable<AudioDto> filteredAudios =>
+        audios.Where(a => string.IsNullOrWhiteSpace(search) ||
+                          a.PoiName.Contains(search, StringComparison.OrdinalIgnoreCase) ||
+                          a.Language.Contains(search, StringComparison.OrdinalIgnoreCase));
+
+    protected override async Task OnInitializedAsync()
+    {
+        await LoadData();
+    }
+
+    private async Task LoadData()
+    {
+        loading = true;
+        audios = await AudioService.GetAllAsync();
+        loading = false;
+    }
+
+    private async Task NewAudio()
+    {
+        var parameters = new DialogParameters { ["Pois"] = await PoiService.GetAll() };
+        var dialog = DialogService.Show<AudioDialog>("Thêm Audio Guide", parameters);
+        var result = await dialog.Result;
+        if (!result.Canceled) await LoadData();
+    }
+
+    private async Task EditAudio(AudioDto audio)
+    {
+        var parameters = new DialogParameters
+        {
+            ["Audio"] = audio,
+            ["Pois"] = await PoiService.GetAll()
+        };
+        var dialog = DialogService.Show<AudioDialog>("Sửa Audio", parameters);
+        var result = await dialog.Result;
+        if (!result.Canceled) await LoadData();
+    }
+
+    private async Task DeleteAudio(int id)
+    {
+        bool? confirm = await DialogService.ShowMessageBox("Xác nhận xóa", "Bạn có chắc muốn xóa audio này?", yesText: "Xóa", cancelText: "Hủy");
+        if (confirm == true)
+        {
+            await AudioService.DeleteAsync(id);
+            await LoadData();
+        }
+    }
+}

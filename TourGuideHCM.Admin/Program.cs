@@ -21,5 +21,7 @@ builder.Services.AddScoped(sp => new HttpClient
 // Services
 builder.Services.AddScoped<PoiService>();
 builder.Services.AddScoped<AnalyticsService>(); // 👈 QUAN TRỌNG
+// Thêm dòng này cùng với các service khác
+builder.Services.AddScoped<AudioService>();
 Console.WriteLine("🔥 ANALYTICS SERVICE REGISTERED 🔥");
 await builder.Build().RunAsync();
