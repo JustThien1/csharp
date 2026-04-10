@@ -22,6 +22,7 @@
 
         public int CategoryId { get; set; }
         public Category? Category { get; set; }
+        public ICollection<Audio> Audios { get; set; } = new List<Audio>();
 
         public ICollection<Review> Reviews { get; set; } = new List<Review>();
         public ICollection<Favorite> Favorites { get; set; } = new List<Favorite>();

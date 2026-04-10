@@ -9,6 +9,7 @@ namespace TourGuideHCM.API.Data
         {
         }
 
+        // ====================== DbSets ======================
         public DbSet<POI> POIs { get; set; }
         public DbSet<Category> Categories { get; set; }
         public DbSet<User> Users { get; set; }
@@ -16,6 +17,9 @@ namespace TourGuideHCM.API.Data
         public DbSet<Favorite> Favorites { get; set; }
         public DbSet<PlaybackLog> PlaybackLogs { get; set; }
         public DbSet<RouteLog> RouteLogs { get; set; }
+
+        // ====================== THÊM DbSet cho Audio ======================
+        public DbSet<Audio> Audios { get; set; }
 
         protected override void OnModelCreating(ModelBuilder modelBuilder)
         {
@@ -52,22 +56,30 @@ namespace TourGuideHCM.API.Data
                 .HasForeignKey(f => f.POIId)
                 .OnDelete(DeleteBehavior.Cascade);
 
-            // Unique index cho Favorite (1 user chỉ favorite 1 POI 1 lần)
+            // Unique index cho Favorite
             modelBuilder.Entity<Favorite>()
                 .HasIndex(f => new { f.UserId, f.POIId })
                 .IsUnique();
 
-            // Seed data mẫu
-            modelBuilder.Entity<Category>().HasData(
-                new Category { Id = 1, Name = "Di tích lịch sử" },
-                new Category { Id = 2, Name = "Ẩm thực" },
-                new Category { Id = 3, Name = "Mua sắm" }
-            );
+            // ====================== RELATIONSHIP CHO AUDIO ======================
+            modelBuilder.Entity<Audio>()
+                .HasOne(a => a.POI)
+                .WithMany(p => p.Audios)           // POI phải có ICollection<Audio> Audios
+                .HasForeignKey(a => a.PoiId)
+                .OnDelete(DeleteBehavior.Cascade);
+
             modelBuilder.Entity<PlaybackLog>()
                 .HasOne(p => p.POI)
                 .WithMany()
                 .HasForeignKey(p => p.POIId)
                 .OnDelete(DeleteBehavior.Cascade);
+
+            // ====================== Seed Data ======================
+            modelBuilder.Entity<Category>().HasData(
+                new Category { Id = 1, Name = "Di tích lịch sử" },
+                new Category { Id = 2, Name = "Ẩm thực" },
+                new Category { Id = 3, Name = "Mua sắm" }
+            );
         }
     }
 }

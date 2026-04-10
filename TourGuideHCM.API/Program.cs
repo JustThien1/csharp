@@ -1,5 +1,6 @@
-using Microsoft.EntityFrameworkCore;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
+using Microsoft.AspNetCore.Http.Features;
+using Microsoft.EntityFrameworkCore;
 using Microsoft.IdentityModel.Tokens;
 using System.Text;
 using System.Text.Json.Serialization;
@@ -19,6 +20,23 @@ builder.Services.AddScoped<POIService>();
 builder.Services.AddScoped<GeofenceService>();
 builder.Services.AddScoped<FavoriteService>();
 builder.Services.AddScoped<ReviewService>();
+
+// ====================== Cấu hình cho Upload File lớn (RẤT QUAN TRỌNG) ======================
+builder.WebHost.ConfigureKestrel(options =>
+{
+    options.Limits.MaxRequestBodySize = 50 * 1024 * 1024; // 50 MB
+});
+
+builder.Services.Configure<IISServerOptions>(options =>
+{
+    options.MaxRequestBodySize = 50 * 1024 * 1024; // 50 MB
+});
+
+// Cấu hình Multipart cho form-data (upload audio)
+builder.Services.Configure<FormOptions>(options =>
+{
+    options.MultipartBodyLengthLimit = 50 * 1024 * 1024; // 50 MB
+});
 
 // ====================== JWT Authentication ======================
 builder.Services.AddAuthentication(options =>
@@ -100,9 +118,9 @@ if (app.Environment.IsDevelopment())
         c.RoutePrefix = string.Empty;
     });
 }
-// app.UseHttpsRedirection();
+
 app.UseCors("AllowAll");
-app.UseStaticFiles();           // Quan trọng để phục vụ file audio
+app.UseStaticFiles();           // Quan trọng để phục vụ file /audio/...
 
 app.UseAuthentication();
 app.UseAuthorization();
@@ -116,24 +134,16 @@ using (var scope = app.Services.CreateScope())
     try
     {
         var context = services.GetRequiredService<AppDbContext>();
-
-        context.Database.Migrate();   // Tạo bảng theo migration
-
+        context.Database.Migrate();
         DbSeeder.Seed(context);
 
         Console.WriteLine("✅ Database SQLite đã sẵn sàng!");
-        Console.WriteLine($"   POI: {context.POIs.Count()} | Category: {context.Categories.Count()}");
+        Console.WriteLine($"   POI: {context.POIs.Count()}");
     }
     catch (Exception ex)
     {
         Console.WriteLine($"❌ Database Error: {ex.Message}");
-        Console.WriteLine(ex.InnerException?.Message ?? "");
     }
 }
-using (var scope = app.Services.CreateScope())
-{
-    var db = scope.ServiceProvider.GetRequiredService<AppDbContext>();
-    db.Database.EnsureCreated();
-}
-app.Run("http://0.0.0.0:5284"); // 🔥 BẮT BUỘC
-app.Run();
+
+app.Run("http://0.0.0.0:5284");

@@ -6,12 +6,21 @@
 
 @inject PoiService Service
 @inject IDialogService DialogService
+@inject ISnackbar Snackbar   // Để hiển thị thông báo thành công/thất bại
 
 <MudText Typo="Typo.h4" Class="mb-4">📍 Quản lý POI</MudText>
 
-<MudButton Color="Color.Success" Variant="Variant.Filled" OnClick="NewPoi" Class="mb-4">
-    ➕ Thêm POI mới
-</MudButton>
+<div class="d-flex justify-space-between align-center mb-4">
+    <MudTextField @bind-Value="search"
+                  Placeholder="Tìm kiếm theo tên POI..."
+                  Adornment="Adornment.Start"
+                  AdornmentIcon="@Icons.Material.Filled.Search"
+                  Style="min-width: 400px;" />
+
+    <MudButton Color="Color.Success" Variant="Variant.Filled" OnClick="NewPoi" StartIcon="@Icons.Material.Filled.Add">
+        ➕ Thêm POI mới
+    </MudButton>
+</div>
 
 <MudTable Items="@filteredPois" Hover="true" Dense="true" Bordered="true" Loading="@loading">
     <HeaderContent>
@@ -25,40 +34,87 @@
     <RowTemplate Context="poi">
         <MudTd>@poi.Id</MudTd>
         <MudTd>@poi.Name</MudTd>
-        <MudTd>
-            @poi.Lat, @poi.Lng
-        </MudTd>
-        <MudTd>500m</MudTd>   <!-- Bạn có thể thêm trường Radius vào PoiDto sau -->
+        <MudTd>@poi.Lat, @poi.Lng</MudTd>
+        <MudTd>500m</MudTd>
         <MudTd>
             <MudChip Color="Color.Info" Size="Size.Small">Có audio</MudChip>
         </MudTd>
         <MudTd>
-            <MudButton Size="Size.Small" Color="Color.Warning" OnClick="() => Edit(poi)">✏️</MudButton>
-            <MudButton Size="Size.Small" Color="Color.Error" OnClick="() => Delete(poi.Id)">🗑</MudButton>
+            <MudButton Size="Size.Small" Color="Color.Warning" OnClick="() => Edit(poi)" StartIcon="@Icons.Material.Filled.Edit">Sửa</MudButton>
+            <MudButton Size="Size.Small" Color="Color.Error" OnClick="() => Delete(poi.Id)" StartIcon="@Icons.Material.Filled.Delete">Xóa</MudButton>
         </MudTd>
     </RowTemplate>
 </MudTable>
 
 @code {
-    List<PoiDto> pois = new();
-    string search = "";
-    bool loading = true;
+    private List<PoiDto> pois = new();
+    private string search = "";
+    private bool loading = true;
 
-    IEnumerable<PoiDto> filteredPois => pois;
+    private IEnumerable<PoiDto> filteredPois =>
+        pois.Where(p => string.IsNullOrWhiteSpace(search) ||
+                        p.Name.Contains(search, StringComparison.OrdinalIgnoreCase));
 
     protected override async Task OnInitializedAsync()
     {
         await Load();
     }
 
-    async Task Load()
+    private async Task Load()
     {
         loading = true;
         pois = await Service.GetAll() ?? new();
         loading = false;
     }
 
-    async Task NewPoi() { /* giữ nguyên như cũ */ }
-    async Task Edit(PoiDto poi) { /* giữ nguyên như cũ */ }
-    async Task Delete(int id) { /* giữ nguyên như cũ */ }
+    // ====================== THÊM POI MỚI ======================
+    private async Task NewPoi()
+    {
+        var parameters = new DialogParameters();
+        var dialog = await DialogService.ShowAsync<PoiDialog>("Thêm POI mới", parameters);
+        var result = await dialog.Result;
+
+        if (!result.Canceled)
+        {
+            Snackbar.Add("Thêm POI thành công!", Severity.Success);
+            await Load();
+        }
+    }
+
+    // ====================== SỬA POI ======================
+    private async Task Edit(PoiDto poi)
+    {
+        var parameters = new DialogParameters { ["Poi"] = poi };
+        var dialog = await DialogService.ShowAsync<PoiDialog>("Sửa POI", parameters);
+        var result = await dialog.Result;
+
+        if (!result.Canceled)
+        {
+            Snackbar.Add("Cập nhật POI thành công!", Severity.Success);
+            await Load();
+        }
+    }
+
+    // ====================== XÓA POI ======================
+    private async Task Delete(int id)
+    {
+        bool? confirm = await DialogService.ShowMessageBox(
+            "Xác nhận xóa",
+            "Bạn có chắc chắn muốn xóa POI này? Hành động này không thể hoàn tác.",
+            yesText: "Xóa", cancelText: "Hủy", options: new DialogOptions { MaxWidth = MaxWidth.Small });
+
+        if (confirm == true)
+        {
+            var success = await Service.Delete(id);
+            if (success)
+            {
+                Snackbar.Add("Xóa POI thành công!", Severity.Success);
+                await Load();
+            }
+            else
+            {
+                Snackbar.Add("Xóa thất bại!", Severity.Error);
+            }
+        }
+    }
 }

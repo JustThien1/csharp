@@ -1,3 +1,32 @@
 ﻿@page "/heatmap"
 
-<MudText Typo="Typo.h4">🔥 Heatmap</MudText>
+@using MudBlazor
+@using TourGuideHCM.Admin.Models
+
+<MudText Typo="Typo.h4" Class="mb-6">🔥 Heatmap vị trí người dùng (ẩn danh)</MudText>
+
+<MudPaper Class="pa-6" Elevation="3">
+    <MudHeatMap T="int"
+                Title="Số lượt nghe theo vị trí"
+                XLabels="@xLabels"
+                YLabels="@yLabels"
+                Data="@heatmapData"
+                Height="600px"
+                Width="100%" />
+</MudPaper>
+
+@code {
+    // Dữ liệu mẫu (sau này thay bằng API call)
+    private string[] xLabels = { "10:00", "11:00", "12:00", "13:00", "14:00", "15:00", "16:00", "17:00" };
+    private string[] yLabels = { "Bảo tàng", "Nhà thờ", "Công viên", "Chợ", "Cầu", "Bến cảng" };
+
+    private int[][] heatmapData = new int[][]
+    {
+        new[] { 5, 12, 18, 25, 30, 22, 15, 8 },
+        new[] { 8, 15, 22, 28, 35, 27, 19, 11 },
+        new[] { 3, 9, 14, 20, 25, 18, 12, 6 },
+        new[] { 10, 18, 24, 31, 38, 29, 21, 13 },
+        new[] { 6, 13, 19, 26, 32, 24, 17, 9 },
+        new[] { 4, 11, 16, 23, 29, 21, 14, 7 }
+    };
+}

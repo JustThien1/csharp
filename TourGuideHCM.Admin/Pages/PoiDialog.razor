@@ -3,12 +3,11 @@
 @using MudBlazor
 
 @inject PoiService Service
-@inject MudDialogInstance MudDialog
+@inject ISnackbar Snackbar   // Thêm để thông báo lỗi
 
 <MudDialog MaxWidth="MaxWidth.Small" FullWidth="true">
 
     <DialogContent>
-
         <MudForm @ref="form">
 
             <MudTextField Label="Tên"
@@ -37,11 +36,9 @@
             }
 
         </MudForm>
-
     </DialogContent>
 
     <DialogActions>
-
         <MudButton OnClick="Save"
                    Color="Color.Primary"
                    Variant="Variant.Filled">
@@ -52,22 +49,20 @@
                    Variant="Variant.Outlined">
             Hủy
         </MudButton>
-
     </DialogActions>
 
 </MudDialog>
 
 @code {
+    [CascadingParameter] MudDialogInstance MudDialog { get; set; } = default!;   // ← SỬA Ở ĐÂY
 
-    [Parameter] public PoiDto Poi { get; set; } = new();   // ✅ FIX DTO
+    [Parameter] public PoiDto Poi { get; set; } = new();
 
-    MudForm form;
-
-    PoiDto model = new();   // 👉 dùng model riêng
+    private MudForm form = default!;
+    private PoiDto model = new();
 
     protected override void OnInitialized()
     {
-        // 👉 COPY DATA (tránh bug edit trực tiếp)
         model = new PoiDto
         {
             Id = Poi.Id,
@@ -79,22 +74,26 @@
         };
     }
 
-    async Task Save()
+    private async Task Save()
     {
         await form.Validate();
-
         if (!form.IsValid)
+        {
+            Snackbar.Add("Vui lòng kiểm tra lại thông tin!", Severity.Warning);
             return;
+        }
 
-        if (model.Id == 0)
-            await Service.Create(model);
+        bool success = model.Id == 0
+            ? await Service.Create(model)
+            : await Service.Update(model);
+
+        if (success)
+            MudDialog.Close(DialogResult.Ok(true));
         else
-            await Service.Update(model);
-
-        MudDialog.Close(DialogResult.Ok(true));
+            Snackbar.Add("Lưu thất bại!", Severity.Error);
     }
 
-    void Cancel()
+    private void Cancel()
     {
         MudDialog.Cancel();
     }
