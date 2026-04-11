@@ -1,0 +1,113 @@
+﻿@page "/users"
+
+@using MudBlazor
+@using TourGuideHCM.Admin.Models
+@using TourGuideHCM.Admin.Services
+
+@inject UserService UserService
+@inject IDialogService DialogService
+@inject ISnackbar Snackbar
+
+<MudText Typo="Typo.h4" Class="mb-4">👥 Quản lý Người dùng</MudText>
+
+<div class="d-flex justify-space-between align-center mb-4">
+    <MudTextField @bind-Value="search"
+                  Placeholder="Tìm kiếm theo tên hoặc email..."
+                  Adornment="Adornment.Start"
+                  AdornmentIcon="@Icons.Material.Filled.Search"
+                  Style="min-width: 420px;" />
+
+    <MudButton Color="Color.Success" Variant="Variant.Filled" OnClick="NewUser" StartIcon="@Icons.Material.Filled.PersonAdd">
+        ➕ Thêm người dùng mới
+    </MudButton>
+</div>
+
+<MudTable Items="@filteredUsers" Hover="true" Dense="true" Bordered="true" Loading="@loading">
+    <HeaderContent>
+        <MudTh>ID</MudTh>
+        <MudTh>Họ tên</MudTh>
+        <MudTh>Email</MudTh>
+        <MudTh>Số điện thoại</MudTh>
+        <MudTh>Vai trò</MudTh>
+        <MudTh>Lượt nghe</MudTh>
+        <MudTh>Trạng thái</MudTh>
+        <MudTh>Hành động</MudTh>
+    </HeaderContent>
+    <RowTemplate Context="user">
+        <MudTd>@user.Id</MudTd>
+        <MudTd>@user.FullName</MudTd>
+        <MudTd>@user.Email</MudTd>
+        <MudTd>@user.Phone</MudTd>
+        <MudTd>
+            <MudChip Color="@(user.Role == "Admin" ? Color.Error : Color.Info)">@user.Role</MudChip>
+        </MudTd>
+        <MudTd>@user.TotalListens</MudTd>
+        <MudTd>
+            <MudSwitch @bind-Value="user.IsActive" Color="Color.Success" Disabled="true" />
+        </MudTd>
+        <MudTd>
+            <MudButton Size="Size.Small" Color="Color.Warning" OnClick="() => EditUser(user)">✏️</MudButton>
+            <MudButton Size="Size.Small" Color="Color.Error" OnClick="() => DeleteUser(user.Id)">🗑</MudButton>
+        </MudTd>
+    </RowTemplate>
+</MudTable>
+
+@code {
+    private List<UserDto> users = new();
+    private string search = "";
+    private bool loading = true;
+
+    private IEnumerable<UserDto> filteredUsers =>
+        users.Where(u => string.IsNullOrWhiteSpace(search) ||
+                         u.FullName.Contains(search, StringComparison.OrdinalIgnoreCase) ||
+                         u.Email.Contains(search, StringComparison.OrdinalIgnoreCase));
+
+    protected override async Task OnInitializedAsync()
+    {
+        await LoadUsers();
+    }
+
+    private async Task LoadUsers()
+    {
+        loading = true;
+        users = await UserService.GetAllAsync();
+        loading = false;
+    }
+
+    private async Task NewUser()
+    {
+        var dialog = DialogService.Show<UserDialog>("Thêm người dùng mới");
+        var result = await dialog.Result;
+        if (!result.Canceled) await LoadUsers();
+    }
+
+    private async Task EditUser(UserDto user)
+    {
+        var parameters = new DialogParameters { ["User"] = user };
+        var dialog = DialogService.Show<UserDialog>("Sửa người dùng", parameters);
+        var result = await dialog.Result;
+        if (!result.Canceled) await LoadUsers();
+    }
+
+    private async Task DeleteUser(int id)
+    {
+        bool? confirm = await DialogService.ShowMessageBox(
+            "Xác nhận xóa",
+            "Bạn có chắc muốn xóa người dùng này?",
+            yesText: "Xóa", cancelText: "Hủy");
+
+        if (confirm == true)
+        {
+            var success = await UserService.DeleteAsync(id);
+            if (success)
+            {
+                Snackbar.Add("Xóa người dùng thành công!", Severity.Success);
+                await LoadUsers();
+            }
+            else
+            {
+                Snackbar.Add("Xóa thất bại!", Severity.Error);
+            }
+        }
+    }
+}

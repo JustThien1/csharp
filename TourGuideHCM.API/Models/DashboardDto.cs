@@ -1,4 +1,4 @@
-﻿namespace TourGuideHCM.Admin.Models
+﻿namespace TourGuideHCM.API.Models
 {
     public class DashboardDto
     {

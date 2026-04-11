@@ -1,5 +1,6 @@
 ﻿using Microsoft.AspNetCore.Mvc;
 using TourGuideHCM.API.Data;
+using TourGuideHCM.API.Models;        // ← Thêm using này
 
 namespace TourGuideHCM.API.Controllers
 {
@@ -18,10 +19,11 @@ namespace TourGuideHCM.API.Controllers
         public IActionResult GetDashboard()
         {
             var pois = _context.POIs.ToList();
+            var users = _context.Users.ToList();
 
             var totalPoi = pois.Count;
+            var totalUsers = users.Count;
 
-            // 👉 Top POI (tạm lấy theo ID lớn nhất)
             var topPoi = pois
                 .OrderByDescending(p => p.Id)
                 .Select(p => p.Name)
@@ -29,28 +31,27 @@ namespace TourGuideHCM.API.Controllers
 
             var avgTime = 5;
 
-            // 👉 FIX: Random phải tạo 1 lần (tránh bug lặp số)
             var rand = new Random();
 
             var topPois = pois
-                .Take(3)
-                .Select(p => new
+                .Take(5)
+                .Select(p => new TopPoiDto
                 {
-                    name = p.Name,
-                    count = rand.Next(50, 150)
+                    Name = p.Name,
+                    Count = rand.Next(50, 150)
                 })
                 .ToList();
 
-            // 👉 Data chart
             var dailyViews = new int[] { 5, 8, 12, 6, 10, 15, 20 };
 
-            return Ok(new
+            return Ok(new DashboardDto
             {
-                totalPoi,
-                topPoi,
-                avgTime,
-                topPois,
-                dailyViews
+                TotalPoi = totalPoi,
+                TotalUsers = totalUsers,
+                TopPoi = topPoi,
+                AvgTime = avgTime,
+                TopPois = topPois,
+                DailyViews = dailyViews
             });
         }
     }

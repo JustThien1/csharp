@@ -1,0 +1,100 @@
+﻿@using MudBlazor
+@using TourGuideHCM.Admin.Models
+@using TourGuideHCM.Admin.Services
+
+@inject UserService UserService
+@inject ISnackbar Snackbar
+
+<MudDialog MaxWidth="MaxWidth.Small" FullWidth="true">
+    <DialogContent>
+        <MudForm @ref="form">
+            <MudTextField Label="Họ và tên *"
+                          @bind-Value="model.FullName"
+                          Required="true"
+                          RequiredError="Vui lòng nhập họ tên" />
+
+            <MudTextField Label="Email *"
+                          @bind-Value="model.Email"
+                          Required="true"
+                          RequiredError="Vui lòng nhập email"
+                          InputType="InputType.Email" />
+
+            <MudTextField Label="Số điện thoại"
+                          @bind-Value="model.Phone" />
+
+            <MudSelect Label="Vai trò *"
+                       @bind-Value="model.Role"
+                       Required="true">
+                <MudSelectItem Value="@("User")">User</MudSelectItem>
+                <MudSelectItem Value="@("Admin")">Admin</MudSelectItem>
+                <MudSelectItem Value="@("Guide")">Hướng dẫn viên</MudSelectItem>
+            </MudSelect>
+
+            <MudSwitch @bind-Value="model.IsActive"
+                       Label="Kích hoạt tài khoản"
+                       Color="Color.Success"
+                       Class="mt-4" />
+        </MudForm>
+    </DialogContent>
+
+    <DialogActions>
+        <MudButton OnClick="Cancel" Variant="Variant.Text">Hủy</MudButton>
+        <MudButton OnClick="Save"
+                   Color="Color.Primary"
+                   Variant="Variant.Filled"
+                   StartIcon="@Icons.Material.Filled.Save">
+            💾 Lưu
+        </MudButton>
+    </DialogActions>
+</MudDialog>
+
+@code {
+    [CascadingParameter] MudDialogInstance MudDialogInstance { get; set; } = default!;
+
+    [Parameter] public UserDto User { get; set; } = new();
+
+    private MudForm form = default!;
+    private UserDto model = new();
+
+    protected override void OnInitialized()
+    {
+        model = new UserDto
+        {
+            Id = User.Id,
+            FullName = User.FullName,
+            Email = User.Email,
+            Phone = User.Phone,
+            Role = string.IsNullOrEmpty(User.Role) ? "User" : User.Role,
+            IsActive = User.IsActive
+        };
+    }
+
+    private async Task Save()
+    {
+        await form.Validate();
+        if (!form.IsValid)
+        {
+            Snackbar.Add("Vui lòng kiểm tra lại thông tin!", Severity.Warning);
+            return;
+        }
+
+        bool success = model.Id == 0
+            ? await UserService.CreateAsync(model)
+            : await UserService.UpdateAsync(model);
+
+        if (success)
+        {
+            Snackbar.Add(model.Id == 0 ? "Thêm người dùng thành công!" : "Cập nhật thành công!", Severity.Success);
+            MudDialogInstance.Close(DialogResult.Ok(true));
+        }
+        else
+        {
+            Snackbar.Add("Lưu thất bại! Vui lòng thử lại.", Severity.Error);
+        }
+    }
+
+    private void Cancel()
+    {
+        MudDialogInstance.Cancel();
+    }
+}

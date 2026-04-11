@@ -27,7 +27,8 @@ else
 {
     <!-- KPI Cards -->
     <MudGrid Spacing="6">
-        <MudItem xs="12" md="4">
+        <!-- Tổng POI -->
+        <MudItem xs="12" md="3">
             <MudPaper Class="pa-6" Elevation="3" Style="background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); color: white; border-radius: 12px;">
                 <div class="d-flex align-center">
                     <MudIcon Icon="@Icons.Material.Filled.Place" Size="Size.Large" />
@@ -39,7 +40,21 @@ else
             </MudPaper>
         </MudItem>
 
-        <MudItem xs="12" md="4">
+        <!-- Tổng người dùng đăng ký (Mới) -->
+        <MudItem xs="12" md="3">
+            <MudPaper Class="pa-6" Elevation="3" Style="background: linear-gradient(135deg, #11998e 0%, #38ef7d 100%); color: white; border-radius: 12px;">
+                <div class="d-flex align-center">
+                    <MudIcon Icon="@Icons.Material.Filled.PersonAdd" Size="Size.Large" />
+                    <div class="ml-4 flex-grow-1">
+                        <MudText Typo="Typo.body1" Class="opacity-75">Tổng người dùng</MudText>
+                        <MudText Typo="Typo.h3" Class="font-weight-black">@totalUsers</MudText>
+                    </div>
+                </div>
+            </MudPaper>
+        </MudItem>
+
+        <!-- Top POI -->
+        <MudItem xs="12" md="3">
             <MudPaper Class="pa-6" Elevation="3" Style="border-radius: 12px;">
                 <div class="d-flex align-center">
                     <MudIcon Icon="@Icons.Material.Filled.TrendingUp" Color="Color.Success" Size="Size.Large" />
@@ -51,7 +66,8 @@ else
             </MudPaper>
         </MudItem>
 
-        <MudItem xs="12" md="4">
+        <!-- Thời gian nghe TB -->
+        <MudItem xs="12" md="3">
             <MudPaper Class="pa-6" Elevation="3" Style="border-radius: 12px;">
                 <div class="d-flex align-center">
                     <MudIcon Icon="@Icons.Material.Filled.Timer" Color="Color.Warning" Size="Size.Large" />
@@ -84,7 +100,7 @@ else
         </MudText>
         
         <MudList Dense="true">
-            @foreach (var (item, index) in topPois.OrderByDescending(x => x.Count).Select((p, i) => (p, i)).Take(5))
+            @foreach (var (item, index) in topPois.OrderByDescending(x => x.Count).Take(5).Select((p, i) => (p, i)))
             {
                 <MudListItem Class="py-3">
                     <div class="d-flex align-center justify-space-between">
@@ -105,6 +121,7 @@ else
     string error = "";
 
     int totalPoi = 0;
+    int totalUsers = 0;           // ← Thêm
     string topPoi = "";
     int avgTime = 0;
 
@@ -128,21 +145,20 @@ else
             var data = await AnalyticsService.GetDashboard() ?? new DashboardDto();
 
             totalPoi = data.TotalPoi;
+            totalUsers = data.TotalUsers;                    // ← Thêm
             topPoi = string.IsNullOrEmpty(data.TopPoi) ? "Chưa có dữ liệu" : data.TopPoi;
             avgTime = data.AvgTime;
 
-            // Chart - Sử dụng ChartPalette để đổi màu (tương thích MudBlazor 6.11.2)
+            topPois = data.TopPois ?? new();
+
+            // Chart
             var views = data.DailyViews?.Length == 7
                 ? data.DailyViews.Select(x => (double)x).ToArray()
                 : new double[] { 5, 8, 12, 6, 10, 15, 20 };
 
             datasets = new()
             {
-                new ChartSeries
-                {
-                    Name = "Lượt nghe",
-                    Data = views
-                }
+                new ChartSeries { Name = "Lượt nghe", Data = views }
             };
         }
         catch (Exception ex)
