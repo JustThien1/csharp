@@ -1,33 +1,48 @@
-﻿@using TourGuideHCM.Admin.Models
+﻿@using MudBlazor
+@using TourGuideHCM.Admin.Models
 @using TourGuideHCM.Admin.Services
-@using MudBlazor
 
 @inject PoiService Service
-@inject ISnackbar Snackbar   // Thêm để thông báo lỗi
+@inject ISnackbar Snackbar
 
-<MudDialog MaxWidth="MaxWidth.Small" FullWidth="true">
-
+<MudDialog MaxWidth="MaxWidth.Medium" FullWidth="true">
     <DialogContent>
         <MudForm @ref="form">
 
-            <MudTextField Label="Tên"
+            <MudTextField Label="Tên POI *"
                           @bind-Value="model.Name"
-                          Required="true" />
+                          Required="true"
+                          RequiredError="Tên POI không được để trống" />
 
             <MudTextField Label="Mô tả"
                           @bind-Value="model.Description"
                           Lines="3" />
 
+            <MudTextField Label="Địa chỉ"
+                          @bind-Value="model.Address" />
+
+            <!-- Chọn Category -->
+            <MudSelect T="int" Label="Danh mục *"
+                       @bind-Value="model.CategoryId"
+                       Required="true">
+                <MudSelectItem T="int" Value="1">Di tích lịch sử</MudSelectItem>
+                <MudSelectItem T="int" Value="2">Kiến trúc Pháp</MudSelectItem>
+                <MudSelectItem T="int" Value="3">Ẩm thực</MudSelectItem>
+                <MudSelectItem T="int" Value="4">Mua sắm & Giải trí</MudSelectItem>
+            </MudSelect>
+
             <MudTextField Label="Image URL"
                           @bind-Value="model.ImageUrl" />
 
-            <MudNumericField Label="Latitude"
-                             @bind-Value="model.Lat" />
+            <MudNumericField Label="Latitude *"
+                             @bind-Value="model.Lat"
+                             Required="true" />
 
-            <MudNumericField Label="Longitude"
-                             @bind-Value="model.Lng" />
+            <MudNumericField Label="Longitude *"
+                             @bind-Value="model.Lng"
+                             Required="true" />
 
-            <!-- PREVIEW IMAGE -->
+            <!-- Preview Image -->
             @if (!string.IsNullOrWhiteSpace(model.ImageUrl))
             {
                 <img src="@model.ImageUrl"
@@ -39,22 +54,15 @@
     </DialogContent>
 
     <DialogActions>
-        <MudButton OnClick="Save"
-                   Color="Color.Primary"
-                   Variant="Variant.Filled">
+        <MudButton OnClick="Cancel" Variant="Variant.Text">Hủy</MudButton>
+        <MudButton OnClick="Save" Color="Color.Primary" Variant="Variant.Filled">
             💾 Lưu
         </MudButton>
-
-        <MudButton OnClick="Cancel"
-                   Variant="Variant.Outlined">
-            Hủy
-        </MudButton>
     </DialogActions>
-
 </MudDialog>
 
 @code {
-    [CascadingParameter] MudDialogInstance MudDialog { get; set; } = default!;   // ← SỬA Ở ĐÂY
+    [CascadingParameter] MudDialogInstance MudDialog { get; set; } = default!;
 
     [Parameter] public PoiDto Poi { get; set; } = new();
 
@@ -68,9 +76,11 @@
             Id = Poi.Id,
             Name = Poi.Name,
             Description = Poi.Description,
+            Address = Poi.Address,
             ImageUrl = Poi.ImageUrl,
             Lat = Poi.Lat,
-            Lng = Poi.Lng
+            Lng = Poi.Lng,
+            CategoryId = Poi.CategoryId > 0 ? Poi.CategoryId : 1
         };
     }
 
@@ -79,7 +89,7 @@
         await form.Validate();
         if (!form.IsValid)
         {
-            Snackbar.Add("Vui lòng kiểm tra lại thông tin!", Severity.Warning);
+            Snackbar.Add("Vui lòng nhập đầy đủ thông tin bắt buộc!", Severity.Warning);
             return;
         }
 
@@ -88,9 +98,14 @@
             : await Service.Update(model);
 
         if (success)
+        {
+            Snackbar.Add(model.Id == 0 ? "✅ Thêm POI thành công!" : "✅ Cập nhật POI thành công!", Severity.Success);
             MudDialog.Close(DialogResult.Ok(true));
+        }
         else
-            Snackbar.Add("Lưu thất bại!", Severity.Error);
+        {
+            Snackbar.Add("❌ Lưu thất bại! Vui lòng kiểm tra lại.", Severity.Error);
+        }
     }
 
     private void Cancel()

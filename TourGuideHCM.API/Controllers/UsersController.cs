@@ -16,10 +16,20 @@ namespace TourGuideHCM.API.Controllers
             _context = context;
         }
 
-        // GET: api/users  ← Tính TotalListens thật từ PlaybackLogs
+        // GET: api/users
         [HttpGet]
         public async Task<ActionResult<List<UserDto>>> GetAll()
         {
+            // Cách tối ưu: Group PlaybackLogs trước rồi join với Users
+            var playbackCounts = await _context.PlaybackLogs
+                .GroupBy(pl => pl.UserId)
+                .Select(g => new
+                {
+                    UserId = g.Key,
+                    TotalListens = g.Count()
+                })
+                .ToDictionaryAsync(x => x.UserId, x => x.TotalListens);
+
             var users = await _context.Users
                 .Select(u => new UserDto
                 {
@@ -30,15 +40,14 @@ namespace TourGuideHCM.API.Controllers
                     Role = "User",
                     IsActive = true,
                     CreatedDate = u.CreatedAt,
-                    // 🔥 Tính số lượt nghe thật từ PlaybackLogs
-                    TotalListens = _context.PlaybackLogs.Count(pl => pl.UserId == u.Id)
+                    TotalListens = playbackCounts.GetValueOrDefault(u.Id, 0)   // Lấy từ dictionary
                 })
                 .ToListAsync();
 
             return Ok(users);
         }
 
-        // GET: api/users/{id}
+        // GET: api/users/{id}  (dùng cho Edit nếu cần)
         [HttpGet("{id}")]
         public async Task<ActionResult<UserDto>> GetById(int id)
         {
@@ -46,7 +55,8 @@ namespace TourGuideHCM.API.Controllers
             if (user == null)
                 return NotFound(new { message = "Không tìm thấy người dùng" });
 
-            var totalListens = await _context.PlaybackLogs.CountAsync(pl => pl.UserId == id);
+            var totalListens = await _context.PlaybackLogs
+                .CountAsync(pl => pl.UserId == id);
 
             var dto = new UserDto
             {
@@ -63,7 +73,7 @@ namespace TourGuideHCM.API.Controllers
             return Ok(dto);
         }
 
-        // POST: api/users
+        // Các phương thức Create, Update, Delete giữ nguyên như cũ
         [HttpPost]
         public async Task<IActionResult> Create([FromBody] UserDto dto)
         {
@@ -95,7 +105,6 @@ namespace TourGuideHCM.API.Controllers
             return CreatedAtAction(nameof(GetById), new { id = user.Id }, dto);
         }
 
-        // PUT: api/users/{id}
         [HttpPut("{id}")]
         public async Task<IActionResult> Update(int id, [FromBody] UserDto dto)
         {
@@ -107,11 +116,9 @@ namespace TourGuideHCM.API.Controllers
             user.Email = dto.Email;
 
             await _context.SaveChangesAsync();
-
             return Ok(dto);
         }
 
-        // DELETE: api/users/{id}
         [HttpDelete("{id}")]
         public async Task<IActionResult> Delete(int id)
         {

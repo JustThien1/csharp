@@ -9,5 +9,6 @@
         public double Lat { get; set; }
         public double Lng { get; set; }
         public string ImageUrl { get; set; } = "";
+        public int CategoryId { get; set; } = 1;
     }
 }

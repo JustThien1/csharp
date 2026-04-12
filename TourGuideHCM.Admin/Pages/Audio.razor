@@ -80,22 +80,31 @@
 
     private async Task NewAudio()
     {
-        var parameters = new DialogParameters { ["Pois"] = await PoiService.GetAll() };
-        var dialog = DialogService.Show<AudioDialog>("Thêm Audio Guide", parameters);
+        var pois = await PoiService.GetAll();
+        var parameters = new DialogParameters
+        {
+            ["Pois"] = pois
+        };
+
+        var dialog = await DialogService.ShowAsync<AudioDialog>("Thêm Audio Guide", parameters);
         var result = await dialog.Result;
-        if (!result.Canceled) await LoadData();
+        if (!result.Canceled)
+            await LoadData();
     }
 
     private async Task EditAudio(AudioDto audio)
     {
+        var pois = await PoiService.GetAll();
         var parameters = new DialogParameters
         {
             ["Audio"] = audio,
-            ["Pois"] = await PoiService.GetAll()
+            ["Pois"] = pois
         };
-        var dialog = DialogService.Show<AudioDialog>("Sửa Audio", parameters);
+
+        var dialog = await DialogService.ShowAsync<AudioDialog>("Sửa Audio", parameters);
         var result = await dialog.Result;
-        if (!result.Canceled) await LoadData();
+        if (!result.Canceled)
+            await LoadData();
     }
 
     private async Task DeleteAudio(int id)

@@ -29,17 +29,26 @@
                 <MudSelectItem T="string" Value="@("ko")">Tiếng Hàn</MudSelectItem>
             </MudSelect>
 
-            <!-- Upload -->
+            <!-- Upload Audio - ĐÃ SỬA -->
             <MudText Typo="Typo.body2" Class="mb-1 mud-text-secondary">
                 Chọn file audio (.mp3, .wav, .m4a, .ogg) - Tối đa 10MB
             </MudText>
 
-            <MudFileUpload T="IBrowserFile" FilesChanged="OnFileSelected"
-                           Accept=".mp3,.wav,.m4a,.ogg" Class="mb-4">
-                <ActivatorContent>
-                    <MudButton Variant="Variant.Filled" Color="Color.Primary"
+            <MudFileUpload T="IBrowserFile"
+                           Context="fileInput"
+                           FilesChanged="OnFileSelected"
+                           Accept=".mp3,.wav,.m4a,.ogg"
+                           MaxFiles="1"
+                           Class="mb-4">
+
+                <ButtonTemplate>
+                    <MudButton HtmlTag="label"
+                               for="@fileInput"
+                               Variant="Variant.Filled"
+                               Color="Color.Primary"
                                StartIcon="@Icons.Material.Filled.CloudUpload"
-                               Disabled="@uploading" FullWidth="true">
+                               Disabled="@uploading"
+                               FullWidth="true">
                         @if (uploading)
                         {
                             <MudProgressCircular Size="Size.Small" Indeterminate="true" Class="mr-2" />
@@ -50,10 +59,10 @@
                             <span>Chọn file audio</span>
                         }
                     </MudButton>
-                </ActivatorContent>
+                </ButtonTemplate>
             </MudFileUpload>
 
-            <!-- Preview -->
+            <!-- Preview Audio -->
             @if (!string.IsNullOrEmpty(model.AudioUrl))
             {
                 <MudPaper Elevation="0" Class="pa-3 mb-4" Style="background:#f5f5f5; border-radius:8px;">
@@ -138,11 +147,11 @@
             if (success && !string.IsNullOrEmpty(url))
             {
                 model.AudioUrl = url.Trim('"');
-                Snackbar.Add("Upload thành công!", Severity.Success);
+                Snackbar.Add("✅ Upload audio thành công!", Severity.Success);
             }
             else
             {
-                Snackbar.Add("Upload thất bại!", Severity.Error);
+                Snackbar.Add("❌ Upload thất bại!", Severity.Error);
             }
         }
         catch (Exception ex)

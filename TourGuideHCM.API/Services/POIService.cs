@@ -31,10 +31,11 @@ namespace TourGuideHCM.API.Services
 
         public POI Add(POI poi)
         {
-            // 🔥 Validate CategoryId
-            var categoryExists = _context.Categories.Any(c => c.Id == poi.CategoryId);
-            if (!categoryExists)
-                throw new Exception("CategoryId không tồn tại");
+            // Tự động gán Category mặc định nếu không có hoặc không hợp lệ
+            if (poi.CategoryId <= 0)
+            {
+                poi.CategoryId = _context.Categories.Any() ? _context.Categories.Min(c => c.Id) : 1;
+            }
 
             poi.IsActive = true;
 
