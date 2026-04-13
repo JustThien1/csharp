@@ -74,5 +74,40 @@ namespace TourGuideHCM.Admin.Services
             var res = await _http.DeleteAsync($"api/audio/{id}");
             return res.IsSuccessStatusCode;
         }
+
+        // SỬA LẠI HÀM NÀY (trong AudioService.cs)
+        // === SỬA LẠI HÀM NÀY (thay thế hàm cũ) ===
+        public async Task LogPlayback(int userId, int poiId, int durationSeconds)
+        {
+            try
+            {
+                if (userId <= 0 || poiId <= 0) return;
+
+                var dto = new
+                {
+                    userId,
+                    poiId,
+                    durationSeconds,
+                    triggerType = "app"
+                };
+
+                // Dùng full URL để debug dễ hơn
+                var response = await _http.PostAsJsonAsync("http://localhost:5284/api/playback", dto);
+
+                if (response.IsSuccessStatusCode)
+                {
+                    Console.WriteLine("✅ Log playback thành công");
+                }
+                else
+                {
+                    var error = await response.Content.ReadAsStringAsync();
+                    Console.WriteLine($"❌ Log playback thất bại: {response.StatusCode} - {error}");
+                }
+            }
+            catch (Exception ex)
+            {
+                Console.WriteLine($"❌ Exception LogPlayback: {ex.Message}");
+            }
+        }
     }
 }

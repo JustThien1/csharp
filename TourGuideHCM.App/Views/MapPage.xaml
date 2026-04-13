@@ -5,28 +5,62 @@
 
     <Grid>
 
-        <!-- 🗺️ WebView full màn hình -->
+        <!-- WebView Bản đồ -->
         <WebView x:Name="MyWebView"
                  HorizontalOptions="Fill"
                  VerticalOptions="Fill" />
 
-        <!-- 🎛️ Button nổi -->
+        <!-- Header mỏng + nút 3 gạch -->
+        <VerticalStackLayout Spacing="0" VerticalOptions="Start">
+            <Border BackgroundColor="#1E1E1E" 
+                    Padding="12,10"
+                    StrokeShape="RoundRectangle 0,0,0,0">
+
+                <Grid ColumnDefinitions="Auto,*">
+                    <!-- Nút 3 gạch -->
+                    <Button Text="☰" 
+                            FontSize="26"
+                            BackgroundColor="Transparent"
+                            TextColor="#FFCC00"
+                            WidthRequest="50"
+                            HeightRequest="50"
+                            Clicked="OnHamburgerClicked"
+                            VerticalOptions="Center"
+                            HorizontalOptions="Start"/>
+
+                    <!-- Tiêu đề -->
+                    <Label Text="Sài Gòn Guide" 
+                           TextColor="#FFCC00"
+                           FontSize="19"
+                           FontAttributes="Bold"
+                           HorizontalOptions="Center"
+                           VerticalOptions="Center"
+                           Grid.Column="1"/>
+                </Grid>
+
+            </Border>
+        </VerticalStackLayout>
+
+        <!-- Nút nổi bên phải -->
         <VerticalStackLayout VerticalOptions="End"
                              HorizontalOptions="End"
                              Margin="20"
-                             Spacing="10">
+                             Spacing="12">
 
-            <Button Text="📍 Vị trí"
+            <Button Text="📍 Vị trí của tôi"
                     BackgroundColor="#6C4CF1"
                     TextColor="White"
-                    CornerRadius="12"
+                    CornerRadius="25"
+                    HeightRequest="48"
                     Clicked="OnGoToLocationClicked"/>
 
-            <Button Text="🔄 Reload"
+            <Button Text="🔄 Tải lại"
                     BackgroundColor="#6C4CF1"
                     TextColor="White"
-                    CornerRadius="12"
+                    CornerRadius="25"
+                    HeightRequest="48"
                     Clicked="OnReloadClicked"/>
+
         </VerticalStackLayout>
 
     </Grid>

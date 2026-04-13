@@ -1,0 +1,58 @@
+<?xml version="1.0" encoding="utf-8" ?>
+<ContentPage xmlns="http://schemas.microsoft.com/dotnet/2021/maui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2009/xaml"
+             x:Class="TourGuideHCM.App.Views.PoiBottomSheet"
+             Title="Chi tiết địa điểm">
+
+    <VerticalStackLayout Spacing="0">
+
+        <!-- Header ảnh + tên -->
+        <Grid HeightRequest="220">
+            <Image Source="{Binding ImageUrl}" 
+                   Aspect="AspectFill"/>
+
+            <BoxView BackgroundColor="#80000000" />
+
+            <Label Text="{Binding Name}"
+                   TextColor="White"
+                   FontSize="20"
+                   FontAttributes="Bold"
+                   VerticalOptions="End"
+                   Margin="15,0,15,15"/>
+        </Grid>
+
+        <!-- Nội dung cuộn được -->
+        <ScrollView>
+            <VerticalStackLayout Padding="15" Spacing="15">
+
+                <!-- Tổng quan -->
+                <Label Text="Tổng quan" 
+                       FontSize="18" 
+                       FontAttributes="Bold"/>
+
+                <Label Text="{Binding Description}"
+                       FontSize="15"
+                       LineHeight="1.4"
+                       TextColor="#EEEEEE"/>
+
+                <!-- Có thể thêm khoảng cách, thời gian mở cửa... sau này -->
+
+                <!-- Phần Audio -->
+                <Frame BackgroundColor="#2C2C2C" 
+                       CornerRadius="12"
+                       Padding="0">
+                    <Button Text="🔊 Nghe thuyết minh audio"
+                            BackgroundColor="#6C4CF1"
+                            TextColor="White"
+                            FontSize="16"
+                            FontAttributes="Bold"
+                            HeightRequest="56"
+                            Clicked="OnSpeakClicked"/>
+                </Frame>
+
+            </VerticalStackLayout>
+        </ScrollView>
+
+    </VerticalStackLayout>
+
+</ContentPage>

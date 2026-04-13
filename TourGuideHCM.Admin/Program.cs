@@ -24,5 +24,6 @@ builder.Services.AddScoped<AnalyticsService>(); // 👈 QUAN TRỌNG
 // Thêm dòng này cùng với các service khác
 builder.Services.AddScoped<AudioService>();
 builder.Services.AddScoped<UserService>();
+builder.Services.AddScoped<PlaybackService>();
 Console.WriteLine("🔥 ANALYTICS SERVICE REGISTERED 🔥");
 await builder.Build().RunAsync();

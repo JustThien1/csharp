@@ -2,6 +2,7 @@
 using System;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Infrastructure;
+using Microsoft.EntityFrameworkCore.Migrations;
 using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 using TourGuideHCM.API.Data;
 
@@ -10,9 +11,11 @@ using TourGuideHCM.API.Data;
 namespace TourGuideHCM.API.Migrations
 {
     [DbContext(typeof(AppDbContext))]
-    partial class AppDbContextModelSnapshot : ModelSnapshot
+    [Migration("20260413153821_AddPlaybackLog")]
+    partial class AddPlaybackLog
     {
-        protected override void BuildModel(ModelBuilder modelBuilder)
+        /// <inheritdoc />
+        protected override void BuildTargetModel(ModelBuilder modelBuilder)
         {
 #pragma warning disable 612, 618
             modelBuilder.HasAnnotation("ProductVersion", "8.0.8");
@@ -178,36 +181,6 @@ namespace TourGuideHCM.API.Migrations
                     b.ToTable("POIs");
                 });
 
-            modelBuilder.Entity("TourGuideHCM.API.Models.PlaybackHistory", b =>
-                {
-                    b.Property<int>("Id")
-                        .ValueGeneratedOnAdd()
-                        .HasColumnType("INTEGER");
-
-                    b.Property<int?>("DurationSeconds")
-                        .HasColumnType("INTEGER");
-
-                    b.Property<int>("POIId")
-                        .HasColumnType("INTEGER");
-
-                    b.Property<string>("TriggerType")
-                        .HasColumnType("TEXT");
-
-                    b.Property<DateTime>("TriggeredAt")
-                        .HasColumnType("TEXT");
-
-                    b.Property<int>("UserId")
-                        .HasColumnType("INTEGER");
-
-                    b.HasKey("Id");
-
-                    b.HasIndex("POIId");
-
-                    b.HasIndex("UserId");
-
-                    b.ToTable("PlaybackHistories");
-                });
-
             modelBuilder.Entity("TourGuideHCM.API.Models.PlaybackLog", b =>
                 {
                     b.Property<int>("Id")
@@ -362,25 +335,6 @@ namespace TourGuideHCM.API.Migrations
                         .IsRequired();
 
                     b.Navigation("Category");
-                });
-
-            modelBuilder.Entity("TourGuideHCM.API.Models.PlaybackHistory", b =>
-                {
-                    b.HasOne("TourGuideHCM.API.Models.POI", "POI")
-                        .WithMany()
-                        .HasForeignKey("POIId")
-                        .OnDelete(DeleteBehavior.Cascade)
-                        .IsRequired();
-
-                    b.HasOne("TourGuideHCM.API.Models.User", "User")
-                        .WithMany()
-                        .HasForeignKey("UserId")
-                        .OnDelete(DeleteBehavior.Cascade)
-                        .IsRequired();
-
-                    b.Navigation("POI");
-
-                    b.Navigation("User");
                 });
 
             modelBuilder.Entity("TourGuideHCM.API.Models.PlaybackLog", b =>

@@ -21,6 +21,7 @@ namespace TourGuideHCM.API.Data
         // ====================== THÊM DbSet cho Audio ======================
         public DbSet<Audio> Audios { get; set; }
 
+        public DbSet<PlaybackHistory> PlaybackHistories { get; set; } = null!;
         protected override void OnModelCreating(ModelBuilder modelBuilder)
         {
             base.OnModelCreating(modelBuilder);

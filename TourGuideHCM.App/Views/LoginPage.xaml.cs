@@ -1,4 +1,5 @@
-﻿using TourGuideHCM.App.Services;
+﻿using Microsoft.Maui.Storage;
+using TourGuideHCM.App.Services;
 
 namespace TourGuideHCM.App.Views;
 
@@ -6,7 +7,6 @@ public partial class LoginPage : ContentPage
 {
     private readonly AuthService _auth;
 
-    // ✅ DÙNG DI CHUẨN
     public LoginPage(AuthService auth)
     {
         InitializeComponent();
@@ -17,30 +17,28 @@ public partial class LoginPage : ContentPage
     {
         try
         {
-            if (_auth == null)
-            {
-                await DisplayAlert("ERROR", "AuthService NULL", "OK");
-                return;
-            }
+            var userId = await _auth.Login(
+                UsernameEntry.Text?.Trim() ?? "",
+                PasswordEntry.Text?.Trim() ?? "");
 
-            var ok = await _auth.Login(
-                UsernameEntry.Text,
-                PasswordEntry.Text);
-
-            if (ok)
+            if (userId.HasValue && userId.Value > 0)
             {
-                Preferences.Set("username", UsernameEntry.Text);
-                await DisplayAlert("OK", "Login success", "OK");
-                Application.Current.MainPage = new AppShell();
+                // Lưu userId để PlaybackService sử dụng
+                Preferences.Set("userId", userId.Value);
+                Preferences.Set("username", $"User_{userId.Value}");
+
+                await DisplayAlert("Thành công", "Đăng nhập thành công!", "OK");
+
+                Application.Current.MainPage = App.Services.GetRequiredService<AppShell>();
             }
             else
             {
-                await DisplayAlert("FAIL", "Login failed", "OK");
+                await DisplayAlert("Thất bại", "Tên đăng nhập hoặc mật khẩu không đúng.", "OK");
             }
         }
         catch (Exception ex)
         {
-            await DisplayAlert("ERROR", ex.Message, "OK");
+            await DisplayAlert("Lỗi", ex.Message, "OK");
         }
     }
 

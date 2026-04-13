@@ -53,4 +53,22 @@ public class DatabaseService : IDatabaseService
             Console.WriteLine($"Lỗi sync POI: {ex.Message}");
         }
     }
+    // ✅ Lấy POI theo ID
+    public async Task<Poi?> GetPoiByIdAsync(int id)
+    {
+        return await _db.Pois.FirstOrDefaultAsync(p => p.Id == id);
+    }
+
+    // ✅ Tìm kiếm POI theo từ khóa
+    public async Task<List<Poi>> SearchPoisAsync(string keyword)
+    {
+        if (string.IsNullOrWhiteSpace(keyword))
+            return await GetAllPoisAsync();
+
+        var lower = keyword.ToLower();
+        return await _db.Pois
+            .Where(p => p.Name.ToLower().Contains(lower) ||
+                        p.Description.ToLower().Contains(lower))
+            .ToListAsync();
+    }
 }

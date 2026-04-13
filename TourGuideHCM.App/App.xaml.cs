@@ -4,12 +4,11 @@ namespace TourGuideHCM.App
 {
     public partial class App : Application
     {
-        public static IServiceProvider Services { get; private set; } // 🔥 PHẢI CÓ
+        public static IServiceProvider Services { get; private set; } = null!;
 
         public App(IServiceProvider serviceProvider)
         {
-            InitializeComponent();
-            Services = serviceProvider; // 🔥 PHẢI CÓ
+            Services = serviceProvider;
         }
 
         protected override Window CreateWindow(IActivationState? activationState)
@@ -18,11 +17,12 @@ namespace TourGuideHCM.App
 
             if (!string.IsNullOrEmpty(username))
             {
-                // 👉 đã login rồi → vào thẳng app
-                return new Window(new AppShell());
+                // Đã login → tạo AppShell với dependency injection đúng cách
+                var appShell = Services.GetRequiredService<AppShell>();
+                return new Window(appShell);
             }
 
-            // 👉 chưa login → hiện login
+            // Chưa login → vào LoginPage
             var loginPage = Services.GetService<LoginPage>();
             return new Window(new NavigationPage(loginPage));
         }

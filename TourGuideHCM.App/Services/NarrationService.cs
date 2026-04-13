@@ -1,4 +1,5 @@
 ﻿using Microsoft.Maui.Media;
+using System.Net.Http.Json;
 using TourGuideHCM.App.Models;
 
 namespace TourGuideHCM.App.Services;
@@ -6,19 +7,20 @@ namespace TourGuideHCM.App.Services;
 public interface INarrationService
 {
     Task PlayNarrationForPoi(string poiIdentifier);
-    Task Speak(string text); // 🔥 thêm để dùng chung
+    Task Speak(string text);
 }
 
 public class NarrationService : INarrationService
 {
     private readonly IDatabaseService _databaseService;
+    private readonly HttpClient _http;
 
-    public NarrationService(IDatabaseService databaseService)
+    public NarrationService(IDatabaseService databaseService, HttpClient http)
     {
         _databaseService = databaseService;
+        _http = http;
     }
 
-    // 🔊 đọc theo POI (chuẩn đồ án)
     public async Task PlayNarrationForPoi(string poiIdentifier)
     {
         try
@@ -35,7 +37,13 @@ public class NarrationService : INarrationService
                 ? poi.NarrationText
                 : $"Bạn đang gần {poi.Name}";
 
+            var startTime = DateTime.UtcNow;
+
             await Speak(textToSpeak);
+
+            // ✅ Tính thời gian phát và ghi log lên API
+            var duration = (DateTime.UtcNow - startTime).TotalSeconds;
+            await LogPlaybackAsync(poiId, duration, "geofence");
         }
         catch (Exception ex)
         {
@@ -43,7 +51,6 @@ public class NarrationService : INarrationService
         }
     }
 
-    // 🔥 dùng chung (MapViewModel gọi)
     public async Task Speak(string text)
     {
         try
@@ -66,6 +73,36 @@ public class NarrationService : INarrationService
         catch (Exception ex)
         {
             Console.WriteLine("TTS ERROR: " + ex.Message);
+        }
+    }
+
+    // ✅ Ghi log lên API server
+    private async Task LogPlaybackAsync(int poiId, double duration, string triggerType)
+    {
+        try
+        {
+            // Lấy username hiện tại nếu đã login
+            var username = Preferences.Get("username", null);
+
+            var payload = new
+            {
+                POIId = poiId,
+                DurationSeconds = duration,
+                TriggerType = triggerType,
+                TriggeredAt = DateTime.UtcNow
+            };
+
+            var response = await _http.PostAsJsonAsync("/api/playback", payload);
+
+            if (response.IsSuccessStatusCode)
+                Console.WriteLine($"✅ Đã lưu playback log: POI {poiId}, {duration:F1}s");
+            else
+                Console.WriteLine($"⚠️ Lưu playback log thất bại: {response.StatusCode}");
+        }
+        catch (Exception ex)
+        {
+            // Không throw — lỗi log không được ảnh hưởng UX
+            Console.WriteLine($"❌ LogPlayback ERROR: {ex.Message}");
         }
     }
 }

@@ -35,6 +35,9 @@ public static class MauiProgram
 
         builder.Services.AddTransient<MapViewModel>();
         builder.Services.AddTransient<MapPage>();
+        builder.Services.AddSingleton<AppShell>();
+        builder.Services.AddSingleton<PlaybackService>();
+        builder.Services.AddSingleton<HttpClient>();
 
         return builder.Build();
     }

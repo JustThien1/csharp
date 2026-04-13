@@ -15,6 +15,10 @@
             padding: 0;
             overflow: hidden;
         }
+        /* Đẩy nút zoom ra xa header */
+        .leaflet-top.leaflet-left {
+            top: 65px !important;
+        }
     </style>
 </head>
 
@@ -64,6 +68,22 @@
             });
 
             console.log("✅ POI markers added:", poiMarkers.length);
+        };
+        // ===== GO TO POI FROM LIST =====
+        window.goToPoi = function (lat, lng, name) {
+            console.log("🗺️ goToPoi:", name, lat, lng);
+
+            map.flyTo([lat, lng], 17, {
+                duration: 1.5
+            });
+
+            // Mở popup sau khi bay đến
+            setTimeout(() => {
+                L.popup()
+                    .setLatLng([lat, lng])
+                    .setContent("<b>" + name + "</b>")
+                    .openOn(map);
+            }, 800);
         };
 
         // ===== GO TO USER LOCATION =====

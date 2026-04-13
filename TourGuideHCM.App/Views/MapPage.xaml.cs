@@ -1,4 +1,5 @@
 ﻿using System.Text.Json;
+using TourGuideHCM.App.Models;
 using TourGuideHCM.App.ViewModels;
 
 namespace TourGuideHCM.App.Views;
@@ -6,15 +7,15 @@ namespace TourGuideHCM.App.Views;
 public partial class MapPage : ContentPage
 {
     private readonly MapViewModel _viewModel;
+    private List<Poi> _allPois = new();
+    private bool _mapLoaded = false; // ✅ Tránh load lại nhiều lần
 
     public MapPage()
     {
         InitializeComponent();
-
         _viewModel = App.Services.GetRequiredService<MapViewModel>();
         BindingContext = _viewModel;
 
-        // Cấu hình WebView cho Android
 #if ANDROID
         Microsoft.Maui.Handlers.WebViewHandler.Mapper.AppendToMapping(nameof(WebView), (handler, view) =>
         {
@@ -37,7 +38,13 @@ public partial class MapPage : ContentPage
     protected override async void OnAppearing()
     {
         base.OnAppearing();
-        await LoadMap();
+
+        // ✅ Chỉ load map 1 lần duy nhất
+        if (!_mapLoaded)
+        {
+            await LoadMap();
+            _mapLoaded = true;
+        }
     }
 
     private async Task LoadMap()
@@ -52,8 +59,6 @@ public partial class MapPage : ContentPage
                 Html = html,
                 BaseUrl = "file:///android_asset/"
             };
-
-            Console.WriteLine("✅ map.html loaded into WebView");
         }
         catch (Exception ex)
         {
@@ -65,45 +70,70 @@ public partial class MapPage : ContentPage
     {
         try
         {
-            Console.WriteLine($"🌐 WebView Navigated: {e.Url} - Result: {e.Result}");
+            // ✅ Bỏ Task.Delay(3000) — chờ thực tế thay vì cứng
+            await Task.Delay(500);
 
-            // Chờ Leaflet khởi tạo
-            await Task.Delay(2500);
+            // ✅ Load POI từ DB local trước (nhanh), sync API ở background
+            _allPois = await _viewModel.LoadPoisLocalAsync();
 
-            await _viewModel.LoadPoisAsync();
-
-            var pois = _viewModel.MapPins.Select(p => new
+            // ✅ Sync API ở background, không block UI
+            _ = Task.Run(async () =>
             {
-                name = p.Label ?? "",
-                description = p.Address ?? "",
-                lat = p.Location.Latitude,
-                lng = p.Location.Longitude
-            }).ToList();
+                await _viewModel.SyncFromApiAsync();
 
-            var json = JsonSerializer.Serialize(pois);
-
-            Console.WriteLine($"📤 Gửi JSON: {json}");
-
-            // Gọi JS an toàn trên main thread
-            await MainThread.InvokeOnMainThreadAsync(async () =>
-            {
-                await MyWebView.EvaluateJavaScriptAsync($"loadFromApp({json})");
+                // Reload lại POI sau khi sync xong
+                _allPois = await _viewModel.LoadPoisLocalAsync();
+                await PushPoisToMapAsync();
             });
 
-            Console.WriteLine("✅ Đã gọi loadFromApp()");
+            await PushPoisToMapAsync();
         }
         catch (Exception ex)
         {
-            Console.WriteLine($"❌ Lỗi OnWebViewLoaded: {ex.Message}");
-            await DisplayAlert("Lỗi", ex.Message, "OK");
+            Console.WriteLine($"❌ OnWebViewLoaded: {ex.Message}");
         }
+    }
+
+    private async Task PushPoisToMapAsync()
+    {
+        var poisForJs = _allPois.Select(p => new
+        {
+            id = p.Id,
+            name = p.Name ?? "",
+            description = p.Description ?? "",
+            lat = p.Lat,
+            lng = p.Lng
+        }).ToList();
+
+        var json = JsonSerializer.Serialize(poisForJs);
+
+        // ✅ Đảm bảo chạy trên main thread
+        await MainThread.InvokeOnMainThreadAsync(async () =>
+        {
+            await MyWebView.EvaluateJavaScriptAsync($"loadFromApp({json})");
+        });
+
+        Console.WriteLine($"✅ Pushed {_allPois.Count} POIs to map");
+    }
+
+    public async Task GoToPoiAsync(double lat, double lng, string name)
+    {
+        await MainThread.InvokeOnMainThreadAsync(async () =>
+        {
+            await MyWebView.EvaluateJavaScriptAsync(
+                $"goToPoi({lat}, {lng}, \"{name.Replace("\"", "\\\"")}\")");
+        });
+    }
+
+    private void OnHamburgerClicked(object sender, EventArgs e)
+    {
+        Shell.Current.FlyoutIsPresented = true;
     }
 
     private async void OnGoToLocationClicked(object sender, EventArgs e)
     {
         try
         {
-            // 1. Xin quyền
             var status = await Permissions.RequestAsync<Permissions.LocationWhenInUse>();
             if (status != PermissionStatus.Granted)
             {
@@ -111,24 +141,11 @@ public partial class MapPage : ContentPage
                 return;
             }
 
-            // 2. Luôn lấy GPS mới (KHÔNG dùng LastKnown)
             var request = new GeolocationRequest(GeolocationAccuracy.Best, TimeSpan.FromSeconds(10));
-            var location = await Geolocation.GetLocationAsync(request);
+            var location = await Geolocation.GetLocationAsync(request) ?? new Location(10.7769, 106.7009);
 
-            // 3. Fallback nếu fail
-            if (location == null)
-            {
-                location = new Location(10.7769, 106.7009);
-            }
-
-            Console.WriteLine($"📍 LAT: {location.Latitude}, LNG: {location.Longitude}");
-
-            // 4. Gửi qua JS
-            await MainThread.InvokeOnMainThreadAsync(async () =>
-            {
-                await MyWebView.EvaluateJavaScriptAsync(
-                    $"goToLocation({location.Latitude}, {location.Longitude})");
-            });
+            await MyWebView.EvaluateJavaScriptAsync(
+                $"goToLocation({location.Latitude}, {location.Longitude})");
         }
         catch (Exception ex)
         {
@@ -138,6 +155,9 @@ public partial class MapPage : ContentPage
 
     private async void OnReloadClicked(object sender, EventArgs e)
     {
+        _mapLoaded = false;
+        MyWebView.Source = null;
+        await Task.Delay(300);
         await LoadMap();
     }
 }

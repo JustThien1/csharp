@@ -1,7 +1,7 @@
 ﻿using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
 using Microsoft.Maui.Controls.Maps;
-using Microsoft.Maui.Devices.Sensors; // 🔥 QUAN TRỌNG (Geolocation)
+using Microsoft.Maui.Devices.Sensors;
 using Microsoft.Maui.Maps;
 using System.Collections.ObjectModel;
 using TourGuideHCM.App.Models;
@@ -18,7 +18,6 @@ public partial class MapViewModel : ObservableObject
     private readonly INarrationService _narrationService;
 
     private List<Poi> _pois = new();
-
     private DateTime _lastTriggerTime = DateTime.MinValue;
 
     [ObservableProperty]
@@ -27,6 +26,9 @@ public partial class MapViewModel : ObservableObject
 
     [ObservableProperty]
     private ObservableCollection<Pin> mapPins = new();
+
+    [ObservableProperty]
+    private ObservableCollection<Poi> pois = new();
 
     public MapViewModel(
         IDatabaseService databaseService,
@@ -40,102 +42,114 @@ public partial class MapViewModel : ObservableObject
         _narrationService = narrationService;
     }
 
-    // 🚀 LOAD POI
-    [RelayCommand]
-    public async Task LoadPoisAsync()
+    // ✅ Load POI từ local DB — nhanh, không block UI
+    public async Task<List<Poi>> LoadPoisLocalAsync()
+    {
+        try
+        {
+            _pois = await _databaseService.GetAllPoisAsync();
+
+            await MainThread.InvokeOnMainThreadAsync(() =>
+            {
+                Pois.Clear();
+                foreach (var poi in _pois)
+                    Pois.Add(poi);
+
+                MapPins.Clear();
+                foreach (var poi in _pois)
+                {
+                    var pin = new Pin
+                    {
+                        Label = poi.Name,
+                        Address = poi.Description ?? "",
+                        Location = new Location(poi.Lat, poi.Lng),
+                        Type = PinType.Place
+                    };
+
+                    pin.InfoWindowClicked += async (s, e) =>
+                    {
+                        await Application.Current.MainPage.Navigation
+                            .PushAsync(new PoiDetailPage(poi));
+                    };
+
+                    MapPins.Add(pin);
+                }
+            });
+
+            Console.WriteLine($"✅ Loaded {_pois.Count} POIs từ local DB");
+            return _pois;
+        }
+        catch (Exception ex)
+        {
+            Console.WriteLine($"❌ LoadPoisLocal: {ex.Message}");
+            return new List<Poi>();
+        }
+    }
+
+    // ✅ Sync từ API — chạy background, không block UI
+    public async Task SyncFromApiAsync()
     {
         try
         {
             await _databaseService.SyncPoisFromApiAsync(_apiService);
-            _pois = await _databaseService.GetAllPoisAsync();
-
-            MapPins.Clear();
-
-            foreach (var poi in _pois)
-            {
-                var pin = new Pin
-                {
-                    Label = poi.Name,
-                    Address = poi.Description ?? "",
-                    Location = new Location(poi.Lat, poi.Lng),
-                    Type = PinType.Place
-                };
-
-                pin.InfoWindowClicked += async (s, e) =>
-                {
-                    await Application.Current.MainPage.Navigation
-                        .PushAsync(new PoiDetailPage(poi));
-                };
-
-                MapPins.Add(pin);
-            }
-
-            Console.WriteLine($"✅ Loaded {_pois.Count} POIs");
-
-            _ = StartTrackingAsync(); // 🔥 start GPS
+            Console.WriteLine("✅ Sync API xong");
         }
         catch (Exception ex)
         {
-            await Application.Current.MainPage.DisplayAlert("Lỗi Load POI", ex.Message, "OK");
+            Console.WriteLine($"❌ SyncFromApi: {ex.Message}");
         }
     }
 
-    // 📍 GPS REALTIME
+    // ✅ Giữ lại cho tương thích nếu nơi khác vẫn gọi LoadPoisAsync
+    [RelayCommand]
+    public async Task LoadPoisAsync()
+    {
+        await SyncFromApiAsync();
+        await LoadPoisLocalAsync();
+        _ = StartTrackingAsync();
+    }
+
+    // ✅ GPS tracking chạy hoàn toàn trên background thread
     private async Task StartTrackingAsync()
     {
-        try
+        await Task.Run(async () =>
         {
-            while (true)
+            try
             {
-                var location = await Geolocation.GetLocationAsync(
-                    new GeolocationRequest(GeolocationAccuracy.Best));
-
-                if (location != null)
+                while (true)
                 {
-                    var userLat = location.Latitude;
-                    var userLng = location.Longitude;
+                    var location = await Geolocation.GetLocationAsync(
+                        new GeolocationRequest(GeolocationAccuracy.Medium));
 
-                    Console.WriteLine($"📍 {userLat}, {userLng}");
+                    if (location != null)
+                    {
+                        Console.WriteLine($"📍 {location.Latitude}, {location.Longitude}");
+                        CheckNearbyPOI(location.Latitude, location.Longitude);
+                    }
 
-                    MapSpan = MapSpan.FromCenterAndRadius(
-                        new Location(userLat, userLng),
-                        Distance.FromMeters(800));
-
-                    CheckNearbyPOI(userLat, userLng);
+                    await Task.Delay(5000); // ✅ 5 giây — đủ dùng, tiết kiệm pin
                 }
-
-                await Task.Delay(3000);
             }
-        }
-        catch (Exception ex)
-        {
-            Console.WriteLine("GPS ERROR: " + ex.Message);
-        }
+            catch (Exception ex)
+            {
+                Console.WriteLine("GPS ERROR: " + ex.Message);
+            }
+        });
     }
 
-    // 🔥 GEOFENCE LOGIC
     private void CheckNearbyPOI(double userLat, double userLng)
     {
-        // 🔥 tìm POI gần nhất
         var nearest = _pois
-            .Select(p => new
-            {
-                Poi = p,
-                Distance = GetDistance(userLat, userLng, p.Lat, p.Lng)
-            })
+            .Select(p => new { Poi = p, Distance = GetDistance(userLat, userLng, p.Lat, p.Lng) })
             .OrderBy(x => x.Distance)
             .FirstOrDefault();
 
         if (nearest != null)
-        {
             HighlightPOI(nearest.Poi);
-        }
 
-        // 🔥 check geofence như cũ
         foreach (var poi in _pois)
         {
             var distance = GetDistance(userLat, userLng, poi.Lat, poi.Lng);
-
             if (distance < (poi.Radius > 0 ? poi.Radius : 100))
             {
                 TriggerPOI(poi);
@@ -143,35 +157,31 @@ public partial class MapViewModel : ObservableObject
             }
         }
     }
+
     private void HighlightPOI(Poi poi)
     {
-        MapSpan = MapSpan.FromCenterAndRadius(
-            new Location(poi.Lat, poi.Lng),
-            Distance.FromMeters(300));
-
+        MainThread.BeginInvokeOnMainThread(() =>
+        {
+            MapSpan = MapSpan.FromCenterAndRadius(
+                new Location(poi.Lat, poi.Lng), Distance.FromMeters(300));
+        });
         Console.WriteLine($"⭐ Highlight: {poi.Name}");
     }
 
-    // 🔊 TRIGGER
     private async void TriggerPOI(Poi poi)
     {
-        if (DateTime.Now - _lastTriggerTime < TimeSpan.FromSeconds(30))
-            return;
+        if (DateTime.Now - _lastTriggerTime < TimeSpan.FromSeconds(30)) return;
 
         _lastTriggerTime = DateTime.Now;
-
-        Console.WriteLine($"🔥 Trigger: {poi.Name}");
 
         await MainThread.InvokeOnMainThreadAsync(async () =>
         {
             await Application.Current.MainPage.DisplayAlert("📍 Gần bạn", poi.Name, "OK");
         });
 
-        // 🔥 dùng service đúng chuẩn
         await _narrationService.PlayNarrationForPoi(poi.Id.ToString());
     }
 
-    // 📏 DISTANCE
     private double GetDistance(double lat1, double lng1, double lat2, double lng2)
     {
         var R = 6371e3;
@@ -189,7 +199,6 @@ public partial class MapViewModel : ObservableObject
         return R * c;
     }
 
-    // 📍 BUTTON
     [RelayCommand]
     public async Task GoToMyLocationAsync()
     {
@@ -198,12 +207,14 @@ public partial class MapViewModel : ObservableObject
             var location = await Geolocation.GetLocationAsync(
                 new GeolocationRequest(GeolocationAccuracy.Medium));
 
-            if (location == null)
-                return;
+            if (location == null) return;
 
-            MapSpan = MapSpan.FromCenterAndRadius(
-                new Location(location.Latitude, location.Longitude),
-                Distance.FromKilometers(2));
+            MainThread.BeginInvokeOnMainThread(() =>
+            {
+                MapSpan = MapSpan.FromCenterAndRadius(
+                    new Location(location.Latitude, location.Longitude),    
+                    Distance.FromKilometers(2));
+            });
         }
         catch (Exception ex)
         {

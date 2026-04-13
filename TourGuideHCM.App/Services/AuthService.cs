@@ -14,20 +14,20 @@ public class AuthService
         };
     }
 
-    public async Task<bool> Login(string username, string password)
+    public async Task<int?> Login(string username, string password)
     {
-        Console.WriteLine("🚀 CALL API LOGIN");
+        var response = await _http.PostAsJsonAsync("api/auth/login", new
+        {
+            username = username,
+            passwordHash = password
+        });
 
-        var res = await _http.PostAsJsonAsync("/api/auth/login",
-            new
-            {
-                username = username,
-                passwordHash = password
-            });
+        if (!response.IsSuccessStatusCode)
+            return null;
 
-        Console.WriteLine("🚀 STATUS: " + res.StatusCode);
+        var result = await response.Content.ReadFromJsonAsync<LoginResponse>();
 
-        return res.IsSuccessStatusCode;
+        return result?.UserId;
     }
     public async Task<bool> Register(string username, string password)
     {
@@ -41,5 +41,10 @@ public class AuthService
             });
 
         return res.IsSuccessStatusCode;
+    }
+    public class LoginResponse
+    {
+        public int UserId { get; set; }
+        public string Username { get; set; }
     }
 }

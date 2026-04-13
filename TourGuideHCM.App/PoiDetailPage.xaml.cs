@@ -20,6 +20,14 @@ public partial class PoiDetailPage : ContentPage
     private async void OnSpeakClicked(object sender, EventArgs e)
     {
         await _narrationService.PlayNarrationForPoi(_poi.Id.ToString());
+
+        var playback = App.Services.GetService<PlaybackService>();
+        var userId = Preferences.Get("userId", 0);
+
+        // 🔥 FIX: truyền thêm duration (có thể lấy từ audio length sau, tạm để 0 hoặc ước lượng)
+        int duration = 60; // ví dụ 60 giây, sau bạn có thể lấy từ _narrationService
+
+        await playback.LogPlayback(userId, _poi.Id, duration);
     }
     private async void OnItemSelected(object sender, SelectionChangedEventArgs e)
     {

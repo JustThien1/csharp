@@ -1,3 +1,60 @@
 ﻿@page "/history"
+@inject TourGuideHCM.Admin.Services.PlaybackService PlaybackService
+@using TourGuideHCM.Admin.Models
+@using MudBlazor
 
-<MudText Typo="Typo.h4">📜 Lịch sử</MudText>
+<MudText Typo="Typo.h4" Class="mb-4">📜 Lịch sử sử dụng</MudText>
+
+@if (_loading)
+{
+    <MudProgressCircular Indeterminate="true" />
+}
+else if (_history == null || !_history.Any())
+{
+    <MudAlert Severity="Severity.Info">Chưa có lịch sử nào.</MudAlert>
+}
+else
+{
+    <MudTable Items="_history" Hover="true" Striped="true" Dense="true">
+        <HeaderContent>
+            <MudTh>Người dùng</MudTh>
+            <MudTh>Địa điểm</MudTh>
+            <MudTh>Thời gian</MudTh>
+            <MudTh>Thời lượng (giây)</MudTh>
+        </HeaderContent>
+        <RowTemplate>
+            <MudTd>@context.User</MudTd>
+            <MudTd>@context.Poi</MudTd>
+            <MudTd>@context.Time.ToLocalTime().ToString("dd/MM/yyyy HH:mm:ss")</MudTd>
+            <MudTd>@(context.Duration?.ToString("F1") ?? "-")</MudTd>
+        </RowTemplate>
+    </MudTable>
+}
+
+@code {
+    private List<PlaybackHistoryDto>? _history;
+    private bool _loading = true;
+
+    protected override async Task OnInitializedAsync()
+    {
+        await LoadHistory();
+    }
+
+    private async Task LoadHistory()
+    {
+        _loading = true;
+        try
+        {
+            _history = await PlaybackService.GetHistoryAsync();
+        }
+        catch (Exception ex)
+        {
+            Console.WriteLine($"❌ Lỗi load history: {ex.Message}");
+            _history = new List<PlaybackHistoryDto>();
+        }
+        finally
+        {
+            _loading = false;
+        }
+    }
+}
