@@ -7,31 +7,43 @@
     Title="TourGuideHCM"
     FlyoutBehavior="Flyout">
 
-    <!-- Giữ lại để điều hướng hoạt động, ẩn khỏi Flyout -->
-    <FlyoutItem FlyoutItemIsVisible="False" Title="Bản đồ">
-        <ShellContent x:Name="MapPage" ContentTemplate="{DataTemplate views:MapPage}" />
+    <!-- Login – ẩn khỏi Flyout, route = "LoginPage" -->
+    <FlyoutItem FlyoutItemIsVisible="False" Route="LoginPage">
+        <ShellContent Route="LoginPage"
+                      ContentTemplate="{DataTemplate views:LoginPage}"/>
     </FlyoutItem>
 
-    <FlyoutItem FlyoutItemIsVisible="False" Title="Danh sách POI">
-        <ShellContent x:Name="PoiListPage" ContentTemplate="{DataTemplate views:PoiListPage}" />
+    <!-- Register – ẩn khỏi Flyout -->
+    <FlyoutItem FlyoutItemIsVisible="False" Route="RegisterPage">
+        <ShellContent Route="RegisterPage"
+                      ContentTemplate="{DataTemplate views:RegisterPage}"/>
     </FlyoutItem>
 
-    <!-- Header -->
+    <!-- Map -->
+    <FlyoutItem FlyoutItemIsVisible="False" Route="MapPage">
+        <ShellContent Route="MapPage"
+                      ContentTemplate="{DataTemplate views:MapPage}"/>
+    </FlyoutItem>
+
+    <!-- POI List -->
+    <FlyoutItem FlyoutItemIsVisible="False" Route="PoiListPage">
+        <ShellContent Route="PoiListPage"
+                      ContentTemplate="{DataTemplate views:PoiListPage}"/>
+    </FlyoutItem>
+
+    <!-- Flyout Header -->
     <Shell.FlyoutHeader>
         <Grid BackgroundColor="#1E1E1E" HeightRequest="60" Padding="15,0">
             <Label Text="Các địa điểm nổi bật"
-                   TextColor="#FFCC00"
-                   FontSize="18"
-                   FontAttributes="Bold"
-                   VerticalOptions="Center"/>
+                   TextColor="#FFCC00" FontSize="18"
+                   FontAttributes="Bold" VerticalOptions="Center"/>
         </Grid>
     </Shell.FlyoutHeader>
 
-    <!-- Toàn bộ nội dung Flyout tùy chỉnh -->
+    <!-- Flyout Content -->
     <Shell.FlyoutContent>
         <Grid RowDefinitions="350,Auto" BackgroundColor="#2C2C2C">
 
-            <!-- Phần trên: Danh sách POI cuộn được, cố định 350 -->
             <CollectionView Grid.Row="0"
                             x:Name="PoiFlyoutList"
                             SelectionMode="Single"
@@ -39,64 +51,32 @@
                             BackgroundColor="#2C2C2C">
                 <CollectionView.ItemTemplate>
                     <DataTemplate>
-                        <Frame Padding="14"
-                               BackgroundColor="#3A3A3A"
-                               CornerRadius="10"
-                               Margin="8,4">
+                        <Frame Padding="14" BackgroundColor="#3A3A3A"
+                               CornerRadius="10" Margin="8,4">
                             <VerticalStackLayout Spacing="4">
-                                <Label Text="{Binding Name}"
-                                       TextColor="White"
-                                       FontSize="16"
-                                       FontAttributes="Bold"/>
-                                <Label Text="{Binding Description}"
-                                       TextColor="#BBBBBB"
-                                       FontSize="13"
-                                       LineBreakMode="TailTruncation"
-                                       MaxLines="2"/>
+                                <Label Text="{Binding Name}" TextColor="White"
+                                       FontSize="16" FontAttributes="Bold"/>
+                                <Label Text="{Binding Description}" TextColor="#BBBBBB"
+                                       FontSize="13" LineBreakMode="TailTruncation" MaxLines="2"/>
                             </VerticalStackLayout>
                         </Frame>
                     </DataTemplate>
                 </CollectionView.ItemTemplate>
             </CollectionView>
 
-            <!-- Phần dưới: Navigation + Đăng xuất -->
-            <VerticalStackLayout Grid.Row="1"
-                                 BackgroundColor="#1E1E1E"
-                                 Spacing="0">
-
+            <VerticalStackLayout Grid.Row="1" BackgroundColor="#1E1E1E" Spacing="0">
                 <BoxView BackgroundColor="#555555" HeightRequest="1"/>
-
-                <Button Text="🗺️  Bản đồ"
-                        BackgroundColor="Transparent"
-                        TextColor="White"
-                        FontSize="16"
-                        HorizontalOptions="Fill"
-                        ContentLayout="Left,10"
-                        Padding="20,14"
-                        Clicked="OnMapClicked"/>
-
+                <Button Text="🗺️  Bản đồ" BackgroundColor="Transparent"
+                        TextColor="White" FontSize="16" HorizontalOptions="Fill"
+                        ContentLayout="Left,10" Padding="20,14" Clicked="OnMapClicked"/>
                 <BoxView BackgroundColor="#333333" HeightRequest="1" Margin="20,0"/>
-
-                <Button Text="📋  Danh sách POI"
-                        BackgroundColor="Transparent"
-                        TextColor="White"
-                        FontSize="16"
-                        HorizontalOptions="Fill"
-                        ContentLayout="Left,10"
-                        Padding="20,14"
-                        Clicked="OnPoiListClicked"/>
-
+                <Button Text="📋  Danh sách POI" BackgroundColor="Transparent"
+                        TextColor="White" FontSize="16" HorizontalOptions="Fill"
+                        ContentLayout="Left,10" Padding="20,14" Clicked="OnPoiListClicked"/>
                 <BoxView BackgroundColor="#555555" HeightRequest="1"/>
-
-                <Button Text="🚪  Đăng xuất"
-                        BackgroundColor="Transparent"
-                        TextColor="#FF6B6B"
-                        FontSize="16"
-                        HorizontalOptions="Fill"
-                        ContentLayout="Left,10"
-                        Padding="20,14"
-                        Clicked="OnLogoutClicked"/>
-
+                <Button Text="🚪  Đăng xuất" BackgroundColor="Transparent"
+                        TextColor="#FF6B6B" FontSize="16" HorizontalOptions="Fill"
+                        ContentLayout="Left,10" Padding="20,14" Clicked="OnLogoutClicked"/>
             </VerticalStackLayout>
 
         </Grid>

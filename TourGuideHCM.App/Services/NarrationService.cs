@@ -1,108 +1,147 @@
-﻿using Microsoft.Maui.Media;
-using System.Net.Http.Json;
+﻿using Plugin.Maui.Audio;
 using TourGuideHCM.App.Models;
+using TourGuideHCM.App.Services.Interfaces;
+
+// KHÔNG dùng "using Android.Media" – gây lỗi cross-platform
 
 namespace TourGuideHCM.App.Services;
 
-public interface INarrationService
+public class NarrationService : INarrationService, IDisposable
 {
-    Task PlayNarrationForPoi(string poiIdentifier);
-    Task Speak(string text);
-}
+    private readonly IDatabaseService _db;
+    private readonly IApiService _api;
+    private readonly IAudioManager _audioManager;
+    private CancellationTokenSource? _cts;
+    private readonly SemaphoreSlim _lock = new(1, 1);
 
-public class NarrationService : INarrationService
-{
-    private readonly IDatabaseService _databaseService;
-    private readonly HttpClient _http;
+    public bool IsSpeaking { get; private set; }
+    public bool IsPlayingAudio { get; private set; }
 
-    public NarrationService(IDatabaseService databaseService, HttpClient http)
+    public event EventHandler? NarrationStarted;
+    public event EventHandler? NarrationCompleted;
+
+    public NarrationService(IDatabaseService db, IApiService api, IAudioManager audioManager)
     {
-        _databaseService = databaseService;
-        _http = http;
+        _db = db;
+        _api = api;
+        _audioManager = audioManager;
     }
 
-    public async Task PlayNarrationForPoi(string poiIdentifier)
+    public async Task PlayAsync(NarrationRequest request)
     {
+        if (!await _lock.WaitAsync(300)) return;
+
         try
         {
-            if (!int.TryParse(poiIdentifier, out int poiId))
-                return;
+            await StopCoreAsync();
+            _cts = new CancellationTokenSource();
+            var token = _cts.Token;
 
-            var pois = await _databaseService.GetAllPoisAsync();
-            var poi = pois.FirstOrDefault(p => p.Id == poiId);
+            NarrationStarted?.Invoke(this, EventArgs.Empty);
 
-            if (poi == null) return;
+            var poi = request.Poi;
+            var audioUrl = _api.ResolveAudioUrl(poi.AudioUrl);
 
-            string textToSpeak = !string.IsNullOrEmpty(poi.NarrationText)
-                ? poi.NarrationText
-                : $"Bạn đang gần {poi.Name}";
-
-            var startTime = DateTime.UtcNow;
-
-            await Speak(textToSpeak);
-
-            // ✅ Tính thời gian phát và ghi log lên API
-            var duration = (DateTime.UtcNow - startTime).TotalSeconds;
-            await LogPlaybackAsync(poiId, duration, "geofence");
-        }
-        catch (Exception ex)
-        {
-            Console.WriteLine("Narration ERROR: " + ex.Message);
-        }
-    }
-
-    public async Task Speak(string text)
-    {
-        try
-        {
-            if (string.IsNullOrWhiteSpace(text))
-                return;
-
-            var locales = await TextToSpeech.Default.GetLocalesAsync();
-
-            var vietnamese = locales.FirstOrDefault(l =>
-                (l.Language != null && l.Language.Contains("vi")) ||
-                (l.Country != null && l.Country.Contains("VN")))
-                ?? locales.FirstOrDefault();
-
-            await TextToSpeech.Default.SpeakAsync(text, new SpeechOptions
+            if (request.PreferAudioFile && !string.IsNullOrEmpty(audioUrl))
             {
-                Locale = vietnamese
+                await PlayAudioUrlAsync(audioUrl, token);
+
+                // Fallback TTS nếu audio thất bại
+                if (!IsPlayingAudio && !string.IsNullOrEmpty(poi.NarrationText))
+                    await PlayTtsAsync(poi.NarrationText, request.Language, token);
+            }
+            else
+            {
+                var text = poi.NarrationText ?? poi.Description;
+                if (!string.IsNullOrEmpty(text))
+                    await PlayTtsAsync(text, request.Language, token);
+            }
+
+            await _db.AddPlaybackHistoryAsync(new PlaybackHistory
+            {
+                PoiId = poi.Id,
+                PoiName = poi.Name,
+                TriggerType = request.TriggerType,
+                WasAudio = IsPlayingAudio
             });
         }
-        catch (Exception ex)
+        finally
         {
-            Console.WriteLine("TTS ERROR: " + ex.Message);
+            IsSpeaking = false;
+            IsPlayingAudio = false;
+            _lock.Release();
+            NarrationCompleted?.Invoke(this, EventArgs.Empty);
         }
     }
 
-    // ✅ Ghi log lên API server
-    private async Task LogPlaybackAsync(int poiId, double duration, string triggerType)
+    private async Task PlayAudioUrlAsync(string url, CancellationToken token)
+    {
+        IAudioPlayer? player = null;
+        try
+        {
+            IsPlayingAudio = true;
+            using var http = new System.Net.Http.HttpClient
+            { Timeout = TimeSpan.FromSeconds(15) };
+            var stream = await http.GetStreamAsync(url, token);
+
+            player = _audioManager.CreatePlayer(stream);
+
+            // Plugin.Maui.Audio: dùng PlaybackEnded event thay vì IsPlaying loop
+            var tcs = new TaskCompletionSource<bool>();
+            player.PlaybackEnded += (_, _) => tcs.TrySetResult(true);
+
+            player.Play();
+
+            using var reg = token.Register(() => tcs.TrySetCanceled());
+            await tcs.Task;
+        }
+        catch (OperationCanceledException) { player?.Stop(); }
+        catch (Exception ex)
+        {
+            System.Diagnostics.Debug.WriteLine($"[Narration] Audio: {ex.Message}");
+            IsPlayingAudio = false;
+        }
+        finally
+        {
+            player?.Dispose();
+            IsPlayingAudio = false;
+        }
+    }
+
+    private async Task PlayTtsAsync(string text, string language, CancellationToken token)
     {
         try
         {
-            // Lấy username hiện tại nếu đã login
-            var username = Preferences.Get("username", null);
+            IsSpeaking = true;
+            var locales = await TextToSpeech.GetLocalesAsync();
+            var locale = locales.FirstOrDefault(l =>
+                l.Language.StartsWith(language, StringComparison.OrdinalIgnoreCase));
 
-            var payload = new
-            {
-                POIId = poiId,
-                DurationSeconds = duration,
-                TriggerType = triggerType,
-                TriggeredAt = DateTime.UtcNow
-            };
-
-            var response = await _http.PostAsJsonAsync("/api/playback", payload);
-
-            if (response.IsSuccessStatusCode)
-                Console.WriteLine($"✅ Đã lưu playback log: POI {poiId}, {duration:F1}s");
-            else
-                Console.WriteLine($"⚠️ Lưu playback log thất bại: {response.StatusCode}");
+            await TextToSpeech.Default.SpeakAsync(text,
+                new SpeechOptions { Locale = locale, Volume = 1f, Pitch = 1f },
+                token);
         }
+        catch (OperationCanceledException) { }
         catch (Exception ex)
         {
-            // Không throw — lỗi log không được ảnh hưởng UX
-            Console.WriteLine($"❌ LogPlayback ERROR: {ex.Message}");
+            System.Diagnostics.Debug.WriteLine($"[Narration] TTS: {ex.Message}");
         }
+        finally { IsSpeaking = false; }
+    }
+
+    public async Task StopAsync() => await StopCoreAsync();
+
+    private async Task StopCoreAsync()
+    {
+        _cts?.Cancel();
+        // TextToSpeech.Default.CancelAll() không tồn tại – dùng SpeakAsync với token cancel
+        await Task.Delay(80);
+        IsSpeaking = IsPlayingAudio = false;
+    }
+
+    public void Dispose()
+    {
+        _cts?.Dispose();
+        _lock.Dispose();
     }
 }

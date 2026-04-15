@@ -1,0 +1,110 @@
+<?xml version="1.0" encoding="utf-8" ?>
+<ContentPage xmlns="http://schemas.microsoft.com/dotnet/2021/maui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2009/xaml"
+             xmlns:models="clr-namespace:TourGuideHCM.App.Models"
+             x:Class="TourGuideHCM.App.Views.PoiDetailPage"
+             Title="{Binding Name}">
+
+    <ScrollView>
+        <VerticalStackLayout Spacing="0">
+
+            <!-- Ảnh hero -->
+            <Grid HeightRequest="280">
+                <Image Source="{Binding ImageUrl}"
+                       Aspect="AspectFill"
+                       HeightRequest="280"/>
+                <!-- Gradient overlay -->
+                <BoxView VerticalOptions="End"
+                         HeightRequest="100">
+                    <BoxView.Background>
+                        <LinearGradientBrush StartPoint="0,0" EndPoint="0,1">
+                            <GradientStop Color="Transparent" Offset="0"/>
+                            <GradientStop Color="#CC000000" Offset="1"/>
+                        </LinearGradientBrush>
+                    </BoxView.Background>
+                </BoxView>
+                <Label Text="{Binding Name}"
+                       FontSize="22"
+                       FontAttributes="Bold"
+                       TextColor="White"
+                       VerticalOptions="End"
+                       Margin="16,0,16,16"/>
+            </Grid>
+
+            <!-- Thông tin chính -->
+            <VerticalStackLayout Padding="16" Spacing="16">
+
+                <!-- Category + Khoảng cách -->
+                <HorizontalStackLayout Spacing="12">
+                    <Frame CornerRadius="12" Padding="10,4" BackgroundColor="#1976D2"
+                           HasShadow="False" BorderColor="Transparent">
+                        <Label Text="{Binding Category}" TextColor="White" FontSize="13"/>
+                    </Frame>
+                    <Label Text="{Binding DistanceMeters, StringFormat='Cách {0:F0}m'}"
+                           FontSize="13" TextColor="#666" VerticalOptions="Center"/>
+                </HorizontalStackLayout>
+
+                <!-- Nút phát thuyết minh -->
+                <Grid ColumnDefinitions="*,*" ColumnSpacing="12">
+                    <Button Grid.Column="0"
+                            x:Name="PlayViBtn"
+                            Text="▶  Tiếng Việt"
+                            BackgroundColor="#1976D2"
+                            TextColor="White"
+                            CornerRadius="12"
+                            HeightRequest="48"/>
+                    <Button Grid.Column="1"
+                            x:Name="PlayEnBtn"
+                            Text="▶  English"
+                            BackgroundColor="#388E3C"
+                            TextColor="White"
+                            CornerRadius="12"
+                            HeightRequest="48"/>
+                </Grid>
+
+                <!-- Nút dừng -->
+                <Button x:Name="StopBtn"
+                        Text="⏹  Dừng thuyết minh"
+                        BackgroundColor="#E53935"
+                        TextColor="White"
+                        CornerRadius="12"
+                        HeightRequest="44"
+                        IsVisible="False"/>
+
+                <!-- Mô tả -->
+                <Label Text="Giới thiệu"
+                       FontSize="16"
+                       FontAttributes="Bold"
+                       TextColor="{AppThemeBinding Light=#1A1A1A, Dark=White}"/>
+
+                <Label Text="{Binding Description}"
+                       FontSize="14"
+                       LineHeight="1.6"
+                       TextColor="{AppThemeBinding Light=#444, Dark=#BBB}"/>
+
+                <!-- Thông tin tọa độ -->
+                <Frame CornerRadius="12" Padding="16"
+                       BackgroundColor="{AppThemeBinding Light=#F8F8F8, Dark=#2A2A2A}"
+                       BorderColor="Transparent" HasShadow="False">
+                    <Grid ColumnDefinitions="*,*" RowDefinitions="Auto,Auto,Auto" RowSpacing="8">
+                        <Label Grid.Row="0" Grid.ColumnSpan="2"
+                               Text="Thông tin vị trí"
+                               FontSize="14" FontAttributes="Bold"
+                               TextColor="{AppThemeBinding Light=#333, Dark=#EEE}"/>
+
+                        <Label Grid.Row="1" Grid.Column="0" Text="Vĩ độ" FontSize="12" TextColor="#888"/>
+                        <Label Grid.Row="1" Grid.Column="1"
+                               Text="{Binding Latitude, StringFormat='{0:F6}'}"
+                               FontSize="12" TextColor="{AppThemeBinding Light=#333, Dark=#DDD}"/>
+
+                        <Label Grid.Row="2" Grid.Column="0" Text="Kinh độ" FontSize="12" TextColor="#888"/>
+                        <Label Grid.Row="2" Grid.Column="1"
+                               Text="{Binding Longitude, StringFormat='{0:F6}'}"
+                               FontSize="12" TextColor="{AppThemeBinding Light=#333, Dark=#DDD}"/>
+                    </Grid>
+                </Frame>
+
+            </VerticalStackLayout>
+        </VerticalStackLayout>
+    </ScrollView>
+</ContentPage>

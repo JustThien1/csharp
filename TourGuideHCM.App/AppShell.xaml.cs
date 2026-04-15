@@ -1,81 +1,61 @@
-﻿using Microsoft.Maui.Storage;
-using TourGuideHCM.App.Models;
-using TourGuideHCM.App.Services;
-using TourGuideHCM.App.Views;
+﻿using TourGuideHCM.App.Views;
 
 namespace TourGuideHCM.App;
 
 public partial class AppShell : Shell
 {
-    private readonly IDatabaseService _databaseService;
-
-    public AppShell(IDatabaseService databaseService)
+    public AppShell()
     {
         InitializeComponent();
-        _databaseService = databaseService;
 
-        // Hiển thị username trên title
-        var username = Preferences.Get("username", "");
-        if (!string.IsNullOrEmpty(username))
-        {
-            this.Title = "Xin chào " + username;
-        }
+        // Chỉ đăng ký các route KHÔNG có trong XAML
+        Routing.RegisterRoute(nameof(PoiDetailPage), typeof(PoiDetailPage));
+        Routing.RegisterRoute(nameof(PoiBottomSheet), typeof(PoiBottomSheet));
 
-        // Load danh sách POI vào Flyout
-        this.Loaded += async (s, e) => await LoadPoisIntoFlyoutAsync();
+        this.Loaded += OnShellLoaded;
     }
 
-    // Tải POI vào Flyout
-    private async Task LoadPoisIntoFlyoutAsync()
+    private async void OnShellLoaded(object? sender, EventArgs e)
     {
-        try
+        var username = Preferences.Get("username", "");
+
+        if (string.IsNullOrEmpty(username))
         {
-            var pois = await _databaseService.GetAllPoisAsync();
-            if (pois?.Count > 0)
-            {
-                PoiFlyoutList.ItemsSource = pois;
-            }
-        }
-        catch (Exception ex)
-        {
-            Console.WriteLine($"❌ Lỗi load POI vào Flyout: {ex.Message}");
+            // Dùng absolute route tới FlyoutItem đã khai báo trong XAML
+            await GoToAsync("//LoginPage");
         }
     }
 
-    // 🔥 Khi nhấn vào POI trong Flyout (3 gạch)
     private async void OnPoiFlyoutSelected(object sender, SelectionChangedEventArgs e)
     {
-        if (e.CurrentSelection?.FirstOrDefault() is not Poi selectedPoi)
+        if (e.CurrentSelection?.FirstOrDefault() is not Models.POI selectedPoi)
             return;
 
-        // Reset selection và đóng Flyout
         ((CollectionView)sender).SelectedItem = null;
         FlyoutIsPresented = false;
 
-        // Hiển thị Bottom Sheet từ dưới lên (ưu tiên theo yêu cầu mới)
-        var bottomSheet = new PoiBottomSheet(selectedPoi);
-        await Shell.Current.Navigation.PushModalAsync(bottomSheet, animated: true);
+        var narration = App.Services.GetRequiredService<Services.Interfaces.INarrationService>();
+        var api = App.Services.GetRequiredService<Services.Interfaces.IApiService>();
+        var sheet = new PoiBottomSheet(selectedPoi, narration, api);
+        await Navigation.PushModalAsync(sheet, animated: true);
     }
 
-    // Các hàm điều hướng cũ (giữ lại để an toàn)
     private async void OnMapClicked(object sender, EventArgs e)
     {
         FlyoutIsPresented = false;
-        await Shell.Current.GoToAsync("///MapPage");
+        await GoToAsync("//MapPage");
     }
 
     private async void OnPoiListClicked(object sender, EventArgs e)
     {
         FlyoutIsPresented = false;
-        await Shell.Current.GoToAsync("///PoiListPage");
+        await GoToAsync("//PoiListPage");
     }
 
-    // Đăng xuất
-    private void OnLogoutClicked(object sender, EventArgs e)
+    private async void OnLogoutClicked(object sender, EventArgs e)
     {
         Preferences.Remove("username");
-        Application.Current.MainPage = new NavigationPage(
-            App.Services.GetService<LoginPage>()
-        );
+        Preferences.Remove("userId");
+        await GoToAsync("//LoginPage");
     }
 }

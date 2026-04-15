@@ -1,4 +1,5 @@
-﻿using System.Text.Json;
+﻿using Microsoft.Maui.Controls.Maps;
+using Microsoft.Maui.Maps;
 using TourGuideHCM.App.Models;
 using TourGuideHCM.App.ViewModels;
 
@@ -6,158 +7,88 @@ namespace TourGuideHCM.App.Views;
 
 public partial class MapPage : ContentPage
 {
-    private readonly MapViewModel _viewModel;
-    private List<Poi> _allPois = new();
-    private bool _mapLoaded = false; // ✅ Tránh load lại nhiều lần
+    private readonly MapViewModel _vm;
+    private readonly Dictionary<int, Pin> _pins = new();
 
-    public MapPage()
+    public MapPage(MapViewModel vm)
     {
         InitializeComponent();
-        _viewModel = App.Services.GetRequiredService<MapViewModel>();
-        BindingContext = _viewModel;
-
-#if ANDROID
-        Microsoft.Maui.Handlers.WebViewHandler.Mapper.AppendToMapping(nameof(WebView), (handler, view) =>
-        {
-            if (handler.PlatformView is Android.Webkit.WebView webView)
-            {
-                webView.Settings.JavaScriptEnabled = true;
-                webView.Settings.DomStorageEnabled = true;
-                webView.Settings.AllowFileAccess = true;
-                webView.Settings.AllowFileAccessFromFileURLs = true;
-                webView.Settings.AllowUniversalAccessFromFileURLs = true;
-                webView.Settings.MixedContentMode = Android.Webkit.MixedContentHandling.AlwaysAllow;
-                webView.Settings.LoadsImagesAutomatically = true;
-            }
-        });
-#endif
-
-        MyWebView.Navigated += OnWebViewLoaded;
+        _vm = vm;
+        BindingContext = vm;
     }
 
     protected override async void OnAppearing()
     {
         base.OnAppearing();
 
-        // ✅ Chỉ load map 1 lần duy nhất
-        if (!_mapLoaded)
+        await _vm.InitializeAsync();
+
+        _vm.Pois.CollectionChanged += (_, _) => RefreshPins();
+        _vm.PropertyChanged += OnViewModelPropertyChanged;
+
+        // Đặt camera về trung tâm HCM
+        var hcmCenter = new Location(10.7769, 106.7009);
+        MainMap.MoveToRegion(MapSpan.FromCenterAndRadius(
+            hcmCenter, Distance.FromKilometers(2)));
+
+        RefreshPins();
+    }
+
+    protected override void OnDisappearing()
+    {
+        base.OnDisappearing();
+        _vm.PropertyChanged -= OnViewModelPropertyChanged;
+    }
+
+    private void OnViewModelPropertyChanged(object? sender,
+        System.ComponentModel.PropertyChangedEventArgs e)
+    {
+        // UserLat / UserLng (đúng tên ViewModel)
+        if (e.PropertyName is nameof(MapViewModel.UserLat)
+                           or nameof(MapViewModel.UserLng))
         {
-            await LoadMap();
-            _mapLoaded = true;
+            UpdateUserLocation();
         }
     }
 
-    private async Task LoadMap()
+    private void UpdateUserLocation()
     {
-        try
-        {
-            using var stream = await FileSystem.OpenAppPackageFileAsync("map.html");
-            var html = await new StreamReader(stream).ReadToEndAsync();
+        // Map tự hiển thị vị trí user qua IsShowingUser="True"
+        // Không cần di chuyển camera mỗi lần update
+    }
 
-            MyWebView.Source = new HtmlWebViewSource
+    private void RefreshPins()
+    {
+        MainThread.BeginInvokeOnMainThread(() =>
+        {
+            MainMap.Pins.Clear();
+            _pins.Clear();
+
+            foreach (var poi in _vm.Pois)
             {
-                Html = html,
-                BaseUrl = "file:///android_asset/"
-            };
-        }
-        catch (Exception ex)
-        {
-            await DisplayAlert("Lỗi Load Map", ex.Message, "OK");
-        }
-    }
+                var pin = new Pin
+                {
+                    Label = poi.Name,
+                    Address = poi.Address ?? poi.ShortDescription,
+                    // Dùng poi.Lat / poi.Lng (đúng tên Model)
+                    Location = new Location(poi.Lat, poi.Lng),
+                    Type = PinType.Place
+                };
 
-    private async void OnWebViewLoaded(object? sender, WebNavigatedEventArgs e)
-    {
-        try
-        {
-            // ✅ Bỏ Task.Delay(3000) — chờ thực tế thay vì cứng
-            await Task.Delay(500);
+                pin.MarkerClicked += (_, e) =>
+                {
+                    e.HideInfoWindow = false;
+                    _vm.SelectPoiCommand.Execute(poi);
+                };
 
-            // ✅ Load POI từ DB local trước (nhanh), sync API ở background
-            _allPois = await _viewModel.LoadPoisLocalAsync();
-
-            // ✅ Sync API ở background, không block UI
-            _ = Task.Run(async () =>
-            {
-                await _viewModel.SyncFromApiAsync();
-
-                // Reload lại POI sau khi sync xong
-                _allPois = await _viewModel.LoadPoisLocalAsync();
-                await PushPoisToMapAsync();
-            });
-
-            await PushPoisToMapAsync();
-        }
-        catch (Exception ex)
-        {
-            Console.WriteLine($"❌ OnWebViewLoaded: {ex.Message}");
-        }
-    }
-
-    private async Task PushPoisToMapAsync()
-    {
-        var poisForJs = _allPois.Select(p => new
-        {
-            id = p.Id,
-            name = p.Name ?? "",
-            description = p.Description ?? "",
-            lat = p.Lat,
-            lng = p.Lng
-        }).ToList();
-
-        var json = JsonSerializer.Serialize(poisForJs);
-
-        // ✅ Đảm bảo chạy trên main thread
-        await MainThread.InvokeOnMainThreadAsync(async () =>
-        {
-            await MyWebView.EvaluateJavaScriptAsync($"loadFromApp({json})");
-        });
-
-        Console.WriteLine($"✅ Pushed {_allPois.Count} POIs to map");
-    }
-
-    public async Task GoToPoiAsync(double lat, double lng, string name)
-    {
-        await MainThread.InvokeOnMainThreadAsync(async () =>
-        {
-            await MyWebView.EvaluateJavaScriptAsync(
-                $"goToPoi({lat}, {lng}, \"{name.Replace("\"", "\\\"")}\")");
-        });
-    }
-
-    private void OnHamburgerClicked(object sender, EventArgs e)
-    {
-        Shell.Current.FlyoutIsPresented = true;
-    }
-
-    private async void OnGoToLocationClicked(object sender, EventArgs e)
-    {
-        try
-        {
-            var status = await Permissions.RequestAsync<Permissions.LocationWhenInUse>();
-            if (status != PermissionStatus.Granted)
-            {
-                await DisplayAlert("Quyền", "Cần cấp quyền vị trí", "OK");
-                return;
+                _pins[poi.Id] = pin;
+                MainMap.Pins.Add(pin);
             }
-
-            var request = new GeolocationRequest(GeolocationAccuracy.Best, TimeSpan.FromSeconds(10));
-            var location = await Geolocation.GetLocationAsync(request) ?? new Location(10.7769, 106.7009);
-
-            await MyWebView.EvaluateJavaScriptAsync(
-                $"goToLocation({location.Latitude}, {location.Longitude})");
-        }
-        catch (Exception ex)
-        {
-            await DisplayAlert("Lỗi GPS", ex.Message, "OK");
-        }
+        });
     }
 
-    private async void OnReloadClicked(object sender, EventArgs e)
+    private void OnMapClicked(object sender, MapClickedEventArgs e)
     {
-        _mapLoaded = false;
-        MyWebView.Source = null;
-        await Task.Delay(300);
-        await LoadMap();
+        _vm.SelectedPoi = null;
     }
 }

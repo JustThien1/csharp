@@ -1,44 +1,32 @@
-﻿using TourGuideHCM.App.Models;
-using TourGuideHCM.App.Services;
+﻿using TourGuideHCM.App.ViewModels;
 
 namespace TourGuideHCM.App.Views;
 
 public partial class PoiListPage : ContentPage
 {
-    private readonly IDatabaseService _db;
+    private readonly PoiViewModel _vm;
 
-    public PoiListPage()
+    public PoiListPage(PoiViewModel vm)
     {
         InitializeComponent();
-        _db = App.Services.GetService<IDatabaseService>();
+        _vm = vm;
+        BindingContext = vm;
+
+        // Navigate to detail when POI selected
+        vm.PropertyChanged += async (_, e) =>
+        {
+            if (e.PropertyName == nameof(PoiViewModel.SelectedPoi) && vm.SelectedPoi is not null)
+            {
+                await Shell.Current.GoToAsync(nameof(PoiDetailPage),
+                    new Dictionary<string, object> { ["Poi"] = vm.SelectedPoi });
+                vm.SelectedPoi = null;
+            }
+        };
     }
 
     protected override async void OnAppearing()
     {
         base.OnAppearing();
-
-        var pois = await _db.GetAllPoisAsync();
-        PoiList.ItemsSource = pois;
-        PoiList.SelectionChanged += OnItemSelected;
+        await _vm.LoadAsync();
     }
-    private async void OnItemSelected(object sender, SelectionChangedEventArgs e)
-    {
-        try
-        {
-            var poi = e.CurrentSelection.FirstOrDefault() as Poi;
-
-            if (poi == null) return;
-
-            // 🔥 chuyển sang trang chi tiết
-            await Navigation.PushAsync(new PoiDetailPage(poi));
-
-            // reset chọn
-            ((CollectionView)sender).SelectedItem = null;
-        }
-        catch (Exception ex)
-        {
-            await DisplayAlert("Lỗi", ex.Message, "OK");
-        }
-    }
-
 }

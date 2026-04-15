@@ -1,224 +1,237 @@
-﻿using CommunityToolkit.Mvvm.ComponentModel;
-using CommunityToolkit.Mvvm.Input;
-using Microsoft.Maui.Controls.Maps;
-using Microsoft.Maui.Devices.Sensors;
-using Microsoft.Maui.Maps;
-using System.Collections.ObjectModel;
+﻿using System.Collections.ObjectModel;
+using System.ComponentModel;
+using System.Runtime.CompilerServices;
+using System.Windows.Input;
 using TourGuideHCM.App.Models;
-using TourGuideHCM.App.Services;
-using TourGuideHCM.App.Views;
+using TourGuideHCM.App.Services.Interfaces;
 
 namespace TourGuideHCM.App.ViewModels;
 
-public partial class MapViewModel : ObservableObject
+public class MapViewModel : INotifyPropertyChanged
 {
-    private readonly IDatabaseService _databaseService;
-    private readonly IGeofenceService _geofenceService;
-    private readonly IApiService _apiService;
-    private readonly INarrationService _narrationService;
+    private readonly IApiService _api;
+    private readonly IDatabaseService _db;
+    private readonly IGeofenceService _geofence;
+    private readonly INarrationService _narration;
+    private readonly IAuthService _auth;
 
-    private List<Poi> _pois = new();
-    private DateTime _lastTriggerTime = DateTime.MinValue;
+    public ObservableCollection<POI> Pois { get; } = new();
 
-    [ObservableProperty]
-    private MapSpan mapSpan = MapSpan.FromCenterAndRadius(
-        new Location(10.7769, 106.7009), Distance.FromKilometers(5));
-
-    [ObservableProperty]
-    private ObservableCollection<Pin> mapPins = new();
-
-    [ObservableProperty]
-    private ObservableCollection<Poi> pois = new();
-
-    public MapViewModel(
-        IDatabaseService databaseService,
-        IGeofenceService geofenceService,
-        IApiService apiService,
-        INarrationService narrationService)
+    private POI? _nearestPoi;
+    public POI? NearestPoi
     {
-        _databaseService = databaseService;
-        _geofenceService = geofenceService;
-        _apiService = apiService;
-        _narrationService = narrationService;
+        get => _nearestPoi;
+        set { _nearestPoi = value; OnPropertyChanged(); }
     }
 
-    // ✅ Load POI từ local DB — nhanh, không block UI
-    public async Task<List<Poi>> LoadPoisLocalAsync()
+    private POI? _selectedPoi;
+    public POI? SelectedPoi
     {
-        try
-        {
-            _pois = await _databaseService.GetAllPoisAsync();
-
-            await MainThread.InvokeOnMainThreadAsync(() =>
-            {
-                Pois.Clear();
-                foreach (var poi in _pois)
-                    Pois.Add(poi);
-
-                MapPins.Clear();
-                foreach (var poi in _pois)
-                {
-                    var pin = new Pin
-                    {
-                        Label = poi.Name,
-                        Address = poi.Description ?? "",
-                        Location = new Location(poi.Lat, poi.Lng),
-                        Type = PinType.Place
-                    };
-
-                    pin.InfoWindowClicked += async (s, e) =>
-                    {
-                        await Application.Current.MainPage.Navigation
-                            .PushAsync(new PoiDetailPage(poi));
-                    };
-
-                    MapPins.Add(pin);
-                }
-            });
-
-            Console.WriteLine($"✅ Loaded {_pois.Count} POIs từ local DB");
-            return _pois;
-        }
-        catch (Exception ex)
-        {
-            Console.WriteLine($"❌ LoadPoisLocal: {ex.Message}");
-            return new List<Poi>();
-        }
+        get => _selectedPoi;
+        set { _selectedPoi = value; OnPropertyChanged(); OnPropertyChanged(nameof(IsPoiDetailVisible)); }
     }
 
-    // ✅ Sync từ API — chạy background, không block UI
-    public async Task SyncFromApiAsync()
+    private bool _isNarrating;
+    public bool IsNarrating
     {
-        try
-        {
-            await _databaseService.SyncPoisFromApiAsync(_apiService);
-            Console.WriteLine("✅ Sync API xong");
-        }
-        catch (Exception ex)
-        {
-            Console.WriteLine($"❌ SyncFromApi: {ex.Message}");
-        }
+        get => _isNarrating;
+        set { _isNarrating = value; OnPropertyChanged(); }
     }
 
-    // ✅ Giữ lại cho tương thích nếu nơi khác vẫn gọi LoadPoisAsync
-    [RelayCommand]
-    public async Task LoadPoisAsync()
+    private bool _isLoading;
+    public bool IsLoading
     {
-        await SyncFromApiAsync();
-        await LoadPoisLocalAsync();
-        _ = StartTrackingAsync();
+        get => _isLoading;
+        set { _isLoading = value; OnPropertyChanged(); }
     }
 
-    // ✅ GPS tracking chạy hoàn toàn trên background thread
-    private async Task StartTrackingAsync()
+    private string _statusMessage = "Đang khởi động...";
+    public string StatusMessage
     {
-        await Task.Run(async () =>
+        get => _statusMessage;
+        set { _statusMessage = value; OnPropertyChanged(); }
+    }
+
+    private double _userLat = 10.7769;
+    public double UserLat { get => _userLat; set { _userLat = value; OnPropertyChanged(); } }
+
+    private double _userLng = 106.7009;
+    public double UserLng { get => _userLng; set { _userLng = value; OnPropertyChanged(); } }
+
+    private string _selectedLanguage = "vi";
+    public string SelectedLanguage
+    {
+        get => _selectedLanguage;
+        set { _selectedLanguage = value; OnPropertyChanged(); }
+    }
+
+    private bool _preferAudioFile = true;
+    public bool PreferAudioFile
+    {
+        get => _preferAudioFile;
+        set { _preferAudioFile = value; OnPropertyChanged(); }
+    }
+
+    public bool IsPoiDetailVisible => SelectedPoi is not null;
+
+    public ICommand LoadPoisCommand { get; }
+    public ICommand SelectPoiCommand { get; }
+    public ICommand ClosePoiDetailCommand { get; }
+    public ICommand PlayNarrationCommand { get; }
+    public ICommand StopNarrationCommand { get; }
+    public ICommand ToggleLanguageCommand { get; }
+
+    public MapViewModel(IApiService api, IDatabaseService db,
+        IGeofenceService geofence, INarrationService narration, IAuthService auth)
+    {
+        _api = api;
+        _db = db;
+        _geofence = geofence;
+        _narration = narration;
+        _auth = auth;
+
+        LoadPoisCommand = new Command(async () => await LoadPoisAsync());
+        SelectPoiCommand = new Command<POI>(p => SelectedPoi = p);
+        ClosePoiDetailCommand = new Command(() => SelectedPoi = null);
+        PlayNarrationCommand = new Command<POI>(async p =>
         {
-            try
-            {
-                while (true)
-                {
-                    var location = await Geolocation.GetLocationAsync(
-                        new GeolocationRequest(GeolocationAccuracy.Medium));
-
-                    if (location != null)
-                    {
-                        Console.WriteLine($"📍 {location.Latitude}, {location.Longitude}");
-                        CheckNearbyPOI(location.Latitude, location.Longitude);
-                    }
-
-                    await Task.Delay(5000); // ✅ 5 giây — đủ dùng, tiết kiệm pin
-                }
-            }
-            catch (Exception ex)
-            {
-                Console.WriteLine("GPS ERROR: " + ex.Message);
-            }
+            if (p is not null) await PlayNarrationAsync(p);
         });
+        StopNarrationCommand = new Command(async () => await _narration.StopAsync());
+        ToggleLanguageCommand = new Command(() =>
+            SelectedLanguage = SelectedLanguage == "vi" ? "en" : "vi");
+
+        _geofence.GeofenceTriggered += OnGeofenceTriggered;
+        _geofence.LocationUpdated += OnLocationUpdated;
+
+        _narration.NarrationStarted += (_, _) =>
+            MainThread.BeginInvokeOnMainThread(() => IsNarrating = true);
+        _narration.NarrationCompleted += (_, _) =>
+            MainThread.BeginInvokeOnMainThread(() => IsNarrating = false);
     }
 
-    private void CheckNearbyPOI(double userLat, double userLng)
+    public async Task InitializeAsync()
     {
-        var nearest = _pois
-            .Select(p => new { Poi = p, Distance = GetDistance(userLat, userLng, p.Lat, p.Lng) })
-            .OrderBy(x => x.Distance)
-            .FirstOrDefault();
+        await _db.InitAsync();
+        await LoadPoisAsync();
+    }
 
-        if (nearest != null)
-            HighlightPOI(nearest.Poi);
-
-        foreach (var poi in _pois)
+    private async Task LoadPoisAsync()
+    {
+        IsLoading = true;
+        StatusMessage = "Đang tải điểm tham quan...";
+        try
         {
-            var distance = GetDistance(userLat, userLng, poi.Lat, poi.Lng);
-            if (distance < (poi.Radius > 0 ? poi.Radius : 100))
+            // Hiển thị cache trước
+            var cached = await _db.GetCachedPoisAsync();
+            if (cached.Count > 0) UpdateCollection(cached);
+
+            // Tải mới từ API
+            var fresh = await _api.GetPoisAsync();
+            if (fresh.Count > 0)
             {
-                TriggerPOI(poi);
-                break;
+                await _db.UpsertPoisAsync(fresh);
+                UpdateCollection(fresh);
+                StatusMessage = $"Đã tải {fresh.Count} điểm tham quan";
             }
+            else if (cached.Count > 0)
+            {
+                StatusMessage = $"{cached.Count} điểm (offline)";
+            }
+            else
+            {
+                StatusMessage = "Không có dữ liệu";
+            }
+
+            // Bắt đầu geofence – bọc try-catch riêng,
+            // không để lỗi GPS permission crash toàn app
+            if (Pois.Count > 0)
+            {
+                try
+                {
+                    await _geofence.StartAsync(Pois);
+                }
+                catch (UnauthorizedAccessException)
+                {
+                    StatusMessage = "Chưa cấp quyền vị trí – thuyết minh tự động bị tắt";
+                }
+                catch (Exception ex)
+                {
+                    System.Diagnostics.Debug.WriteLine($"[Geofence] {ex.Message}");
+                }
+            }
+        }
+        catch (Exception ex)
+        {
+            StatusMessage = $"Lỗi: {ex.Message}";
+        }
+        finally
+        {
+            IsLoading = false;
         }
     }
 
-    private void HighlightPOI(Poi poi)
+    private void UpdateCollection(List<POI> pois)
     {
         MainThread.BeginInvokeOnMainThread(() =>
         {
-            MapSpan = MapSpan.FromCenterAndRadius(
-                new Location(poi.Lat, poi.Lng), Distance.FromMeters(300));
+            Pois.Clear();
+            foreach (var p in pois.OrderBy(x => x.Priority))
+                Pois.Add(p);
         });
-        Console.WriteLine($"⭐ Highlight: {poi.Name}");
     }
 
-    private async void TriggerPOI(Poi poi)
+    private async void OnGeofenceTriggered(object? sender, GeofenceTriggeredEventArgs e)
     {
-        if (DateTime.Now - _lastTriggerTime < TimeSpan.FromSeconds(30)) return;
+        NearestPoi = e.Poi;
+        foreach (var p in Pois) p.IsHighlighted = p.Id == e.Poi.Id;
+        await PlayNarrationAsync(e.Poi, e.TriggerType);
+    }
 
-        _lastTriggerTime = DateTime.Now;
+    private void OnLocationUpdated(object? sender, LocationUpdate e)
+    {
+        UserLat = e.Lat;
+        UserLng = e.Lng;
 
-        await MainThread.InvokeOnMainThreadAsync(async () =>
+        if (Pois.Count == 0) return;
+
+        POI? nearest = null;
+        double minDist = double.MaxValue;
+
+        foreach (var poi in Pois)
         {
-            await Application.Current.MainPage.DisplayAlert("📍 Gần bạn", poi.Name, "OK");
-        });
-
-        await _narrationService.PlayNarrationForPoi(poi.Id.ToString());
-    }
-
-    private double GetDistance(double lat1, double lng1, double lat2, double lng2)
-    {
-        var R = 6371e3;
-        var φ1 = lat1 * Math.PI / 180;
-        var φ2 = lat2 * Math.PI / 180;
-        var Δφ = (lat2 - lat1) * Math.PI / 180;
-        var Δλ = (lng2 - lng1) * Math.PI / 180;
-
-        var a = Math.Sin(Δφ / 2) * Math.Sin(Δφ / 2) +
-                Math.Cos(φ1) * Math.Cos(φ2) *
-                Math.Sin(Δλ / 2) * Math.Sin(Δλ / 2);
-
-        var c = 2 * Math.Atan2(Math.Sqrt(a), Math.Sqrt(1 - a));
-
-        return R * c;
-    }
-
-    [RelayCommand]
-    public async Task GoToMyLocationAsync()
-    {
-        try
-        {
-            var location = await Geolocation.GetLocationAsync(
-                new GeolocationRequest(GeolocationAccuracy.Medium));
-
-            if (location == null) return;
-
-            MainThread.BeginInvokeOnMainThread(() =>
+            poi.DistanceMeters = _geofence.CalculateDistance(e.Lat, e.Lng, poi.Lat, poi.Lng);
+            if (poi.DistanceMeters < minDist)
             {
-                MapSpan = MapSpan.FromCenterAndRadius(
-                    new Location(location.Latitude, location.Longitude),    
-                    Distance.FromKilometers(2));
-            });
+                minDist = poi.DistanceMeters.Value;
+                nearest = poi;
+            }
         }
-        catch (Exception ex)
+
+        if (nearest is not null)
         {
-            await Application.Current.MainPage.DisplayAlert("Lỗi GPS", ex.Message, "OK");
+            NearestPoi = nearest;
+            foreach (var p in Pois) p.IsHighlighted = p.Id == nearest.Id;
         }
     }
+
+    public async Task PlayNarrationAsync(POI poi, string triggerType = "manual")
+    {
+        if (IsNarrating) return;
+
+        await _narration.PlayAsync(new NarrationRequest
+        {
+            Poi = poi,
+            Language = SelectedLanguage,
+            TriggerType = triggerType,
+            PreferAudioFile = PreferAudioFile
+        });
+
+        var userId = _auth.CurrentUser?.Id ?? 0;
+        _ = _api.LogPlaybackAsync(userId, poi.Id, triggerType);
+    }
+
+    public event PropertyChangedEventHandler? PropertyChanged;
+    protected void OnPropertyChanged([CallerMemberName] string? n = null)
+        => PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(n));
 }

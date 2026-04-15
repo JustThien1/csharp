@@ -1,6 +1,7 @@
 ﻿using CommunityToolkit.Maui;
-using Shiny;
+using Plugin.Maui.Audio;
 using TourGuideHCM.App.Services;
+using TourGuideHCM.App.Services.Interfaces;
 using TourGuideHCM.App.ViewModels;
 using TourGuideHCM.App.Views;
 
@@ -14,30 +15,39 @@ public static class MauiProgram
 
         builder
             .UseMauiApp<App>()
+            .UseMauiMaps()
             .UseMauiCommunityToolkit()
-            .UseShiny();
+            .ConfigureFonts(fonts =>
+            {
+                fonts.AddFont("OpenSans-Regular.ttf", "OpenSansRegular");
+                fonts.AddFont("OpenSans-Semibold.ttf", "OpenSansSemibold");
+            });
 
-        // Services
-        builder.Services.AddSingleton<IApiService, ApiService>();
+        // IAudioManager – chỉ định rõ namespace tránh nhầm Android.Media
+        builder.Services.AddSingleton<IAudioManager>(
+            Plugin.Maui.Audio.AudioManager.Current);
+
+        // ── Services ──────────────────────────────────────────────────────────
         builder.Services.AddSingleton<IDatabaseService, DatabaseService>();
-        builder.Services.AddSingleton<INarrationService, NarrationService>();
+        builder.Services.AddSingleton<IApiService, ApiService>();
+        builder.Services.AddSingleton<IAuthService, AuthService>();
         builder.Services.AddSingleton<IGeofenceService, GeofenceService>();
-        builder.Services.AddSingleton<AuthService>();
+        builder.Services.AddSingleton<INarrationService, NarrationService>();
 
-        builder.Services.AddSingleton(new HttpClient
-        {
-            BaseAddress = new Uri("http://10.0.2.2:5284")
-        });
+        // ── ViewModels ────────────────────────────────────────────────────────
+        builder.Services.AddSingleton<MapViewModel>();
+        builder.Services.AddTransient<PoiViewModel>();
+        builder.Services.AddTransient<AuthViewModel>();
+
+        // ── Pages ─────────────────────────────────────────────────────────────
+        builder.Services.AddSingleton<App>();
+        builder.Services.AddSingleton<AppShell>();
+        builder.Services.AddSingleton<MapPage>();
+        builder.Services.AddTransient<PoiListPage>();
+        builder.Services.AddTransient<PoiDetailPage>();
+        builder.Services.AddTransient<PoiBottomSheet>();
         builder.Services.AddTransient<LoginPage>();
         builder.Services.AddTransient<RegisterPage>();
-
-        builder.Services.AddGeofencing<GeofenceDelegate>();
-
-        builder.Services.AddTransient<MapViewModel>();
-        builder.Services.AddTransient<MapPage>();
-        builder.Services.AddSingleton<AppShell>();
-        builder.Services.AddSingleton<PlaybackService>();
-        builder.Services.AddSingleton<HttpClient>();
 
         return builder.Build();
     }

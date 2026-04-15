@@ -1,74 +1,92 @@
-﻿using Microsoft.EntityFrameworkCore;
-using TourGuideHCM.App.Data;
+﻿using SQLite;
 using TourGuideHCM.App.Models;
+using TourGuideHCM.App.Services.Interfaces;
 
 namespace TourGuideHCM.App.Services;
 
 public class DatabaseService : IDatabaseService
 {
-    private readonly AppDbContext _db;
+    private SQLiteAsyncConnection? _db;
+    private static readonly SemaphoreSlim _initLock = new(1, 1);
 
-    public DatabaseService()
+    private static string DbPath => Path.Combine(
+        FileSystem.AppDataDirectory, "tourguide_local.db3");
+
+    public async Task InitAsync()
     {
-        var dbPath = Path.Combine(FileSystem.AppDataDirectory, "tourguide.db");
-
-        var options = new DbContextOptionsBuilder<AppDbContext>()
-            .UseSqlite($"Data Source={dbPath}")
-            .Options;
-
-        _db = new AppDbContext(options);
-
-        // Tạo DB nếu chưa có
-        _db.Database.EnsureCreated();
-    }
-
-    // ✅ Lấy toàn bộ POI từ local DB
-    public async Task<List<Poi>> GetAllPoisAsync()
-    {
-        return await _db.Pois.ToListAsync();
-    }
-
-    // ✅ Đồng bộ dữ liệu từ API về SQLite
-    public async Task SyncPoisFromApiAsync(IApiService apiService)
-    {
+        await _initLock.WaitAsync();
         try
         {
-            var remotePois = await apiService.GetAllPoisAsync();
-
-            if (remotePois == null || remotePois.Count == 0)
-                return;
-
-            // Xóa dữ liệu cũ
-            _db.Pois.RemoveRange(_db.Pois);
-
-            // Thêm dữ liệu mới
-            await _db.Pois.AddRangeAsync(remotePois);
-
-            await _db.SaveChangesAsync();
-
-            Console.WriteLine($"Đã đồng bộ {remotePois.Count} POI từ API");
+            if (_db is not null) return;
+            _db = new SQLiteAsyncConnection(DbPath,
+                SQLiteOpenFlags.ReadWrite | SQLiteOpenFlags.Create | SQLiteOpenFlags.SharedCache);
+            await _db.CreateTableAsync<POI>();
+            await _db.CreateTableAsync<User>();
+            await _db.CreateTableAsync<PlaybackHistory>();
+            await _db.CreateTableAsync<GeofenceEvent>();
         }
-        catch (Exception ex)
-        {
-            Console.WriteLine($"Lỗi sync POI: {ex.Message}");
-        }
-    }
-    // ✅ Lấy POI theo ID
-    public async Task<Poi?> GetPoiByIdAsync(int id)
-    {
-        return await _db.Pois.FirstOrDefaultAsync(p => p.Id == id);
+        finally { _initLock.Release(); }
     }
 
-    // ✅ Tìm kiếm POI theo từ khóa
-    public async Task<List<Poi>> SearchPoisAsync(string keyword)
+    private async Task<SQLiteAsyncConnection> GetDbAsync()
     {
-        if (string.IsNullOrWhiteSpace(keyword))
-            return await GetAllPoisAsync();
+        if (_db is null) await InitAsync();
+        return _db!;
+    }
 
-        var lower = keyword.ToLower();
-        return await _db.Pois
-            .Where(p => p.Name.ToLower().Contains(lower) ||
-                        p.Description.ToLower().Contains(lower))
-            .ToListAsync();
+    public async Task<List<POI>> GetCachedPoisAsync()
+    {
+        var db = await GetDbAsync();
+        return await db.Table<POI>().Where(p => p.IsActive).ToListAsync();
+    }
+
+    public async Task UpsertPoisAsync(IEnumerable<POI> pois)
+    {
+        var db = await GetDbAsync();
+        foreach (var p in pois)
+            await db.InsertOrReplaceAsync(p);
+    }
+
+    public async Task<POI?> GetPoiByIdAsync(int id)
+    {
+        var db = await GetDbAsync();
+        return await db.Table<POI>().FirstOrDefaultAsync(p => p.Id == id);
+    }
+
+    public async Task SaveUserAsync(User user)
+    {
+        var db = await GetDbAsync();
+        await db.InsertOrReplaceAsync(user);
+    }
+
+    public async Task<User?> GetCurrentUserAsync()
+    {
+        var db = await GetDbAsync();
+        return await db.Table<User>().FirstOrDefaultAsync();
+    }
+
+    public async Task ClearUserAsync()
+    {
+        var db = await GetDbAsync();
+        await db.DeleteAllAsync<User>();
+    }
+
+    public async Task AddPlaybackHistoryAsync(PlaybackHistory h)
+    {
+        var db = await GetDbAsync();
+        await db.InsertAsync(h);
+    }
+
+    public async Task<List<PlaybackHistory>> GetPlaybackHistoryAsync(int limit = 50)
+    {
+        var db = await GetDbAsync();
+        return await db.Table<PlaybackHistory>()
+            .OrderByDescending(h => h.PlayedAt).Take(limit).ToListAsync();
+    }
+
+    public async Task AddGeofenceEventAsync(GeofenceEvent evt)
+    {
+        var db = await GetDbAsync();
+        await db.InsertAsync(evt);
     }
 }

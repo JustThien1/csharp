@@ -1,31 +1,55 @@
 ﻿using TourGuideHCM.App.Models;
-using TourGuideHCM.App.Services;
+using TourGuideHCM.App.Services.Interfaces;
 
 namespace TourGuideHCM.App.Views;
 
 public partial class PoiBottomSheet : ContentPage
 {
-    private readonly INarrationService _narrationService;
-    private readonly Poi _poi;
+    private readonly INarrationService _narration;
+    private readonly IApiService _api;
+    private POI? _poi;
 
-    public PoiBottomSheet(Poi poi)
+    // Constructor cho DI
+    public PoiBottomSheet(INarrationService narration, IApiService api)
     {
         InitializeComponent();
-        BindingContext = _poi = poi;
+        _narration = narration;
+        _api = api;
+    }
 
-        _narrationService = App.Services.GetService<INarrationService>();
+    // Gọi sau khi tạo để set POI cần hiển thị
+    public void SetPoi(POI poi)
+    {
+        _poi = poi;
+        BindingContext = poi;
+    }
+
+    // Constructor tiện lợi khi truyền POI thẳng (dùng trong AppShell)
+    public PoiBottomSheet(POI poi, INarrationService narration, IApiService api)
+        : this(narration, api)
+    {
+        SetPoi(poi);
     }
 
     private async void OnSpeakClicked(object sender, EventArgs e)
     {
-        if (_narrationService != null)
+        if (_poi is null) return;
+
+        await _narration.PlayAsync(new NarrationRequest
         {
-            await _narrationService.PlayNarrationForPoi(_poi.Id.ToString());
+            Poi = _poi,
+            Language = "vi",
+            TriggerType = "manual",
+            PreferAudioFile = true
+        });
 
-            var playback = App.Services.GetService<PlaybackService>();
-            var userId = Preferences.Get("userId", 0);
+        // Log playback lên API
+        var userId = Preferences.Get("userId", 0);
+        await _api.LogPlaybackAsync(userId, _poi.Id, "manual");
+    }
 
-            await playback.LogPlayback(userId, _poi.Id);
-        }
+    private async void OnCloseClicked(object sender, EventArgs e)
+    {
+        await Navigation.PopModalAsync(animated: true);
     }
 }

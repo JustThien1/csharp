@@ -1,16 +1,73 @@
-﻿namespace TourGuideHCM.App.Models;
+﻿using SQLite;
 
-public class Poi
+// KHÔNG dùng using System.ComponentModel.DataAnnotations
+// KHÔNG dùng using Microsoft.EntityFrameworkCore
+// Các attribute [Table], [PrimaryKey], [NotNull], [Ignore] đều từ sqlite-net-pcl
+
+namespace TourGuideHCM.App.Models;
+
+[Table("POIs")]
+public class POI
 {
+    [PrimaryKey]
     public int Id { get; set; }
+
     public string Name { get; set; } = string.Empty;
+
     public string Description { get; set; } = string.Empty;
+
+    public string Address { get; set; } = string.Empty;
+
     public double Lat { get; set; }
+
     public double Lng { get; set; }
+
     public double Radius { get; set; } = 100;
+
     public int Priority { get; set; } = 1;
-    public string? AudioUrl { get; set; }
-    public string? NarrationText { get; set; }
-    public string Language { get; set; } = "vi";
+
     public string? ImageUrl { get; set; }
+
+    public string? AudioUrl { get; set; }
+
+    public string? NarrationText { get; set; }
+
+    public string Language { get; set; } = "vi";
+
+    public string? OpeningHours { get; set; }
+
+    public decimal? TicketPrice { get; set; }
+
+    public bool IsActive { get; set; } = true;
+
+    public int CategoryId { get; set; }
+
+    // ── Runtime-only ─────────────────────────────────────────────────────────
+
+    [Ignore]
+    public string CategoryName { get; set; } = string.Empty;
+
+    [Ignore]
+    public double? DistanceMeters { get; set; }
+
+    [Ignore]
+    public bool IsNearby { get; set; }
+
+    [Ignore]
+    public bool IsHighlighted { get; set; }
+
+    [Ignore]
+    public string DistanceDisplay => DistanceMeters.HasValue
+        ? DistanceMeters.Value < 1000
+            ? $"{DistanceMeters.Value:F0}m"
+            : $"{DistanceMeters.Value / 1000:F1}km"
+        : string.Empty;
+
+    [Ignore]
+    public string ShortDescription => string.IsNullOrEmpty(Description) ? string.Empty
+        : Description.Length > 100 ? Description[..100] + "…" : Description;
+
+    [Ignore]
+    public string TicketDisplay => TicketPrice is null or 0 ? "Miễn phí"
+        : $"{TicketPrice:N0}đ";
 }

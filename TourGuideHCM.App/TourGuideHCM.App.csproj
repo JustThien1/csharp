@@ -24,11 +24,14 @@
 
 		<PackageReference Include="Microsoft.EntityFrameworkCore.Sqlite" Version="8.0.8" />
 		<PackageReference Include="Microsoft.EntityFrameworkCore.Tools" Version="8.0.8" />
+		<PackageReference Include="Plugin.Maui.Audio" Version="3.0.0" />
 
-		<PackageReference Include="Refit" Version="7.0.0" />
+		
 
 		<PackageReference Include="Shiny.Hosting.Maui" Version="3.0.0" />
 		<PackageReference Include="Shiny.Locations" Version="3.0.0" />
+		<PackageReference Include="sqlite-net-pcl" Version="1.9.172" />
+		<PackageReference Include="SQLitePCLRaw.bundle_green" Version="2.1.8" />
 	</ItemGroup>
 
 	<!-- ✅ THÊM Ở ĐÂY -->
@@ -36,13 +39,13 @@
 		<MauiAsset Include="Resources\Raw\**\*.*" LogicalName="%(RecursiveDir)%(Filename)%(Extension)" />
 	</ItemGroup>
 	<ItemGroup>
-	  <MauiXaml Update="PoiDetailPage.xaml">
-	    <Generator>MSBuild:Compile</Generator>
-	  </MauiXaml>
 	  <MauiXaml Update="Views\LoginPage.xaml">
 	    <Generator>MSBuild:Compile</Generator>
 	  </MauiXaml>
 	  <MauiXaml Update="Views\PoiBottomSheet.xaml">
+	    <Generator>MSBuild:Compile</Generator>
+	  </MauiXaml>
+	  <MauiXaml Update="Views\PoiDetailPage.xaml">
 	    <Generator>MSBuild:Compile</Generator>
 	  </MauiXaml>
 	  <MauiXaml Update="Views\PoiListPage.xaml">
@@ -51,6 +54,9 @@
 	  <MauiXaml Update="Views\RegisterPage.xaml">
 	    <Generator>MSBuild:Compile</Generator>
 	  </MauiXaml>
+	</ItemGroup>
+	<ItemGroup>
+	  <Folder Include="Data\" />
 	</ItemGroup>
 
 </Project>

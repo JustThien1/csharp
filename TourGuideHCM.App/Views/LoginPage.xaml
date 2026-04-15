@@ -1,17 +1,90 @@
-<ContentPage 
-    xmlns="http://schemas.microsoft.com/dotnet/2021/maui"
-    xmlns:x="http://schemas.microsoft.com/winfx/2009/xaml"
-    x:Class="TourGuideHCM.App.Views.LoginPage">
+<?xml version="1.0" encoding="utf-8" ?>
+<ContentPage xmlns="http://schemas.microsoft.com/dotnet/2021/maui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2009/xaml"
+             x:Class="TourGuideHCM.App.Views.LoginPage"
+             Shell.NavBarIsVisible="False"
+             BackgroundColor="{AppThemeBinding Light=#F0F4FF, Dark=#0D0D1A}">
 
-    <VerticalStackLayout Padding="30" Spacing="10">
+    <ScrollView>
+        <VerticalStackLayout Padding="32" Spacing="0"
+                             VerticalOptions="Center" MinimumHeightRequest="600">
 
-        <Label Text="Đăng nhập" FontSize="24"/>
+            <!-- Logo -->
+            <VerticalStackLayout Spacing="8" Margin="0,0,0,48">
+                <Label Text="🏛️" FontSize="56" HorizontalOptions="Center"/>
+                <Label Text="TourGuide HCM" FontSize="28" FontAttributes="Bold"
+                       HorizontalOptions="Center"
+                       TextColor="{AppThemeBinding Light=#1565C0, Dark=#90CAF9}"/>
+                <Label Text="Khám phá Thành phố Hồ Chí Minh"
+                       FontSize="14" HorizontalOptions="Center"
+                       TextColor="{AppThemeBinding Light=#666, Dark=#AAA}"/>
+            </VerticalStackLayout>
 
-        <Entry x:Name="UsernameEntry" Placeholder="Username"/>
-        <Entry x:Name="PasswordEntry" Placeholder="Password" IsPassword="True"/>
+            <!-- Card -->
+            <Frame CornerRadius="20" Padding="24" HasShadow="True"
+                   BorderColor="Transparent"
+                   BackgroundColor="{AppThemeBinding Light=White, Dark=#1A1A2E}">
+                <VerticalStackLayout Spacing="16">
 
-        <Button Text="Login" Clicked="OnLoginClicked"/>
-        <Button Text="Register" Clicked="OnGoRegisterClicked"/>
+                    <Label Text="Đăng nhập" FontSize="20" FontAttributes="Bold"
+                           TextColor="{AppThemeBinding Light=#1A1A1A, Dark=White}"
+                           Margin="0,0,0,8"/>
 
-    </VerticalStackLayout>
+                    <!-- Tên đăng nhập -->
+                    <VerticalStackLayout Spacing="6">
+                        <Label Text="Tên đăng nhập" FontSize="13" TextColor="#888"/>
+                        <Frame CornerRadius="12" Padding="12,0" HasShadow="False"
+                               BorderColor="{AppThemeBinding Light=#DDD, Dark=#333}"
+                               BackgroundColor="{AppThemeBinding Light=#F9F9F9, Dark=#252535}">
+                            <Entry x:Name="UsernameEntry"
+                                   Placeholder="Tên đăng nhập"
+                                   ReturnType="Next"
+                                   BackgroundColor="Transparent" HeightRequest="44"/>
+                        </Frame>
+                    </VerticalStackLayout>
+
+                    <!-- Mật khẩu -->
+                    <VerticalStackLayout Spacing="6">
+                        <Label Text="Mật khẩu" FontSize="13" TextColor="#888"/>
+                        <Frame CornerRadius="12" Padding="12,0" HasShadow="False"
+                               BorderColor="{AppThemeBinding Light=#DDD, Dark=#333}"
+                               BackgroundColor="{AppThemeBinding Light=#F9F9F9, Dark=#252535}">
+                            <Entry x:Name="PasswordEntry"
+                                   Placeholder="••••••••"
+                                   IsPassword="True" ReturnType="Done"
+                                   BackgroundColor="Transparent" HeightRequest="44"/>
+                        </Frame>
+                    </VerticalStackLayout>
+
+                    <Label x:Name="ErrorLabel" IsVisible="False"
+                           FontSize="13" TextColor="#E53935"
+                           HorizontalOptions="Center"/>
+
+                    <Button x:Name="LoginBtn" Text="Đăng nhập"
+                            BackgroundColor="#1565C0" TextColor="White"
+                            CornerRadius="14" HeightRequest="52"
+                            FontSize="16" FontAttributes="Bold" Margin="0,8,0,0"/>
+
+                    <Button x:Name="GuestBtn" Text="Tiếp tục với tư cách khách"
+                            BackgroundColor="Transparent"
+                            TextColor="{AppThemeBinding Light=#1565C0, Dark=#90CAF9}"
+                            FontSize="14" HeightRequest="44"/>
+
+                    <HorizontalStackLayout HorizontalOptions="Center" Spacing="4">
+                        <Label Text="Chưa có tài khoản?"
+                               FontSize="13" TextColor="#888" VerticalOptions="Center"/>
+                        <Button x:Name="RegisterBtn" Text="Đăng ký"
+                                BackgroundColor="Transparent" TextColor="#1565C0"
+                                FontSize="13" Padding="4,0" HeightRequest="36"/>
+                    </HorizontalStackLayout>
+
+                </VerticalStackLayout>
+            </Frame>
+
+            <ActivityIndicator x:Name="LoadingIndicator"
+                               IsRunning="False" IsVisible="False"
+                               Color="#1565C0" Margin="0,24,0,0"
+                               HorizontalOptions="Center"/>
+        </VerticalStackLayout>
+    </ScrollView>
 </ContentPage>
