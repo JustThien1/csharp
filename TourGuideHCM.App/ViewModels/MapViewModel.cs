@@ -17,20 +17,25 @@ public class MapViewModel : INotifyPropertyChanged
 
     public ObservableCollection<POI> Pois { get; } = new();
 
+    // ── Nearest POI ───────────────────────────────────────────────────────────
     private POI? _nearestPoi;
     public POI? NearestPoi
     {
         get => _nearestPoi;
-        set { _nearestPoi = value; OnPropertyChanged(); }
+        set { _nearestPoi = value; OnPropertyChanged(); OnPropertyChanged(nameof(NearestPoiVisible)); }
     }
+    public bool NearestPoiVisible => NearestPoi is not null;
 
+    // ── Selected POI (detail panel) ───────────────────────────────────────────
     private POI? _selectedPoi;
     public POI? SelectedPoi
     {
         get => _selectedPoi;
         set { _selectedPoi = value; OnPropertyChanged(); OnPropertyChanged(nameof(IsPoiDetailVisible)); }
     }
+    public bool IsPoiDetailVisible => SelectedPoi is not null;
 
+    // ── Trạng thái ────────────────────────────────────────────────────────────
     private bool _isNarrating;
     public bool IsNarrating
     {
@@ -52,12 +57,14 @@ public class MapViewModel : INotifyPropertyChanged
         set { _statusMessage = value; OnPropertyChanged(); }
     }
 
+    // ── Vị trí user ──────────────────────────────────────────────────────────
     private double _userLat = 10.7769;
     public double UserLat { get => _userLat; set { _userLat = value; OnPropertyChanged(); } }
 
     private double _userLng = 106.7009;
     public double UserLng { get => _userLng; set { _userLng = value; OnPropertyChanged(); } }
 
+    // ── Ngôn ngữ ─────────────────────────────────────────────────────────────
     private string _selectedLanguage = "vi";
     public string SelectedLanguage
     {
@@ -65,21 +72,33 @@ public class MapViewModel : INotifyPropertyChanged
         set { _selectedLanguage = value; OnPropertyChanged(); }
     }
 
-    private bool _preferAudioFile = true;
-    public bool PreferAudioFile
+    public bool PreferAudioFile { get; set; } = true;
+
+    // ── Bán kính kích hoạt TTS (mét) ─────────────────────────────────────────
+    private double _activationRadius = 100;
+    public double ActivationRadius
     {
-        get => _preferAudioFile;
-        set { _preferAudioFile = value; OnPropertyChanged(); }
+        get => _activationRadius;
+        set
+        {
+            _activationRadius = value;
+            OnPropertyChanged();
+            OnPropertyChanged(nameof(ActivationRadiusLabel));
+            // Cập nhật radius cho tất cả POI
+            foreach (var poi in Pois)
+                poi.Radius = value;
+        }
     }
+    public string ActivationRadiusLabel => $"{_activationRadius:F0}m";
 
-    public bool IsPoiDetailVisible => SelectedPoi is not null;
-
+    // ── Commands ──────────────────────────────────────────────────────────────
     public ICommand LoadPoisCommand { get; }
     public ICommand SelectPoiCommand { get; }
     public ICommand ClosePoiDetailCommand { get; }
     public ICommand PlayNarrationCommand { get; }
     public ICommand StopNarrationCommand { get; }
     public ICommand ToggleLanguageCommand { get; }
+    public ICommand ToggleFavoriteCommand { get; }
 
     public MapViewModel(IApiService api, IDatabaseService db,
         IGeofenceService geofence, INarrationService narration, IAuthService auth)
@@ -100,6 +119,15 @@ public class MapViewModel : INotifyPropertyChanged
         StopNarrationCommand = new Command(async () => await _narration.StopAsync());
         ToggleLanguageCommand = new Command(() =>
             SelectedLanguage = SelectedLanguage == "vi" ? "en" : "vi");
+
+        // Yêu thích: toggle IsFavorite và lưu DB
+        ToggleFavoriteCommand = new Command<POI>(async p =>
+        {
+            if (p is null) return;
+            p.IsFavorite = !p.IsFavorite;
+            OnPropertyChanged(nameof(SelectedPoi)); // refresh UI
+            await _db.UpsertPoisAsync(new List<POI> { p });
+        });
 
         _geofence.GeofenceTriggered += OnGeofenceTriggered;
         _geofence.LocationUpdated += OnLocationUpdated;
@@ -122,14 +150,18 @@ public class MapViewModel : INotifyPropertyChanged
         StatusMessage = "Đang tải điểm tham quan...";
         try
         {
-            // Hiển thị cache trước
             var cached = await _db.GetCachedPoisAsync();
             if (cached.Count > 0) UpdateCollection(cached);
 
-            // Tải mới từ API
             var fresh = await _api.GetPoisAsync();
             if (fresh.Count > 0)
             {
+                // Giữ lại trạng thái IsFavorite từ cache
+                foreach (var f in fresh)
+                {
+                    var local = cached.FirstOrDefault(c => c.Id == f.Id);
+                    if (local is not null) f.IsFavorite = local.IsFavorite;
+                }
                 await _db.UpsertPoisAsync(fresh);
                 UpdateCollection(fresh);
                 StatusMessage = $"Đã tải {fresh.Count} điểm tham quan";
@@ -143,32 +175,17 @@ public class MapViewModel : INotifyPropertyChanged
                 StatusMessage = "Không có dữ liệu";
             }
 
-            // Bắt đầu geofence – bọc try-catch riêng,
-            // không để lỗi GPS permission crash toàn app
             if (Pois.Count > 0)
             {
-                try
-                {
-                    await _geofence.StartAsync(Pois);
-                }
+                try { await _geofence.StartAsync(Pois); }
                 catch (UnauthorizedAccessException)
-                {
-                    StatusMessage = "Chưa cấp quyền vị trí – thuyết minh tự động bị tắt";
-                }
+                { StatusMessage = "Chưa cấp quyền vị trí – thuyết minh tự động bị tắt"; }
                 catch (Exception ex)
-                {
-                    System.Diagnostics.Debug.WriteLine($"[Geofence] {ex.Message}");
-                }
+                { System.Diagnostics.Debug.WriteLine($"[Geofence] {ex.Message}"); }
             }
         }
-        catch (Exception ex)
-        {
-            StatusMessage = $"Lỗi: {ex.Message}";
-        }
-        finally
-        {
-            IsLoading = false;
-        }
+        catch (Exception ex) { StatusMessage = $"Lỗi: {ex.Message}"; }
+        finally { IsLoading = false; }
     }
 
     private void UpdateCollection(List<POI> pois)
@@ -183,8 +200,11 @@ public class MapViewModel : INotifyPropertyChanged
 
     private async void OnGeofenceTriggered(object? sender, GeofenceTriggeredEventArgs e)
     {
+        // Chỉ trigger nếu trong bán kính đã cài đặt
+        if (e.Poi.DistanceMeters > _activationRadius) return;
+
         NearestPoi = e.Poi;
-        foreach (var p in Pois) p.IsHighlighted = p.Id == e.Poi.Id;
+        HighlightNearest(e.Poi.Id);
         await PlayNarrationAsync(e.Poi, e.TriggerType);
     }
 
@@ -192,7 +212,6 @@ public class MapViewModel : INotifyPropertyChanged
     {
         UserLat = e.Lat;
         UserLng = e.Lng;
-
         if (Pois.Count == 0) return;
 
         POI? nearest = null;
@@ -211,14 +230,19 @@ public class MapViewModel : INotifyPropertyChanged
         if (nearest is not null)
         {
             NearestPoi = nearest;
-            foreach (var p in Pois) p.IsHighlighted = p.Id == nearest.Id;
+            HighlightNearest(nearest.Id);
         }
+    }
+
+    private void HighlightNearest(int poiId)
+    {
+        foreach (var p in Pois)
+            p.IsHighlighted = p.Id == poiId;
     }
 
     public async Task PlayNarrationAsync(POI poi, string triggerType = "manual")
     {
         if (IsNarrating) return;
-
         await _narration.PlayAsync(new NarrationRequest
         {
             Poi = poi,
@@ -226,7 +250,6 @@ public class MapViewModel : INotifyPropertyChanged
             TriggerType = triggerType,
             PreferAudioFile = PreferAudioFile
         });
-
         var userId = _auth.CurrentUser?.Id ?? 0;
         _ = _api.LogPlaybackAsync(userId, poi.Id, triggerType);
     }

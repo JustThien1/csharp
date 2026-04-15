@@ -99,7 +99,9 @@ namespace TourGuideHCM.API.Controllers
             if (poi == null)
                 return Ok(new { triggered = false });
 
-            _service.LogPlayback(userId, poi.Id, "geofence");
+            // Chỉ log khi có user hợp lệ
+            if (userId > 0)
+                _service.LogPlayback(userId, poi.Id, "geofence");
 
             return Ok(new
             {

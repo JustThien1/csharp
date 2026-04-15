@@ -2,8 +2,6 @@
 using TourGuideHCM.App.Models;
 using TourGuideHCM.App.Services.Interfaces;
 
-// KHÔNG dùng "using Android.Media" – gây lỗi cross-platform
-
 namespace TourGuideHCM.App.Services;
 
 public class NarrationService : INarrationService, IDisposable
@@ -29,7 +27,7 @@ public class NarrationService : INarrationService, IDisposable
 
     public async Task PlayAsync(NarrationRequest request)
     {
-        if (!await _lock.WaitAsync(300)) return;
+        if (!await _lock.WaitAsync(5000)) return;
 
         try
         {
@@ -42,17 +40,30 @@ public class NarrationService : INarrationService, IDisposable
             var poi = request.Poi;
             var audioUrl = _api.ResolveAudioUrl(poi.AudioUrl);
 
+            // Debug log
+            System.Diagnostics.Debug.WriteLine($"[Narration] POI: {poi.Name}");
+            System.Diagnostics.Debug.WriteLine($"[Narration] AudioUrl raw: {poi.AudioUrl}");
+            System.Diagnostics.Debug.WriteLine($"[Narration] AudioUrl resolved: {audioUrl}");
+            System.Diagnostics.Debug.WriteLine($"[Narration] NarrationText: {poi.NarrationText}");
+            System.Diagnostics.Debug.WriteLine($"[Narration] PreferAudioFile: {request.PreferAudioFile}");
+
+            bool audioSuccess = false;
+
             if (request.PreferAudioFile && !string.IsNullOrEmpty(audioUrl))
             {
-                await PlayAudioUrlAsync(audioUrl, token);
-
-                // Fallback TTS nếu audio thất bại
-                if (!IsPlayingAudio && !string.IsNullOrEmpty(poi.NarrationText))
-                    await PlayTtsAsync(poi.NarrationText, request.Language, token);
+                audioSuccess = await PlayAudioUrlAsync(audioUrl, token);
+                System.Diagnostics.Debug.WriteLine($"[Narration] Audio result: {audioSuccess}");
             }
-            else
+
+            // Fallback TTS nếu không có audio hoặc audio thất bại
+            if (!audioSuccess)
             {
-                var text = poi.NarrationText ?? poi.Description;
+                var text = !string.IsNullOrEmpty(poi.NarrationText)
+                    ? poi.NarrationText
+                    : poi.Description;
+
+                System.Diagnostics.Debug.WriteLine($"[Narration] TTS fallback, text: {text?.Substring(0, Math.Min(50, text?.Length ?? 0))}");
+
                 if (!string.IsNullOrEmpty(text))
                     await PlayTtsAsync(text, request.Language, token);
             }
@@ -62,8 +73,12 @@ public class NarrationService : INarrationService, IDisposable
                 PoiId = poi.Id,
                 PoiName = poi.Name,
                 TriggerType = request.TriggerType,
-                WasAudio = IsPlayingAudio
+                WasAudio = audioSuccess
             });
+        }
+        catch (Exception ex)
+        {
+            System.Diagnostics.Debug.WriteLine($"[Narration] PlayAsync error: {ex.Message}");
         }
         finally
         {
@@ -74,32 +89,48 @@ public class NarrationService : INarrationService, IDisposable
         }
     }
 
-    private async Task PlayAudioUrlAsync(string url, CancellationToken token)
+    /// <summary>Trả về true nếu phát thành công</summary>
+    private async Task<bool> PlayAudioUrlAsync(string url, CancellationToken token)
     {
         IAudioPlayer? player = null;
         try
         {
+            System.Diagnostics.Debug.WriteLine($"[Narration] Fetching audio: {url}");
             IsPlayingAudio = true;
+
             using var http = new System.Net.Http.HttpClient
             { Timeout = TimeSpan.FromSeconds(15) };
-            var stream = await http.GetStreamAsync(url, token);
+            var bytes = await Task.Run(() => http.GetByteArrayAsync(url, token).Result, token);
+            var stream = new System.IO.MemoryStream(bytes);
 
+            System.Diagnostics.Debug.WriteLine("[Narration] Stream OK, creating player...");
             player = _audioManager.CreatePlayer(stream);
 
-            // Plugin.Maui.Audio: dùng PlaybackEnded event thay vì IsPlaying loop
             var tcs = new TaskCompletionSource<bool>();
-            player.PlaybackEnded += (_, _) => tcs.TrySetResult(true);
+            player.PlaybackEnded += (_, _) =>
+            {
+                System.Diagnostics.Debug.WriteLine("[Narration] PlaybackEnded");
+                tcs.TrySetResult(true);
+            };
 
             player.Play();
+            System.Diagnostics.Debug.WriteLine("[Narration] player.Play() called");
 
             using var reg = token.Register(() => tcs.TrySetCanceled());
             await tcs.Task;
+            await Task.Delay(100);
+
+            return true;
         }
-        catch (OperationCanceledException) { player?.Stop(); }
+        catch (OperationCanceledException)
+        {
+            player?.Stop();
+            return false;
+        }
         catch (Exception ex)
         {
-            System.Diagnostics.Debug.WriteLine($"[Narration] Audio: {ex.Message}");
-            IsPlayingAudio = false;
+            System.Diagnostics.Debug.WriteLine($"[Narration] Audio error: {ex.Message}");
+            return false;
         }
         finally
         {
@@ -113,18 +144,24 @@ public class NarrationService : INarrationService, IDisposable
         try
         {
             IsSpeaking = true;
+            System.Diagnostics.Debug.WriteLine($"[Narration] TTS speaking: {language}");
+
             var locales = await TextToSpeech.GetLocalesAsync();
             var locale = locales.FirstOrDefault(l =>
                 l.Language.StartsWith(language, StringComparison.OrdinalIgnoreCase));
 
+            System.Diagnostics.Debug.WriteLine($"[Narration] TTS locale: {locale?.Language ?? "null"}");
+
             await TextToSpeech.Default.SpeakAsync(text,
                 new SpeechOptions { Locale = locale, Volume = 1f, Pitch = 1f },
                 token);
+
+            System.Diagnostics.Debug.WriteLine("[Narration] TTS done");
         }
         catch (OperationCanceledException) { }
         catch (Exception ex)
         {
-            System.Diagnostics.Debug.WriteLine($"[Narration] TTS: {ex.Message}");
+            System.Diagnostics.Debug.WriteLine($"[Narration] TTS error: {ex.Message}");
         }
         finally { IsSpeaking = false; }
     }
@@ -134,7 +171,6 @@ public class NarrationService : INarrationService, IDisposable
     private async Task StopCoreAsync()
     {
         _cts?.Cancel();
-        // TextToSpeech.Default.CancelAll() không tồn tại – dùng SpeakAsync với token cancel
         await Task.Delay(80);
         IsSpeaking = IsPlayingAudio = false;
     }

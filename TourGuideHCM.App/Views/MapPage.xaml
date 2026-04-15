@@ -2,7 +2,6 @@
 <ContentPage xmlns="http://schemas.microsoft.com/dotnet/2021/maui"
              xmlns:x="http://schemas.microsoft.com/winfx/2009/xaml"
              xmlns:maps="clr-namespace:Microsoft.Maui.Controls.Maps;assembly=Microsoft.Maui.Controls.Maps"
-             xmlns:vm="clr-namespace:TourGuideHCM.App.ViewModels"
              x:Class="TourGuideHCM.App.Views.MapPage"
              Title="Bản đồ tham quan"
              Shell.NavBarIsVisible="True">
@@ -19,178 +18,172 @@
 
     <Grid RowDefinitions="*,Auto">
 
-        <!-- ── Bản đồ ── -->
+        <!-- Bản đồ -->
         <Grid Grid.Row="0">
             <maps:Map x:Name="MainMap"
                       IsShowingUser="True"
                       MapType="Street"
                       IsScrollEnabled="True"
-                      IsZoomEnabled="True">
-                <!-- Pins sẽ được thêm từ code-behind -->
-            </maps:Map>
+                      IsZoomEnabled="True"
+                      MapClicked="OnMapClicked"/>
 
             <!-- Loading overlay -->
             <Grid IsVisible="{Binding IsLoading}"
                   BackgroundColor="#80000000"
-                  HorizontalOptions="Fill"
-                  VerticalOptions="Fill">
+                  HorizontalOptions="Fill" VerticalOptions="Fill">
                 <VerticalStackLayout HorizontalOptions="Center" VerticalOptions="Center" Spacing="12">
                     <ActivityIndicator IsRunning="True" Color="White" WidthRequest="40" HeightRequest="40"/>
-                    <Label Text="{Binding StatusMessage}"
-                           TextColor="White"
-                           FontSize="14"
-                           HorizontalOptions="Center"/>
+                    <Label Text="{Binding StatusMessage}" TextColor="White" FontSize="14" HorizontalOptions="Center"/>
                 </VerticalStackLayout>
             </Grid>
 
-            <!-- Thanh trạng thái phía trên bản đồ -->
-            <Frame Margin="12,12,12,0"
-                   VerticalOptions="Start"
-                   HorizontalOptions="Fill"
-                   CornerRadius="12"
-                   Padding="12,8"
+            <!-- Thanh trạng thái phía trên -->
+            <Frame Margin="12,12,12,0" VerticalOptions="Start" HorizontalOptions="Fill"
+                   CornerRadius="12" Padding="12,8"
                    BackgroundColor="{AppThemeBinding Light=White, Dark=#2A2A2A}"
-                   HasShadow="True"
-                   BorderColor="Transparent">
-                <HorizontalStackLayout Spacing="8">
-                    <Image Source="location_pin.png" WidthRequest="18" HeightRequest="18"/>
-                    <Label Text="{Binding StatusMessage}"
-                           FontSize="13"
-                           TextColor="{AppThemeBinding Light=#555, Dark=#CCC}"
-                           VerticalOptions="Center"
-                           MaxLines="1"/>
-                </HorizontalStackLayout>
+                   HasShadow="True" BorderColor="Transparent">
+                <Label Text="{Binding StatusMessage}" FontSize="13"
+                       TextColor="{AppThemeBinding Light=#555, Dark=#CCC}"
+                       VerticalOptions="Center" MaxLines="1"/>
             </Frame>
 
-            <!-- Nút điều khiển góc dưới trái -->
+            <!-- Nút ngôn ngữ + Slider bán kính góc dưới trái -->
             <VerticalStackLayout Margin="12" VerticalOptions="End" HorizontalOptions="Start" Spacing="8">
-                <!-- Nút ngôn ngữ -->
                 <Frame CornerRadius="24" Padding="0" HasShadow="True" BorderColor="Transparent"
                        BackgroundColor="{AppThemeBinding Light=White, Dark=#2A2A2A}"
                        WidthRequest="48" HeightRequest="48">
                     <Button Command="{Binding ToggleLanguageCommand}"
-                            Text="{Binding SelectedLanguage, StringFormat='{0}'}"
-                            FontSize="12"
-                            FontAttributes="Bold"
+                            Text="{Binding SelectedLanguage}"
+                            FontSize="12" FontAttributes="Bold"
                             BackgroundColor="Transparent"
                             TextColor="{AppThemeBinding Light=#333, Dark=#EEE}"/>
                 </Frame>
-
-                <!-- TTS toggle -->
-                <Frame CornerRadius="24" Padding="8" HasShadow="True" BorderColor="Transparent"
+                <Frame CornerRadius="12" Padding="10,8" HasShadow="True" BorderColor="Transparent"
                        BackgroundColor="{AppThemeBinding Light=White, Dark=#2A2A2A}"
-                       WidthRequest="48" HeightRequest="48">
-                    <Switch IsToggled="{Binding UseTts}"
-                            Scale="0.7"
-                            HorizontalOptions="Center"
-                            VerticalOptions="Center"/>
+                       WidthRequest="160">
+                    <VerticalStackLayout Spacing="4">
+                        <Label Text="{Binding ActivationRadiusLabel, StringFormat='📡 Bán kính: {0}'}"
+                               FontSize="11" FontAttributes="Bold"
+                               TextColor="{AppThemeBinding Light=#333, Dark=#EEE}"
+                               HorizontalOptions="Center"/>
+                        <Slider Minimum="50" Maximum="500"
+                                Value="{Binding ActivationRadius}"
+                                ThumbColor="#1976D2"
+                                MinimumTrackColor="#1976D2"
+                                MaximumTrackColor="#CCCCCC"/>
+                    </VerticalStackLayout>
                 </Frame>
             </VerticalStackLayout>
+            <!-- Nút vị trí của tôi -->
+            <Frame Margin="12,0,12,72" VerticalOptions="End" HorizontalOptions="End"
+       CornerRadius="28" Padding="0" HasShadow="True" BorderColor="Transparent"
+       BackgroundColor="{AppThemeBinding Light=White, Dark=#2A2A2A}"
+       WidthRequest="56" HeightRequest="56">
+                <Button x:Name="MyLocationBtn"
+            Text="📍" FontSize="22"
+            BackgroundColor="Transparent"
+            Clicked="OnMyLocationClicked"/>
+            </Frame>
 
-            <!-- Nút dừng narration (hiện khi đang phát) -->
+            <!-- Nút dừng narration -->
             <Frame IsVisible="{Binding IsNarrating}"
-                   Margin="12"
-                   VerticalOptions="End"
-                   HorizontalOptions="End"
-                   CornerRadius="28"
-                   Padding="0"
-                   HasShadow="True"
-                   BorderColor="Transparent"
-                   BackgroundColor="#E53935"
-                   WidthRequest="56" HeightRequest="56">
+                   Margin="12" VerticalOptions="End" HorizontalOptions="End"
+                   CornerRadius="28" Padding="0" HasShadow="True" BorderColor="Transparent"
+                   BackgroundColor="#E53935" WidthRequest="56" HeightRequest="56">
                 <Button Command="{Binding StopNarrationCommand}"
-                        Text="■"
-                        FontSize="20"
-                        TextColor="White"
-                        BackgroundColor="Transparent"/>
+                        Text="■" FontSize="20" TextColor="White" BackgroundColor="Transparent"/>
             </Frame>
         </Grid>
 
-        <!-- ── Panel POI chi tiết (slide up) ── -->
-        <Grid Grid.Row="0"
-              VerticalOptions="End"
-              IsVisible="{Binding IsPoiDetailVisible}"
-              Margin="0,0,0,0">
-            <Frame Style="{StaticResource CardStyle}"
-                   Margin="0,0,0,0"
-                   CornerRadius="20">
-                <Grid RowDefinitions="Auto,Auto,Auto,Auto" ColumnDefinitions="*,Auto" RowSpacing="8">
-
-                    <!-- Ảnh POI -->
-                    <Image Grid.Row="0" Grid.ColumnSpan="2"
+        <!-- Panel POI chi tiết (khi nhấn pin) -->
+        <Grid Grid.Row="0" VerticalOptions="End" IsVisible="{Binding IsPoiDetailVisible}">
+            <Frame Style="{StaticResource CardStyle}" CornerRadius="20">
+                <Grid RowDefinitions="Auto,Auto,Auto,Auto,Auto"
+                      ColumnDefinitions="*,Auto,Auto" RowSpacing="8">
+                    <Image Grid.Row="0" Grid.ColumnSpan="3"
                            Source="{Binding SelectedPoi.ImageUrl}"
-                           HeightRequest="180"
-                           Aspect="AspectFill"/>
-
-                    <!-- Tên POI -->
+                           HeightRequest="160" Aspect="AspectFill"/>
                     <Label Grid.Row="1" Grid.Column="0"
                            Text="{Binding SelectedPoi.Name}"
-                           FontSize="18"
-                           FontAttributes="Bold"
+                           FontSize="18" FontAttributes="Bold"
                            TextColor="{AppThemeBinding Light=#1A1A1A, Dark=White}"/>
-
-                    <!-- Nút đóng -->
                     <Button Grid.Row="1" Grid.Column="1"
+                            Command="{Binding ToggleFavoriteCommand}"
+                            CommandParameter="{Binding SelectedPoi}"
+                            Text="{Binding SelectedPoi.FavoriteIcon}"
+                            FontSize="20" BackgroundColor="Transparent"
+                            WidthRequest="40" HeightRequest="40"/>
+                    <Button Grid.Row="1" Grid.Column="2"
                             Command="{Binding ClosePoiDetailCommand}"
-                            Text="✕"
-                            FontSize="16"
-                            TextColor="#999"
+                            Text="✕" FontSize="16" TextColor="#999"
                             BackgroundColor="Transparent"
                             WidthRequest="36" HeightRequest="36"/>
-
-                    <!-- Khoảng cách + category -->
-                    <HorizontalStackLayout Grid.Row="2" Grid.ColumnSpan="2" Spacing="12">
-                        <Label Text="{Binding SelectedPoi.Category}"
-                               FontSize="12"
-                               TextColor="White"
-                               BackgroundColor="#4CAF50"
-                               Padding="8,4"/>
-                        <Label Text="{Binding SelectedPoi.DistanceMeters, StringFormat='{0:F0}m'}"
-                               FontSize="12"
-                               TextColor="#666"
-                               VerticalOptions="Center"/>
+                    <HorizontalStackLayout Grid.Row="2" Grid.ColumnSpan="3" Spacing="8">
+                        <Label Text="{Binding SelectedPoi.CategoryName}"
+                               FontSize="12" TextColor="White"
+                               BackgroundColor="#4CAF50" Padding="8,4"/>
+                        <Label Text="{Binding SelectedPoi.DistanceDisplay}"
+                               FontSize="12" TextColor="#666" VerticalOptions="Center"/>
+                        <Label Text="{Binding SelectedPoi.TicketDisplay}"
+                               FontSize="12" TextColor="#1976D2" VerticalOptions="Center"/>
                     </HorizontalStackLayout>
-
-                    <!-- Mô tả -->
-                    <Label Grid.Row="3" Grid.ColumnSpan="2"
-                           Text="{Binding SelectedPoi.ShortDescription}"
-                           FontSize="14"
-                           LineBreakMode="TailTruncation"
-                           MaxLines="3"
+                    <Label Grid.Row="3" Grid.ColumnSpan="3"
+                           Text="{Binding SelectedPoi.Description}"
+                           FontSize="14" LineBreakMode="TailTruncation" MaxLines="3"
                            TextColor="{AppThemeBinding Light=#444, Dark=#BBB}"/>
+                    <Button Grid.Row="4" Grid.ColumnSpan="3"
+                            Command="{Binding PlayNarrationCommand}"
+                            CommandParameter="{Binding SelectedPoi}"
+                            Text="▶  Nghe thuyết minh"
+                            FontSize="14" BackgroundColor="#1976D2"
+                            TextColor="White" CornerRadius="12"
+                            HorizontalOptions="Fill"/>
                 </Grid>
             </Frame>
         </Grid>
 
-        <!-- ── Bottom bar: POI gần nhất ── -->
-        <Frame Grid.Row="1"
-               Style="{StaticResource CardStyle}"
+        <!-- Bottom bar: POI gần nhất -->
+        <Frame Grid.Row="1" Style="{StaticResource CardStyle}"
                Margin="12,0,12,12"
-               IsVisible="{Binding NearestPoi, Converter={x:StaticResource NullToBoolConverter}}">
-            <Grid ColumnDefinitions="*,Auto">
-                <VerticalStackLayout Grid.Column="0" Spacing="4">
-                    <Label Text="Điểm gần nhất"
-                           FontSize="11"
-                           TextColor="#999"/>
+               BackgroundColor="{AppThemeBinding Light=White, Dark=#1E1E1E}">
+            <Grid ColumnDefinitions="Auto,*,Auto,Auto">
+
+                <!-- Indicator cam -->
+                <BoxView Grid.Column="0"
+                         WidthRequest="6" CornerRadius="3"
+                         BackgroundColor="#FF6F00"
+                         VerticalOptions="Fill"
+                         Margin="0,0,10,0"/>
+
+                <!-- Thông tin POI -->
+                <VerticalStackLayout Grid.Column="1" Spacing="2">
+                    <Label Text="📍 Điểm gần nhất" FontSize="11" TextColor="#999"/>
                     <Label Text="{Binding NearestPoi.Name}"
-                           FontSize="15"
-                           FontAttributes="Bold"
+                           FontSize="15" FontAttributes="Bold"
                            TextColor="{AppThemeBinding Light=#1A1A1A, Dark=White}"/>
-                    <Label Text="{Binding NearestPoi.DistanceMeters, StringFormat='Cách {0:F0}m'}"
-                           FontSize="12"
-                           TextColor="#666"/>
+                    <Label Text="{Binding NearestPoi.DistanceDisplay}"
+                           FontSize="12" TextColor="#1976D2"/>
                 </VerticalStackLayout>
 
-                <Button Grid.Column="1"
+                <!-- Nút tim yêu thích -->
+                <Button Grid.Column="2"
+                        Command="{Binding ToggleFavoriteCommand}"
+                        CommandParameter="{Binding NearestPoi}"
+                        Text="{Binding NearestPoi.FavoriteIcon}"
+                        FontSize="22"
+                        BackgroundColor="Transparent"
+                        WidthRequest="44" HeightRequest="44"
+                        Padding="0"
+                        VerticalOptions="Center"/>
+
+                <!-- Nút nghe -->
+                <Button Grid.Column="3"
                         Command="{Binding PlayNarrationCommand}"
                         CommandParameter="{Binding NearestPoi}"
                         Text="▶ Nghe"
-                        FontSize="14"
-                        BackgroundColor="#1976D2"
-                        TextColor="White"
-                        CornerRadius="20"
-                        Padding="16,8"
-                        IsEnabled="{Binding IsNarrating, Converter={x:StaticResource InvertBoolConverter}}"/>
+                        FontSize="14" BackgroundColor="#1976D2"
+                        TextColor="White" CornerRadius="20" Padding="16,8"
+                        VerticalOptions="Center"/>
             </Grid>
         </Frame>
 

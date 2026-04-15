@@ -45,7 +45,8 @@ public partial class PoiBottomSheet : ContentPage
 
         // Log playback lên API
         var userId = Preferences.Get("userId", 0);
-        await _api.LogPlaybackAsync(userId, _poi.Id, "manual");
+        if (userId > 0)
+            await _api.LogPlaybackAsync(userId, _poi.Id, "manual");
     }
 
     private async void OnCloseClicked(object sender, EventArgs e)
