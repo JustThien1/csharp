@@ -1,4 +1,5 @@
-﻿using TourGuideHCM.App.Services.Interfaces;
+﻿using TourGuideHCM.App.Services;
+using TourGuideHCM.App.Services.Interfaces;
 
 namespace TourGuideHCM.App.Views;
 
@@ -10,11 +11,33 @@ public partial class LoginPage : ContentPage
     {
         InitializeComponent();
         _auth = auth;
+
         LoginBtn.Clicked += async (_, _) => await DoLoginAsync();
         GuestBtn.Clicked += async (_, _) => await GoToMainAsync();
-        RegisterBtn.Clicked += async (_, _) =>
-            await Shell.Current.GoToAsync("//RegisterPage");
+        RegisterBtn.Clicked += async (_, _) => await Shell.Current.GoToAsync("//RegisterPage");
         PasswordEntry.Completed += async (_, _) => await DoLoginAsync();
+
+        LanguageService.LanguageChanged += (_, _) => RefreshText();
+        RefreshText();
+    }
+
+    private void OnLangClicked(object sender, EventArgs e)
+    {
+        LanguageService.Instance.Toggle();
+    }
+
+    private void RefreshText()
+    {
+        MainThread.BeginInvokeOnMainThread(() =>
+        {
+            TitleLabel.Text = AppLanguage.LoginTitle;
+            UsernameEntry.Placeholder = AppLanguage.Username;
+            PasswordEntry.Placeholder = AppLanguage.Password;
+            LoginBtn.Text = AppLanguage.LoginBtn;
+            GuestBtn.Text = AppLanguage.GuestBtn;
+            RegisterBtn.Text = AppLanguage.RegisterBtn;
+            LangBtn.Text = LanguageService.Instance.ToggleLabel;
+        });
     }
 
     private async Task DoLoginAsync()
@@ -23,10 +46,7 @@ public partial class LoginPage : ContentPage
         var password = PasswordEntry.Text;
 
         if (string.IsNullOrEmpty(username) || string.IsNullOrEmpty(password))
-        {
-            ShowError("Vui lòng nhập tên đăng nhập và mật khẩu.");
-            return;
-        }
+        { ShowError(AppLanguage.LoginRequired); return; }
 
         SetLoading(true);
         try
@@ -34,27 +54,21 @@ public partial class LoginPage : ContentPage
             var ok = await _auth.LoginAsync(username, password);
             if (ok)
             {
-                // Lưu username để AppShell biết đã login
                 Preferences.Set("username", username);
                 Preferences.Set("userId", _auth.CurrentUser?.Id ?? 0);
                 await GoToMainAsync();
             }
-            else
-            {
-                ShowError("Tên đăng nhập hoặc mật khẩu không đúng.");
-            }
+            else ShowError(AppLanguage.LoginError);
         }
-        catch (Exception ex) { ShowError($"Lỗi kết nối: {ex.Message}"); }
+        catch (Exception ex) { ShowError($"{AppLanguage.ConnectError}: {ex.Message}"); }
         finally { SetLoading(false); }
     }
 
     private static async Task GoToMainAsync()
-    {
-        // Navigate về MapPage (FlyoutItem đầu tiên trong AppShell)
-        await Shell.Current.GoToAsync("//MapPage");
-    }
+        => await Shell.Current.GoToAsync("//MapPage");
 
-    private void ShowError(string msg) { ErrorLabel.Text = msg; ErrorLabel.IsVisible = true; }
+    private void ShowError(string msg)
+    { ErrorLabel.Text = msg; ErrorLabel.IsVisible = true; }
 
     private void SetLoading(bool v)
     {

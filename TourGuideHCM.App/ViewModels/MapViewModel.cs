@@ -3,6 +3,7 @@ using System.ComponentModel;
 using System.Runtime.CompilerServices;
 using System.Windows.Input;
 using TourGuideHCM.App.Models;
+using TourGuideHCM.App.Services;
 using TourGuideHCM.App.Services.Interfaces;
 
 namespace TourGuideHCM.App.ViewModels;
@@ -26,7 +27,7 @@ public class MapViewModel : INotifyPropertyChanged
     }
     public bool NearestPoiVisible => NearestPoi is not null;
 
-    // ── Selected POI (detail panel) ───────────────────────────────────────────
+    // ── Selected POI ──────────────────────────────────────────────────────────
     private POI? _selectedPoi;
     public POI? SelectedPoi
     {
@@ -64,7 +65,7 @@ public class MapViewModel : INotifyPropertyChanged
     private double _userLng = 106.7009;
     public double UserLng { get => _userLng; set { _userLng = value; OnPropertyChanged(); } }
 
-    // ── Ngôn ngữ ─────────────────────────────────────────────────────────────
+    // ── Ngôn ngữ thuyết minh (vi/en) ─────────────────────────────────────────
     private string _selectedLanguage = "vi";
     public string SelectedLanguage
     {
@@ -74,7 +75,7 @@ public class MapViewModel : INotifyPropertyChanged
 
     public bool PreferAudioFile { get; set; } = true;
 
-    // ── Bán kính kích hoạt TTS (mét) ─────────────────────────────────────────
+    // ── Bán kính kích hoạt TTS ────────────────────────────────────────────────
     private double _activationRadius = 100;
     public double ActivationRadius
     {
@@ -84,12 +85,14 @@ public class MapViewModel : INotifyPropertyChanged
             _activationRadius = value;
             OnPropertyChanged();
             OnPropertyChanged(nameof(ActivationRadiusLabel));
-            // Cập nhật radius cho tất cả POI
             foreach (var poi in Pois)
                 poi.Radius = value;
         }
     }
     public string ActivationRadiusLabel => $"{_activationRadius:F0}m";
+
+    // ── Ngôn ngữ UI (từ LanguageService) ─────────────────────────────────────
+    public string LangToggleLabel => LanguageService.Instance.ToggleLabel;
 
     // ── Commands ──────────────────────────────────────────────────────────────
     public ICommand LoadPoisCommand { get; }
@@ -98,6 +101,7 @@ public class MapViewModel : INotifyPropertyChanged
     public ICommand PlayNarrationCommand { get; }
     public ICommand StopNarrationCommand { get; }
     public ICommand ToggleLanguageCommand { get; }
+    public ICommand ToggleAppLanguageCommand { get; }
     public ICommand ToggleFavoriteCommand { get; }
 
     public MapViewModel(IApiService api, IDatabaseService db,
@@ -112,20 +116,32 @@ public class MapViewModel : INotifyPropertyChanged
         LoadPoisCommand = new Command(async () => await LoadPoisAsync());
         SelectPoiCommand = new Command<POI>(p => SelectedPoi = p);
         ClosePoiDetailCommand = new Command(() => SelectedPoi = null);
+
         PlayNarrationCommand = new Command<POI>(async p =>
         {
             if (p is not null) await PlayNarrationAsync(p);
         });
         StopNarrationCommand = new Command(async () => await _narration.StopAsync());
+
+        // Toggle ngôn ngữ thuyết minh (vi/en)
         ToggleLanguageCommand = new Command(() =>
             SelectedLanguage = SelectedLanguage == "vi" ? "en" : "vi");
 
-        // Yêu thích: toggle IsFavorite và lưu DB
+        // Toggle ngôn ngữ UI toàn app
+        ToggleAppLanguageCommand = new Command(() =>
+        {
+            LanguageService.Instance.Toggle();
+            // Đồng bộ ngôn ngữ thuyết minh theo ngôn ngữ UI
+            SelectedLanguage = LanguageService.IsEnglish ? "en" : "vi";
+        });
+
+        // Yêu thích
         ToggleFavoriteCommand = new Command<POI>(async p =>
         {
             if (p is null) return;
             p.IsFavorite = !p.IsFavorite;
-            OnPropertyChanged(nameof(SelectedPoi)); // refresh UI
+            OnPropertyChanged(nameof(SelectedPoi));
+            OnPropertyChanged(nameof(NearestPoi));
             await _db.UpsertPoisAsync(new List<POI> { p });
         });
 
@@ -136,8 +152,24 @@ public class MapViewModel : INotifyPropertyChanged
             MainThread.BeginInvokeOnMainThread(() => IsNarrating = true);
         _narration.NarrationCompleted += (_, _) =>
             MainThread.BeginInvokeOnMainThread(() => IsNarrating = false);
+
+        // Khi ngôn ngữ UI thay đổi → refresh text
+        LanguageService.LanguageChanged += (_, _) =>
+            MainThread.BeginInvokeOnMainThread(RefreshLanguage);
     }
 
+    // ── Language refresh ──────────────────────────────────────────────────────
+    private void RefreshLanguage()
+    {
+        // Đồng bộ ngôn ngữ thuyết minh
+        SelectedLanguage = LanguageService.IsEnglish ? "en" : "vi";
+        OnPropertyChanged(nameof(LangToggleLabel));
+        // Refresh status message theo ngôn ngữ mới
+        if (!IsLoading)
+            StatusMessage = string.Format(AppLanguage.Loaded, Pois.Count);
+    }
+
+    // ── Init ──────────────────────────────────────────────────────────────────
     public async Task InitializeAsync()
     {
         await _db.InitAsync();
@@ -147,7 +179,7 @@ public class MapViewModel : INotifyPropertyChanged
     private async Task LoadPoisAsync()
     {
         IsLoading = true;
-        StatusMessage = "Đang tải điểm tham quan...";
+        StatusMessage = AppLanguage.Loading;
         try
         {
             var cached = await _db.GetCachedPoisAsync();
@@ -156,7 +188,6 @@ public class MapViewModel : INotifyPropertyChanged
             var fresh = await _api.GetPoisAsync();
             if (fresh.Count > 0)
             {
-                // Giữ lại trạng thái IsFavorite từ cache
                 foreach (var f in fresh)
                 {
                     var local = cached.FirstOrDefault(c => c.Id == f.Id);
@@ -164,22 +195,22 @@ public class MapViewModel : INotifyPropertyChanged
                 }
                 await _db.UpsertPoisAsync(fresh);
                 UpdateCollection(fresh);
-                StatusMessage = $"Đã tải {fresh.Count} điểm tham quan";
+                StatusMessage = string.Format(AppLanguage.Loaded, fresh.Count);
             }
             else if (cached.Count > 0)
             {
-                StatusMessage = $"{cached.Count} điểm (offline)";
+                StatusMessage = string.Format(AppLanguage.Offline, cached.Count);
             }
             else
             {
-                StatusMessage = "Không có dữ liệu";
+                StatusMessage = AppLanguage.NoData;
             }
 
             if (Pois.Count > 0)
             {
                 try { await _geofence.StartAsync(Pois); }
                 catch (UnauthorizedAccessException)
-                { StatusMessage = "Chưa cấp quyền vị trí – thuyết minh tự động bị tắt"; }
+                { StatusMessage = AppLanguage.NoPermission; }
                 catch (Exception ex)
                 { System.Diagnostics.Debug.WriteLine($"[Geofence] {ex.Message}"); }
             }
@@ -200,9 +231,7 @@ public class MapViewModel : INotifyPropertyChanged
 
     private async void OnGeofenceTriggered(object? sender, GeofenceTriggeredEventArgs e)
     {
-        // Chỉ trigger nếu trong bán kính đã cài đặt
         if (e.Poi.DistanceMeters > _activationRadius) return;
-
         NearestPoi = e.Poi;
         HighlightNearest(e.Poi.Id);
         await PlayNarrationAsync(e.Poi, e.TriggerType);
