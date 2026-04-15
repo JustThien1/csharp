@@ -27,7 +27,7 @@
 		<!-- Google Maps API Key - thay bằng key thật -->
 		<meta-data
             android:name="com.google.android.geo.API_KEY"
-            android:value="AIzaSyAOWI1npRcuYMD7NJ6r0VXIZS9ujCX5S0g" />
+            android:value="keycode" />
 
 	</application>
 
