@@ -15,7 +15,7 @@ builder.Services.AddMudServices();
 // HttpClient
 builder.Services.AddScoped(sp => new HttpClient
 {
-    BaseAddress = new Uri("http://localhost:5284")
+    BaseAddress = new Uri("http://localhost:8080")
 });
 
 // Services

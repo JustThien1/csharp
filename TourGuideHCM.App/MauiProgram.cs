@@ -1,5 +1,6 @@
 ﻿using CommunityToolkit.Maui;
 using Plugin.Maui.Audio;
+using TourGuideHCM.App.Helpers;
 using TourGuideHCM.App.Services;
 using TourGuideHCM.App.Services.Interfaces;
 using TourGuideHCM.App.ViewModels;
@@ -23,16 +24,17 @@ public static class MauiProgram
                 fonts.AddFont("OpenSans-Semibold.ttf", "OpenSansSemibold");
             });
 
-        // ── HttpClient ────────────────────────────────────────────────────────
-        builder.Services.AddSingleton(sp => new HttpClient
-        {
-            BaseAddress = new Uri("http://10.0.2.2:5284/"),
-            Timeout = TimeSpan.FromSeconds(30)
-        });
-
-        // IAudioManager
+        // IAudioManager – chỉ định rõ namespace tránh nhầm Android.Media
         builder.Services.AddSingleton<IAudioManager>(
             Plugin.Maui.Audio.AudioManager.Current);
+
+        // ── HTTP ──────────────────────────────────────────────────────────────
+        // DeviceHelper.GetBaseUrl() tự phát hiện emulator / thiết bị thật / simulator
+        builder.Services.AddHttpClient("AuthClient", client =>
+        {
+            client.BaseAddress = new Uri(DeviceHelper.GetBaseUrl());
+            client.Timeout = TimeSpan.FromSeconds(30);
+        });
 
         // ── Services ──────────────────────────────────────────────────────────
         builder.Services.AddSingleton<IDatabaseService, DatabaseService>();

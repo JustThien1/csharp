@@ -2,88 +2,157 @@
 <ContentPage xmlns="http://schemas.microsoft.com/dotnet/2021/maui"
              xmlns:x="http://schemas.microsoft.com/winfx/2009/xaml"
              x:Class="TourGuideHCM.App.Views.PoiDetailPage"
-             Title="{Binding Name}">
+             Title="{Binding Name}"
+             BackgroundColor="#FAFBFF">
 
 	<ScrollView>
 		<VerticalStackLayout Spacing="0">
 
 			<!-- Ảnh hero -->
-			<Grid HeightRequest="280">
-				<Image Source="{Binding ImageUrl}" Aspect="AspectFill" HeightRequest="280"/>
-				<BoxView VerticalOptions="End" HeightRequest="100">
+			<Grid HeightRequest="300">
+				<Border StrokeThickness="0">
+					<Border.StrokeShape>
+						<RoundRectangle CornerRadius="0,0,28,28"/>
+					</Border.StrokeShape>
+					<Image Source="{Binding ImageUrl}" Aspect="AspectFill" HeightRequest="300"/>
+				</Border>
+				<BoxView VerticalOptions="Fill" HorizontalOptions="Fill">
 					<BoxView.Background>
 						<LinearGradientBrush StartPoint="0,0" EndPoint="0,1">
-							<GradientStop Color="Transparent" Offset="0"/>
-							<GradientStop Color="#CC000000" Offset="1"/>
+							<GradientStop Color="Transparent" Offset="0.4"/>
+							<GradientStop Color="#CC1A1A2E" Offset="1"/>
 						</LinearGradientBrush>
 					</BoxView.Background>
 				</BoxView>
-				<Label Text="{Binding Name}" FontSize="22" FontAttributes="Bold"
-                       TextColor="White" VerticalOptions="End" Margin="16,0,16,16"/>
+				<Label Text="{Binding Name}" FontSize="24" FontAttributes="Bold"
+                       TextColor="White" VerticalOptions="End" Margin="20,0,20,20"/>
 			</Grid>
 
-			<VerticalStackLayout Padding="16" Spacing="16">
+			<!-- Content -->
+			<Border Margin="16,-20,16,0" StrokeThickness="0" Padding="20">
+				<Border.StrokeShape>
+					<RoundRectangle CornerRadius="24"/>
+				</Border.StrokeShape>
+				<Border.Background>
+					<SolidColorBrush Color="White"/>
+				</Border.Background>
+				<Border.Shadow>
+					<Shadow Brush="#20000000" Offset="0,4" Radius="20" Opacity="0.12"/>
+				</Border.Shadow>
+				<VerticalStackLayout Spacing="16">
 
-				<!-- Category + khoảng cách -->
-				<HorizontalStackLayout Spacing="12">
-					<Frame CornerRadius="12" Padding="10,4" BackgroundColor="#1976D2"
-                           HasShadow="False" BorderColor="Transparent">
-						<Label Text="{Binding CategoryName}" TextColor="White" FontSize="13"/>
-					</Frame>
-					<Label Text="{Binding DistanceDisplay}"
-                           FontSize="13" TextColor="#666" VerticalOptions="Center"/>
-					<Label Text="{Binding TicketDisplay}"
-                           FontSize="13" TextColor="#1976D2" VerticalOptions="Center"/>
-				</HorizontalStackLayout>
+					<!-- Tags -->
+					<HorizontalStackLayout Spacing="8">
+						<Border StrokeThickness="0" Padding="12,6">
+							<Border.StrokeShape>
+								<RoundRectangle CornerRadius="10"/>
+							</Border.StrokeShape>
+							<Border.Background>
+								<LinearGradientBrush StartPoint="0,0" EndPoint="1,0">
+									<GradientStop Color="#00D4AA" Offset="0"/>
+									<GradientStop Color="#00B894" Offset="1"/>
+								</LinearGradientBrush>
+							</Border.Background>
+							<Label Text="{Binding CategoryName}" TextColor="White"
+                                   FontSize="12" FontAttributes="Bold"/>
+						</Border>
+						<Label Text="{Binding DistanceDisplay}"
+                               FontSize="13" TextColor="#9AA5B4" VerticalOptions="Center"/>
+						<Label Text="{Binding TicketDisplay}"
+                               FontSize="13" TextColor="#FF7043" VerticalOptions="Center"/>
+					</HorizontalStackLayout>
 
-				<!-- Nút nghe -->
-				<Grid ColumnDefinitions="*,*" ColumnSpacing="12">
-					<Button Grid.Column="0" x:Name="PlayViBtn"
-                            BackgroundColor="#1976D2" TextColor="White"
-                            CornerRadius="12" HeightRequest="48"/>
-					<Button Grid.Column="1" x:Name="PlayEnBtn"
-                            BackgroundColor="#388E3C" TextColor="White"
-                            CornerRadius="12" HeightRequest="48"/>
-				</Grid>
-
-				<!-- Nút dừng -->
-				<Button x:Name="StopBtn"
-                        BackgroundColor="#E53935" TextColor="White"
-                        CornerRadius="12" HeightRequest="44"
-                        IsVisible="False"/>
-
-				<!-- Mô tả -->
-				<Label x:Name="IntroLabel"
-                       FontSize="16" FontAttributes="Bold"
-                       TextColor="{AppThemeBinding Light=#1A1A1A, Dark=White}"/>
-
-				<Label Text="{Binding Description}"
-                       FontSize="14" LineHeight="1.6"
-                       TextColor="{AppThemeBinding Light=#444, Dark=#BBB}"/>
-
-				<!-- Thông tin vị trí -->
-				<Frame CornerRadius="12" Padding="16"
-                       BackgroundColor="{AppThemeBinding Light=#F8F8F8, Dark=#2A2A2A}"
-                       BorderColor="Transparent" HasShadow="False">
-					<Grid ColumnDefinitions="*,*" RowDefinitions="Auto,Auto,Auto" RowSpacing="8">
-						<Label Grid.Row="0" Grid.ColumnSpan="2"
-                               x:Name="LocationInfoLabel"
-                               FontSize="14" FontAttributes="Bold"
-                               TextColor="{AppThemeBinding Light=#333, Dark=#EEE}"/>
-						<Label Grid.Row="1" Grid.Column="0" x:Name="LatLabel"
-                               FontSize="12" TextColor="#888"/>
-						<Label Grid.Row="1" Grid.Column="1"
-                               Text="{Binding Lat, StringFormat='{0:F6}'}"
-                               FontSize="12" TextColor="{AppThemeBinding Light=#333, Dark=#DDD}"/>
-						<Label Grid.Row="2" Grid.Column="0" x:Name="LngLabel"
-                               FontSize="12" TextColor="#888"/>
-						<Label Grid.Row="2" Grid.Column="1"
-                               Text="{Binding Lng, StringFormat='{0:F6}'}"
-                               FontSize="12" TextColor="{AppThemeBinding Light=#333, Dark=#DDD}"/>
+					<!-- Nút audio -->
+					<Grid ColumnDefinitions="*,*" ColumnSpacing="10">
+						<Border Grid.Column="0" StrokeThickness="0">
+							<Border.StrokeShape>
+								<RoundRectangle CornerRadius="14"/>
+							</Border.StrokeShape>
+							<Border.Background>
+								<LinearGradientBrush StartPoint="0,0" EndPoint="1,0">
+									<GradientStop Color="#FF7043" Offset="0"/>
+									<GradientStop Color="#FFA040" Offset="1"/>
+								</LinearGradientBrush>
+							</Border.Background>
+							<Border.Shadow>
+								<Shadow Brush="#60FF7043" Offset="0,4" Radius="10" Opacity="0.35"/>
+							</Border.Shadow>
+							<Button x:Name="PlayViBtn" BackgroundColor="Transparent"
+                                    TextColor="White" HeightRequest="48"
+                                    FontSize="13" FontAttributes="Bold"/>
+						</Border>
+						<Border Grid.Column="1" StrokeThickness="0">
+							<Border.StrokeShape>
+								<RoundRectangle CornerRadius="14"/>
+							</Border.StrokeShape>
+							<Border.Background>
+								<LinearGradientBrush StartPoint="0,0" EndPoint="1,0">
+									<GradientStop Color="#00D4AA" Offset="0"/>
+									<GradientStop Color="#00B894" Offset="1"/>
+								</LinearGradientBrush>
+							</Border.Background>
+							<Border.Shadow>
+								<Shadow Brush="#6000D4AA" Offset="0,4" Radius="10" Opacity="0.35"/>
+							</Border.Shadow>
+							<Button x:Name="PlayEnBtn" BackgroundColor="Transparent"
+                                    TextColor="White" HeightRequest="48"
+                                    FontSize="13" FontAttributes="Bold"/>
+						</Border>
 					</Grid>
-				</Frame>
 
-			</VerticalStackLayout>
+					<!-- Nút dừng -->
+					<Border StrokeThickness="0" IsVisible="False">
+						<Border.StrokeShape>
+							<RoundRectangle CornerRadius="14"/>
+						</Border.StrokeShape>
+						<Border.Background>
+							<LinearGradientBrush StartPoint="0,0" EndPoint="1,0">
+								<GradientStop Color="#FF5252" Offset="0"/>
+								<GradientStop Color="#FF1744" Offset="1"/>
+							</LinearGradientBrush>
+						</Border.Background>
+						<Button x:Name="StopBtn" BackgroundColor="Transparent"
+                                TextColor="White" HeightRequest="44" IsVisible="False"/>
+					</Border>
+
+					<!-- Divider -->
+					<BoxView HeightRequest="1" Color="#F0F2F6"/>
+
+					<!-- Mô tả -->
+					<Label x:Name="IntroLabel" FontSize="16" FontAttributes="Bold"
+                           TextColor="#1A1A2E"/>
+					<Label Text="{Binding Description}" FontSize="14" LineHeight="1.7"
+                           TextColor="#6B7A8D"/>
+
+					<!-- Thông tin vị trí -->
+					<Border StrokeThickness="1" Stroke="#EEF0F6" Padding="16">
+						<Border.StrokeShape>
+							<RoundRectangle CornerRadius="16"/>
+						</Border.StrokeShape>
+						<Border.Background>
+							<SolidColorBrush Color="#FAFBFF"/>
+						</Border.Background>
+						<Grid ColumnDefinitions="*,*" RowDefinitions="Auto,Auto,Auto" RowSpacing="10">
+							<Label Grid.Row="0" Grid.ColumnSpan="2"
+                                   x:Name="LocationInfoLabel"
+                                   FontSize="13" FontAttributes="Bold" TextColor="#FF7043"/>
+							<Label Grid.Row="1" Grid.Column="0" x:Name="LatLabel"
+                                   FontSize="12" TextColor="#9AA5B4"/>
+							<Label Grid.Row="1" Grid.Column="1"
+                                   Text="{Binding Lat, StringFormat='{0:F6}'}"
+                                   FontSize="12" TextColor="#1A1A2E"/>
+							<Label Grid.Row="2" Grid.Column="0" x:Name="LngLabel"
+                                   FontSize="12" TextColor="#9AA5B4"/>
+							<Label Grid.Row="2" Grid.Column="1"
+                                   Text="{Binding Lng, StringFormat='{0:F6}'}"
+                                   FontSize="12" TextColor="#1A1A2E"/>
+						</Grid>
+					</Border>
+
+				</VerticalStackLayout>
+			</Border>
+
+			<BoxView HeightRequest="32"/>
 		</VerticalStackLayout>
 	</ScrollView>
 </ContentPage>

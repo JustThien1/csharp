@@ -146,4 +146,4 @@ using (var scope = app.Services.CreateScope())
     }
 }
 
-app.Run("http://0.0.0.0:5284");
+app.Run("http://0.0.0.0:8080");

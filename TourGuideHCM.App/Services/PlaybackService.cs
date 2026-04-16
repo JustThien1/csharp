@@ -9,7 +9,7 @@ public class PlaybackService
     public PlaybackService(HttpClient http)
     {
         _http = http;
-        _http.BaseAddress = new Uri("http://localhost:5284/");
+        _http.BaseAddress = new Uri("http://localhost:8080/");
     }
 
     public async Task LogPlayback(int userId, int poiId, int durationSeconds = 0)

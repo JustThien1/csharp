@@ -92,7 +92,7 @@ namespace TourGuideHCM.Admin.Services
                 };
 
                 // Dùng full URL để debug dễ hơn
-                var response = await _http.PostAsJsonAsync("http://localhost:5284/api/playback", dto);
+                var response = await _http.PostAsJsonAsync("http://localhost:8080/api/playback", dto);
 
                 if (response.IsSuccessStatusCode)
                 {

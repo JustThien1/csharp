@@ -3,35 +3,65 @@
              xmlns:x="http://schemas.microsoft.com/winfx/2009/xaml"
              xmlns:vm="clr-namespace:TourGuideHCM.App.ViewModels"
              xmlns:models="clr-namespace:TourGuideHCM.App.Models"
-             x:Class="TourGuideHCM.App.Views.PoiListPage">
+             x:Class="TourGuideHCM.App.Views.PoiListPage"
+             BackgroundColor="#FAFBFF">
 
     <Grid RowDefinitions="Auto,Auto,*">
 
-        <!-- Thanh tìm kiếm -->
-        <SearchBar x:Name="SearchBar"
-                   Grid.Row="0"
-                   Text="{Binding SearchText}"
-                   Margin="12,12,12,0"
-                   BackgroundColor="{AppThemeBinding Light=#F5F5F5, Dark=#2A2A2A}"/>
+        <!-- Search header -->
+        <VerticalStackLayout Grid.Row="0" Padding="16,14,16,0"
+                             BackgroundColor="White">
+            <Border StrokeThickness="1.5" Stroke="#EEF0F6">
+                <Border.StrokeShape>
+                    <RoundRectangle CornerRadius="16"/>
+                </Border.StrokeShape>
+                <Border.Background>
+                    <SolidColorBrush Color="#FAFBFF"/>
+                </Border.Background>
+                <Grid ColumnDefinitions="Auto,*" Padding="12,0">
+                    <Label Grid.Column="0" Text="🔍" FontSize="16"
+                           VerticalOptions="Center" Margin="0,0,6,0"/>
+                    <SearchBar Grid.Column="1" x:Name="SearchBar"
+                               Text="{Binding SearchText}"
+                               BackgroundColor="Transparent"
+                               HeightRequest="46"
+                               PlaceholderColor="#BCC4D0"/>
+                </Grid>
+            </Border>
+        </VerticalStackLayout>
 
-        <!-- Filter category -->
-        <CollectionView Grid.Row="1"
-                        ItemsSource="{Binding Categories}"
-                        SelectionMode="Single"
-                        SelectedItem="{Binding SelectedCategory}"
-                        Margin="12,8,12,0"
-                        HeightRequest="40">
-            <CollectionView.ItemsLayout>
-                <LinearItemsLayout Orientation="Horizontal" ItemSpacing="8"/>
-            </CollectionView.ItemsLayout>
-            <CollectionView.ItemTemplate>
-                <DataTemplate x:DataType="x:String">
-                    <Frame CornerRadius="16" Padding="12,4" HasShadow="False">
-                        <Label Text="{Binding .}" FontSize="13" VerticalOptions="Center"/>
-                    </Frame>
-                </DataTemplate>
-            </CollectionView.ItemTemplate>
-        </CollectionView>
+        <!-- Filter categories -->
+        <Border Grid.Row="1" StrokeThickness="0" Padding="0,10"
+                BackgroundColor="White">
+            <Border.Shadow>
+                <Shadow Brush="#20000000" Offset="0,4" Radius="12" Opacity="0.08"/>
+            </Border.Shadow>
+            <CollectionView ItemsSource="{Binding Categories}"
+                            SelectionMode="Single"
+                            SelectedItem="{Binding SelectedCategory}"
+                            HeightRequest="40">
+                <CollectionView.ItemsLayout>
+                    <LinearItemsLayout Orientation="Horizontal" ItemSpacing="8"/>
+                </CollectionView.ItemsLayout>
+                <CollectionView.Header>
+                    <BoxView WidthRequest="8" HeightRequest="1"/>
+                </CollectionView.Header>
+                <CollectionView.ItemTemplate>
+                    <DataTemplate x:DataType="x:String">
+                        <Border StrokeThickness="1.5" Stroke="#EEF0F6" Padding="14,6">
+                            <Border.StrokeShape>
+                                <RoundRectangle CornerRadius="12"/>
+                            </Border.StrokeShape>
+                            <Border.Background>
+                                <SolidColorBrush Color="#FAFBFF"/>
+                            </Border.Background>
+                            <Label Text="{Binding .}" FontSize="13"
+                                   TextColor="#4A5568" VerticalOptions="Center"/>
+                        </Border>
+                    </DataTemplate>
+                </CollectionView.ItemTemplate>
+            </CollectionView>
+        </Border>
 
         <!-- Danh sách POI -->
         <RefreshView Grid.Row="2"
@@ -39,61 +69,109 @@
                      Command="{Binding RefreshCommand}">
             <CollectionView ItemsSource="{Binding FilteredPois}"
                             SelectionMode="None"
-                            Margin="12,8">
+                            Margin="16,8">
                 <CollectionView.EmptyView>
-                    <VerticalStackLayout HorizontalOptions="Center"
-                                         VerticalOptions="Center"
-                                         Spacing="16" Padding="32">
-                        <Label x:Name="EmptyLabel"
-                               FontSize="16"
-                               HorizontalOptions="Center"
-                               TextColor="#999"/>
+                    <VerticalStackLayout HorizontalOptions="Center" VerticalOptions="Center"
+                                         Spacing="12" Padding="32">
+                        <Label Text="🗺️" FontSize="48" HorizontalOptions="Center"/>
+                        <Label x:Name="EmptyLabel" FontSize="16"
+                               HorizontalOptions="Center" TextColor="#9AA5B4"/>
                     </VerticalStackLayout>
                 </CollectionView.EmptyView>
 
                 <CollectionView.ItemTemplate>
                     <DataTemplate x:DataType="models:POI">
-                        <Grid Padding="0,4">
-                            <Frame CornerRadius="16" Padding="0" HasShadow="True"
-                                   BorderColor="Transparent"
-                                   BackgroundColor="{AppThemeBinding Light=White, Dark=#1E1E1E}">
-                                <Grid ColumnDefinitions="120,*">
-                                    <Image Grid.Column="0"
-                                           Source="{Binding ImageUrl}"
-                                           Aspect="AspectFill"
-                                           HeightRequest="100"/>
-                                    <Grid Grid.Column="1"
-                                          RowDefinitions="Auto,Auto,Auto,*"
-                                          Padding="12,10" RowSpacing="4">
-                                        <Label Grid.Row="0" Text="{Binding Name}"
+                        <Grid Padding="0,6">
+                            <Border StrokeThickness="0" Padding="0">
+                                <Border.StrokeShape>
+                                    <RoundRectangle CornerRadius="20"/>
+                                </Border.StrokeShape>
+                                <Border.Background>
+                                    <SolidColorBrush Color="White"/>
+                                </Border.Background>
+                                <Border.Shadow>
+                                    <Shadow Brush="#20000000" Offset="0,4" Radius="16" Opacity="0.1"/>
+                                </Border.Shadow>
+
+                                <Grid ColumnDefinitions="130,*">
+                                    <!-- Ảnh bên trái -->
+                                    <Border Grid.Column="0" StrokeThickness="0">
+                                        <Border.StrokeShape>
+                                            <RoundRectangle CornerRadius="20,0,0,20"/>
+                                        </Border.StrokeShape>
+                                        <Grid>
+                                            <BoxView>
+                                                <BoxView.Background>
+                                                    <LinearGradientBrush StartPoint="0,0" EndPoint="1,1">
+                                                        <GradientStop Color="#FF7043" Offset="0"/>
+                                                        <GradientStop Color="#FFA040" Offset="1"/>
+                                                    </LinearGradientBrush>
+                                                </BoxView.Background>
+                                            </BoxView>
+                                            <Image Source="{Binding ImageUrl}"
+                                                   Aspect="AspectFill" HeightRequest="115"/>
+                                        </Grid>
+                                    </Border>
+
+                                    <!-- Nội dung bên phải -->
+                                    <VerticalStackLayout Grid.Column="1"
+                                                         Padding="14,12,12,12"
+                                                         Spacing="6">
+
+                                        <!-- Tên -->
+                                        <Label Text="{Binding Name}"
                                                FontSize="15" FontAttributes="Bold"
-                                               TextColor="{AppThemeBinding Light=#1A1A1A, Dark=White}"
-                                               MaxLines="1"/>
-                                        <Label Grid.Row="1" Text="{Binding CategoryName}"
-                                               FontSize="11" TextColor="White"
-                                               BackgroundColor="#1976D2"
-                                               Padding="6,2" HorizontalOptions="Start"/>
-                                        <Label Grid.Row="2" Text="{Binding ShortDescription}"
-                                               FontSize="12" TextColor="#777"
+                                               TextColor="#1A1A2E" MaxLines="1"/>
+
+                                        <!-- Category badge -->
+                                        <Frame CornerRadius="8" Padding="8,3"
+                                               HasShadow="False" BorderColor="Transparent"
+                                               HorizontalOptions="Start">
+                                            <Frame.Background>
+                                                <LinearGradientBrush StartPoint="0,0" EndPoint="1,0">
+                                                    <GradientStop Color="#00D4AA" Offset="0"/>
+                                                    <GradientStop Color="#00B894" Offset="1"/>
+                                                </LinearGradientBrush>
+                                            </Frame.Background>
+                                            <Label Text="{Binding CategoryName}"
+                                                   FontSize="11" TextColor="White"
+                                                   FontAttributes="Bold"/>
+                                        </Frame>
+
+                                        <!-- Mô tả ngắn -->
+                                        <Label Text="{Binding ShortDescription}"
+                                               FontSize="12" TextColor="#9AA5B4"
                                                MaxLines="2" LineBreakMode="TailTruncation"/>
-                                        <HorizontalStackLayout Grid.Row="3" Spacing="8" VerticalOptions="End">
-                                            <Button x:Name="DetailBtn"
-                                                    FontSize="12"
+
+                                        <!-- Nút hành động -->
+                                        <Grid ColumnDefinitions="*,Auto" Margin="0,4,0,0">
+                                            <!-- Nút Chi tiết -->
+                                            <Button Grid.Column="0"
+                                                    Text="Chi tiết →"
+                                                    FontSize="12" FontAttributes="Bold"
                                                     BackgroundColor="Transparent"
-                                                    TextColor="#1976D2" Padding="0"
+                                                    TextColor="#FF7043"
+                                                    HorizontalOptions="Start"
+                                                    Padding="0"
                                                     Command="{Binding Source={RelativeSource AncestorType={x:Type ContentPage}}, Path=BindingContext.SelectCommand}"
                                                     CommandParameter="{Binding .}"/>
-                                            <Button x:Name="ListenBtn"
-                                                    FontSize="12"
-                                                    BackgroundColor="#1976D2"
+
+                                            <!-- Nút Nghe -->
+                                            <Button Grid.Column="1"
+                                                    Text="▶ Nghe"
+                                                    FontSize="12" FontAttributes="Bold"
+                                                    BackgroundColor="#FF7043"
                                                     TextColor="White"
-                                                    CornerRadius="12" Padding="10,4"
+                                                    CornerRadius="10"
+                                                    Padding="12,4"
+                                                    HeightRequest="32"
                                                     Command="{Binding Source={RelativeSource AncestorType={x:Type ContentPage}}, Path=BindingContext.PlayCommand}"
                                                     CommandParameter="{Binding .}"/>
-                                        </HorizontalStackLayout>
-                                    </Grid>
+                                        </Grid>
+
+                                    </VerticalStackLayout>
                                 </Grid>
-                            </Frame>
+                            </Border>
                         </Grid>
                     </DataTemplate>
                 </CollectionView.ItemTemplate>

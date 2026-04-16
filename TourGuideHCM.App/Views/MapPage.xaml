@@ -6,16 +6,6 @@
              x:Name="ThisPage"
              Shell.NavBarIsVisible="True">
 
-    <ContentPage.Resources>
-        <Style x:Key="CardStyle" TargetType="Frame">
-            <Setter Property="CornerRadius" Value="16"/>
-            <Setter Property="Padding" Value="16"/>
-            <Setter Property="HasShadow" Value="True"/>
-            <Setter Property="BackgroundColor" Value="{AppThemeBinding Light=White, Dark=#1E1E1E}"/>
-            <Setter Property="BorderColor" Value="Transparent"/>
-        </Style>
-    </ContentPage.Resources>
-
     <Grid RowDefinitions="*,Auto">
 
         <Grid Grid.Row="0">
@@ -26,157 +16,297 @@
 
             <!-- Loading overlay -->
             <Grid IsVisible="{Binding IsLoading}"
-                  BackgroundColor="#80000000"
+                  BackgroundColor="#80FFFFFF"
                   HorizontalOptions="Fill" VerticalOptions="Fill">
-                <VerticalStackLayout HorizontalOptions="Center" VerticalOptions="Center" Spacing="12">
-                    <ActivityIndicator IsRunning="True" Color="White" WidthRequest="40" HeightRequest="40"/>
-                    <Label Text="{Binding StatusMessage}" TextColor="White" FontSize="14" HorizontalOptions="Center"/>
-                </VerticalStackLayout>
+                <Border HorizontalOptions="Center" VerticalOptions="Center"
+                        StrokeThickness="0" Padding="32,24">
+                    <Border.StrokeShape>
+                        <RoundRectangle CornerRadius="20"/>
+                    </Border.StrokeShape>
+                    <Border.Background>
+                        <SolidColorBrush Color="White"/>
+                    </Border.Background>
+                    <Border.Shadow>
+                        <Shadow Brush="#30000000" Offset="0,8" Radius="24" Opacity="0.15"/>
+                    </Border.Shadow>
+                    <VerticalStackLayout Spacing="14" HorizontalOptions="Center">
+                        <ActivityIndicator IsRunning="True" Color="#FF7043"
+                                           WidthRequest="36" HeightRequest="36"/>
+                        <Label Text="{Binding StatusMessage}" TextColor="#1A1A2E"
+                               FontSize="14" HorizontalOptions="Center"/>
+                    </VerticalStackLayout>
+                </Border>
             </Grid>
 
-            <!-- Thanh trạng thái -->
-            <Frame Margin="12,12,12,0" VerticalOptions="Start" HorizontalOptions="Fill"
-                   CornerRadius="12" Padding="12,8"
-                   BackgroundColor="{AppThemeBinding Light=White, Dark=#2A2A2A}"
-                   HasShadow="True" BorderColor="Transparent">
-                <Label Text="{Binding StatusMessage}" FontSize="13"
-                       TextColor="{AppThemeBinding Light=#555, Dark=#CCC}"
-                       VerticalOptions="Center" MaxLines="1"/>
-            </Frame>
+            <!-- Status bar -->
+            <Border Margin="12,12,12,0" VerticalOptions="Start" HorizontalOptions="Fill"
+                    StrokeThickness="0" Padding="14,10">
+                <Border.StrokeShape>
+                    <RoundRectangle CornerRadius="14"/>
+                </Border.StrokeShape>
+                <Border.Background>
+                    <SolidColorBrush Color="#F8FAFEFF"/>
+                </Border.Background>
+                <Border.Shadow>
+                    <Shadow Brush="#20000000" Offset="0,4" Radius="12" Opacity="0.1"/>
+                </Border.Shadow>
+                <Grid ColumnDefinitions="Auto,*">
+                    <Ellipse Grid.Column="0" WidthRequest="8" HeightRequest="8"
+                             Fill="#00D4AA" VerticalOptions="Center" Margin="0,0,8,0"/>
+                    <Label Grid.Column="1" Text="{Binding StatusMessage}" FontSize="13"
+                           TextColor="#6B7A8D" VerticalOptions="Center" MaxLines="1"/>
+                </Grid>
+            </Border>
 
-            <!-- Góc dưới trái: nút ngôn ngữ UI + slider bán kính -->
-            <VerticalStackLayout Margin="12" VerticalOptions="End" HorizontalOptions="Start" Spacing="8">
+            <!-- Góc dưới trái: nút ngôn ngữ + slider -->
+            <VerticalStackLayout Margin="12" VerticalOptions="End"
+                                 HorizontalOptions="Start" Spacing="10">
 
-                <!-- Nút đổi ngôn ngữ UI -->
-                <Frame CornerRadius="24" Padding="0" HasShadow="True" BorderColor="Transparent"
-                       BackgroundColor="{AppThemeBinding Light=White, Dark=#2A2A2A}"
-                       WidthRequest="56" HeightRequest="56">
+                <!-- Nút ngôn ngữ -->
+                <Border StrokeThickness="0" WidthRequest="52" HeightRequest="52">
+                    <Border.StrokeShape>
+                        <RoundRectangle CornerRadius="16"/>
+                    </Border.StrokeShape>
+                    <Border.Background>
+                        <SolidColorBrush Color="White"/>
+                    </Border.Background>
+                    <Border.Shadow>
+                        <Shadow Brush="#30000000" Offset="0,4" Radius="12" Opacity="0.15"/>
+                    </Border.Shadow>
                     <Button x:Name="LangBtn"
                             Command="{Binding ToggleAppLanguageCommand}"
                             FontSize="11" FontAttributes="Bold"
-                            BackgroundColor="Transparent"
-                            TextColor="{AppThemeBinding Light=#333, Dark=#EEE}"/>
-                </Frame>
+                            BackgroundColor="Transparent" TextColor="#FF7043"/>
+                </Border>
 
                 <!-- Slider bán kính -->
-                <Frame CornerRadius="12" Padding="10,8" HasShadow="True" BorderColor="Transparent"
-                       BackgroundColor="{AppThemeBinding Light=White, Dark=#2A2A2A}"
-                       WidthRequest="160">
-                    <VerticalStackLayout Spacing="4">
-                        <Label x:Name="RadiusLabel"
-                               FontSize="11" FontAttributes="Bold"
-                               TextColor="{AppThemeBinding Light=#333, Dark=#EEE}"
-                               HorizontalOptions="Center"/>
+                <Border StrokeThickness="0" Padding="12,10">
+                    <Border.StrokeShape>
+                        <RoundRectangle CornerRadius="16"/>
+                    </Border.StrokeShape>
+                    <Border.Background>
+                        <SolidColorBrush Color="White"/>
+                    </Border.Background>
+                    <Border.Shadow>
+                        <Shadow Brush="#30000000" Offset="0,4" Radius="12" Opacity="0.15"/>
+                    </Border.Shadow>
+                    <VerticalStackLayout Spacing="6" WidthRequest="150">
+                        <Label x:Name="RadiusLabel" FontSize="11" FontAttributes="Bold"
+                               TextColor="#FF7043" HorizontalOptions="Center"/>
                         <Slider Minimum="50" Maximum="500"
                                 Value="{Binding ActivationRadius}"
-                                ThumbColor="#1976D2"
-                                MinimumTrackColor="#1976D2"
-                                MaximumTrackColor="#CCCCCC"/>
+                                ThumbColor="#FF7043"
+                                MinimumTrackColor="#FF7043"
+                                MaximumTrackColor="#E8EEF4"/>
                     </VerticalStackLayout>
-                </Frame>
-
+                </Border>
             </VerticalStackLayout>
 
-            <!-- Nút vị trí của tôi -->
-            <Frame Margin="12,0,12,72" VerticalOptions="End" HorizontalOptions="End"
-                   CornerRadius="28" Padding="0" HasShadow="True" BorderColor="Transparent"
-                   BackgroundColor="{AppThemeBinding Light=White, Dark=#2A2A2A}"
-                   WidthRequest="56" HeightRequest="56">
-                <Button x:Name="MyLocationBtn"
-                        Text="📍" FontSize="22"
-                        BackgroundColor="Transparent"
-                        Clicked="OnMyLocationClicked"/>
-            </Frame>
+            <!-- Nút vị trí -->
+            <Border Margin="12,0,12,80" VerticalOptions="End" HorizontalOptions="End"
+                    StrokeThickness="0" WidthRequest="52" HeightRequest="52">
+                <Border.StrokeShape>
+                    <RoundRectangle CornerRadius="16"/>
+                </Border.StrokeShape>
+                <Border.Background>
+                    <LinearGradientBrush StartPoint="0,0" EndPoint="1,1">
+                        <GradientStop Color="#00D4AA" Offset="0"/>
+                        <GradientStop Color="#00B894" Offset="1"/>
+                    </LinearGradientBrush>
+                </Border.Background>
+                <Border.Shadow>
+                    <Shadow Brush="#6000D4AA" Offset="0,4" Radius="12" Opacity="0.4"/>
+                </Border.Shadow>
+                <Button x:Name="MyLocationBtn" Text="📍" FontSize="20"
+                        BackgroundColor="Transparent" Clicked="OnMyLocationClicked"/>
+            </Border>
 
             <!-- Nút dừng narration -->
-            <Frame IsVisible="{Binding IsNarrating}"
-                   Margin="12" VerticalOptions="End" HorizontalOptions="End"
-                   CornerRadius="28" Padding="0" HasShadow="True" BorderColor="Transparent"
-                   BackgroundColor="#E53935" WidthRequest="56" HeightRequest="56">
-                <Button x:Name="StopBtn"
-                        Command="{Binding StopNarrationCommand}"
-                        FontSize="20" TextColor="White" BackgroundColor="Transparent"/>
-            </Frame>
+            <Border IsVisible="{Binding IsNarrating}"
+                    Margin="12" VerticalOptions="End" HorizontalOptions="End"
+                    StrokeThickness="0" WidthRequest="52" HeightRequest="52">
+                <Border.StrokeShape>
+                    <RoundRectangle CornerRadius="16"/>
+                </Border.StrokeShape>
+                <Border.Background>
+                    <LinearGradientBrush StartPoint="0,0" EndPoint="1,1">
+                        <GradientStop Color="#FF5252" Offset="0"/>
+                        <GradientStop Color="#FF1744" Offset="1"/>
+                    </LinearGradientBrush>
+                </Border.Background>
+                <Border.Shadow>
+                    <Shadow Brush="#60FF5252" Offset="0,4" Radius="12" Opacity="0.4"/>
+                </Border.Shadow>
+                <Button x:Name="StopBtn" Command="{Binding StopNarrationCommand}"
+                        Text="⏹" FontSize="18" TextColor="White" BackgroundColor="Transparent"/>
+            </Border>
         </Grid>
 
-        <!-- Panel POI chi tiết -->
-        <Grid Grid.Row="0" VerticalOptions="End" IsVisible="{Binding IsPoiDetailVisible}">
-            <Frame Style="{StaticResource CardStyle}" CornerRadius="20">
-                <Grid RowDefinitions="Auto,Auto,Auto,Auto,Auto"
-                      ColumnDefinitions="*,Auto,Auto" RowSpacing="8">
-                    <Image Grid.Row="0" Grid.ColumnSpan="3"
-                           Source="{Binding SelectedPoi.ImageUrl}"
-                           HeightRequest="160" Aspect="AspectFill"/>
-                    <Label Grid.Row="1" Grid.Column="0"
-                           Text="{Binding SelectedPoi.Name}"
-                           FontSize="18" FontAttributes="Bold"
-                           TextColor="{AppThemeBinding Light=#1A1A1A, Dark=White}"/>
-                    <Button Grid.Row="1" Grid.Column="1"
-                            Command="{Binding ToggleFavoriteCommand}"
-                            CommandParameter="{Binding SelectedPoi}"
-                            Text="{Binding SelectedPoi.FavoriteIcon}"
-                            FontSize="20" BackgroundColor="Transparent"
-                            WidthRequest="40" HeightRequest="40"/>
-                    <Button Grid.Row="1" Grid.Column="2"
-                            Command="{Binding ClosePoiDetailCommand}"
-                            Text="✕" FontSize="16" TextColor="#999"
-                            BackgroundColor="Transparent"
-                            WidthRequest="36" HeightRequest="36"/>
-                    <HorizontalStackLayout Grid.Row="2" Grid.ColumnSpan="3" Spacing="8">
-                        <Label Text="{Binding SelectedPoi.CategoryName}"
-                               FontSize="12" TextColor="White"
-                               BackgroundColor="#4CAF50" Padding="8,4"/>
+        <!-- POI Detail panel -->
+        <Grid Grid.Row="0" VerticalOptions="End" IsVisible="{Binding IsPoiDetailVisible}"
+              Margin="12,0,12,8">
+            <Border StrokeThickness="0" Padding="0">
+                <Border.StrokeShape>
+                    <RoundRectangle CornerRadius="24"/>
+                </Border.StrokeShape>
+                <Border.Background>
+                    <SolidColorBrush Color="White"/>
+                </Border.Background>
+                <Border.Shadow>
+                    <Shadow Brush="#40000000" Offset="0,8" Radius="24" Opacity="0.2"/>
+                </Border.Shadow>
+
+                <Grid RowDefinitions="180,Auto,Auto,Auto,Auto">
+                    <!-- Ảnh -->
+                    <Border Grid.Row="0" StrokeThickness="0">
+                        <Border.StrokeShape>
+                            <RoundRectangle CornerRadius="24,24,0,0"/>
+                        </Border.StrokeShape>
+                        <Image Source="{Binding SelectedPoi.ImageUrl}"
+                               HeightRequest="180" Aspect="AspectFill"/>
+                    </Border>
+                    <BoxView Grid.Row="0" VerticalOptions="End" HeightRequest="80">
+                        <BoxView.Background>
+                            <LinearGradientBrush StartPoint="0,0" EndPoint="0,1">
+                                <GradientStop Color="Transparent" Offset="0"/>
+                                <GradientStop Color="#CC000000" Offset="1"/>
+                            </LinearGradientBrush>
+                        </BoxView.Background>
+                    </BoxView>
+
+                    <!-- Tên + actions -->
+                    <Grid Grid.Row="0" VerticalOptions="End" Padding="14,10"
+                          ColumnDefinitions="*,Auto,Auto">
+                        <Label Grid.Column="0" Text="{Binding SelectedPoi.Name}"
+                               FontSize="17" FontAttributes="Bold" TextColor="White"/>
+                        <Button Grid.Column="1"
+                                Command="{Binding ToggleFavoriteCommand}"
+                                CommandParameter="{Binding SelectedPoi}"
+                                Text="{Binding SelectedPoi.FavoriteIcon}"
+                                FontSize="20" BackgroundColor="Transparent"
+                                WidthRequest="38" HeightRequest="38"/>
+                        <Button Grid.Column="2" Command="{Binding ClosePoiDetailCommand}"
+                                Text="✕" FontSize="15" TextColor="#CCDDEE"
+                                BackgroundColor="Transparent"
+                                WidthRequest="34" HeightRequest="34"/>
+                    </Grid>
+
+                    <!-- Tags -->
+                    <HorizontalStackLayout Grid.Row="1" Spacing="8" Padding="14,10">
+                        <Border StrokeThickness="0" Padding="10,5">
+                            <Border.StrokeShape>
+                                <RoundRectangle CornerRadius="10"/>
+                            </Border.StrokeShape>
+                            <Border.Background>
+                                <LinearGradientBrush StartPoint="0,0" EndPoint="1,0">
+                                    <GradientStop Color="#00D4AA" Offset="0"/>
+                                    <GradientStop Color="#00B894" Offset="1"/>
+                                </LinearGradientBrush>
+                            </Border.Background>
+                            <Label Text="{Binding SelectedPoi.CategoryName}"
+                                   FontSize="12" TextColor="White" FontAttributes="Bold"/>
+                        </Border>
                         <Label Text="{Binding SelectedPoi.DistanceDisplay}"
-                               FontSize="12" TextColor="#666" VerticalOptions="Center"/>
+                               FontSize="12" TextColor="#9AA5B4" VerticalOptions="Center"/>
                         <Label Text="{Binding SelectedPoi.TicketDisplay}"
-                               FontSize="12" TextColor="#1976D2" VerticalOptions="Center"/>
+                               FontSize="12" TextColor="#FF7043" VerticalOptions="Center"/>
                     </HorizontalStackLayout>
-                    <Label Grid.Row="3" Grid.ColumnSpan="3"
+
+                    <!-- Mô tả -->
+                    <Label Grid.Row="2" Padding="14,0"
                            Text="{Binding SelectedPoi.Description}"
-                           FontSize="14" LineBreakMode="TailTruncation" MaxLines="3"
-                           TextColor="{AppThemeBinding Light=#444, Dark=#BBB}"/>
-                    <Button Grid.Row="4" Grid.ColumnSpan="3"
-                            x:Name="ListenDetailBtn"
-                            Command="{Binding PlayNarrationCommand}"
-                            CommandParameter="{Binding SelectedPoi}"
-                            FontSize="14" BackgroundColor="#1976D2"
-                            TextColor="White" CornerRadius="12"
-                            HorizontalOptions="Fill"/>
+                           FontSize="13" LineBreakMode="TailTruncation" MaxLines="2"
+                           TextColor="#6B7A8D"/>
+
+                    <!-- Nút nghe -->
+                    <Border Grid.Row="3" Margin="14,10" StrokeThickness="0">
+                        <Border.StrokeShape>
+                            <RoundRectangle CornerRadius="14"/>
+                        </Border.StrokeShape>
+                        <Border.Background>
+                            <LinearGradientBrush StartPoint="0,0" EndPoint="1,0">
+                                <GradientStop Color="#FF7043" Offset="0"/>
+                                <GradientStop Color="#FFA040" Offset="1"/>
+                            </LinearGradientBrush>
+                        </Border.Background>
+                        <Border.Shadow>
+                            <Shadow Brush="#60FF7043" Offset="0,4" Radius="10" Opacity="0.35"/>
+                        </Border.Shadow>
+                        <Button x:Name="ListenDetailBtn"
+                                Command="{Binding PlayNarrationCommand}"
+                                CommandParameter="{Binding SelectedPoi}"
+                                FontSize="14" BackgroundColor="Transparent"
+                                TextColor="White" HeightRequest="48" HorizontalOptions="Fill"/>
+                    </Border>
                 </Grid>
-            </Frame>
+            </Border>
         </Grid>
 
         <!-- Bottom bar -->
-        <Frame Grid.Row="1" Style="{StaticResource CardStyle}"
-               Margin="12,0,12,12"
-               BackgroundColor="{AppThemeBinding Light=White, Dark=#1E1E1E}">
+        <Border Grid.Row="1" Margin="12,0,12,12" Padding="14,12"
+                StrokeThickness="0">
+            <Border.StrokeShape>
+                <RoundRectangle CornerRadius="20"/>
+            </Border.StrokeShape>
+            <Border.Background>
+                <SolidColorBrush Color="White"/>
+            </Border.Background>
+            <Border.Shadow>
+                <Shadow Brush="#30000000" Offset="0,8" Radius="24" Opacity="0.12"/>
+            </Border.Shadow>
             <Grid ColumnDefinitions="Auto,*,Auto,Auto">
-                <BoxView Grid.Column="0" WidthRequest="6" CornerRadius="3"
-                         BackgroundColor="#FF6F00" VerticalOptions="Fill" Margin="0,0,10,0"/>
-                <VerticalStackLayout Grid.Column="1" Spacing="2">
-                    <Label x:Name="NearestLabel" FontSize="11" TextColor="#999"/>
+                <!-- Accent bar -->
+                <Border Grid.Column="0" WidthRequest="4" VerticalOptions="Fill"
+                        Margin="0,2,12,2" StrokeThickness="0">
+                    <Border.StrokeShape>
+                        <RoundRectangle CornerRadius="2"/>
+                    </Border.StrokeShape>
+                    <Border.Background>
+                        <LinearGradientBrush StartPoint="0,0" EndPoint="0,1">
+                            <GradientStop Color="#FF7043" Offset="0"/>
+                            <GradientStop Color="#FFA040" Offset="1"/>
+                        </LinearGradientBrush>
+                    </Border.Background>
+                </Border>
+
+                <VerticalStackLayout Grid.Column="1" Spacing="2" VerticalOptions="Center">
+                    <Label x:Name="NearestLabel" FontSize="10" TextColor="#9AA5B4"
+                           FontAttributes="Bold"/>
                     <Label Text="{Binding NearestPoi.Name}"
-                           FontSize="15" FontAttributes="Bold"
-                           TextColor="{AppThemeBinding Light=#1A1A1A, Dark=White}"/>
+                           FontSize="15" FontAttributes="Bold" TextColor="#1A1A2E"/>
                     <Label Text="{Binding NearestPoi.DistanceDisplay}"
-                           FontSize="12" TextColor="#1976D2"/>
+                           FontSize="12" TextColor="#FF7043"/>
                 </VerticalStackLayout>
+
                 <Button Grid.Column="2"
                         Command="{Binding ToggleFavoriteCommand}"
                         CommandParameter="{Binding NearestPoi}"
                         Text="{Binding NearestPoi.FavoriteIcon}"
                         FontSize="22" BackgroundColor="Transparent"
-                        WidthRequest="44" HeightRequest="44" Padding="0"
+                        WidthRequest="42" HeightRequest="42" Padding="0"
                         VerticalOptions="Center"/>
-                <Button Grid.Column="3"
-                        x:Name="ListenBtn"
-                        Command="{Binding PlayNarrationCommand}"
-                        CommandParameter="{Binding NearestPoi}"
-                        FontSize="14" BackgroundColor="#1976D2"
-                        TextColor="White" CornerRadius="20" Padding="16,8"
-                        VerticalOptions="Center"/>
+
+                <Border Grid.Column="3" StrokeThickness="0" VerticalOptions="Center">
+                    <Border.StrokeShape>
+                        <RoundRectangle CornerRadius="14"/>
+                    </Border.StrokeShape>
+                    <Border.Background>
+                        <LinearGradientBrush StartPoint="0,0" EndPoint="1,0">
+                            <GradientStop Color="#FF7043" Offset="0"/>
+                            <GradientStop Color="#FFA040" Offset="1"/>
+                        </LinearGradientBrush>
+                    </Border.Background>
+                    <Border.Shadow>
+                        <Shadow Brush="#60FF7043" Offset="0,3" Radius="8" Opacity="0.3"/>
+                    </Border.Shadow>
+                    <Button x:Name="ListenBtn"
+                            Command="{Binding PlayNarrationCommand}"
+                            CommandParameter="{Binding NearestPoi}"
+                            FontSize="13" BackgroundColor="Transparent"
+                            TextColor="White" Padding="16,10"/>
+                </Border>
             </Grid>
-        </Frame>
+        </Border>
 
     </Grid>
 </ContentPage>

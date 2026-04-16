@@ -7,76 +7,133 @@
     Title="TourGuideHCM"
     FlyoutBehavior="Flyout">
 
-    <!-- Login – ẩn khỏi Flyout, route = "LoginPage" -->
     <FlyoutItem FlyoutItemIsVisible="False" Route="LoginPage">
-        <ShellContent Route="LoginPage"
-                      ContentTemplate="{DataTemplate views:LoginPage}"/>
+        <ShellContent Route="LoginPage" ContentTemplate="{DataTemplate views:LoginPage}"/>
     </FlyoutItem>
 
-    <!-- Register – ẩn khỏi Flyout -->
     <FlyoutItem FlyoutItemIsVisible="False" Route="RegisterPage">
-        <ShellContent Route="RegisterPage"
-                      ContentTemplate="{DataTemplate views:RegisterPage}"/>
+        <ShellContent Route="RegisterPage" ContentTemplate="{DataTemplate views:RegisterPage}"/>
     </FlyoutItem>
 
-    <!-- Map -->
     <FlyoutItem FlyoutItemIsVisible="False" Route="MapPage">
-        <ShellContent Route="MapPage"
-                      ContentTemplate="{DataTemplate views:MapPage}"/>
+        <ShellContent Route="MapPage" ContentTemplate="{DataTemplate views:MapPage}"/>
     </FlyoutItem>
 
-    <!-- POI List -->
     <FlyoutItem FlyoutItemIsVisible="False" Route="PoiListPage">
-        <ShellContent Route="PoiListPage"
-                      ContentTemplate="{DataTemplate views:PoiListPage}"/>
+        <ShellContent Route="PoiListPage" ContentTemplate="{DataTemplate views:PoiListPage}"/>
     </FlyoutItem>
 
     <!-- Flyout Header -->
     <Shell.FlyoutHeader>
-        <Grid BackgroundColor="#1E1E1E" HeightRequest="60" Padding="15,0">
-            <Label Text="Các địa điểm nổi bật"
-                   TextColor="#FFCC00" FontSize="18"
-                   FontAttributes="Bold" VerticalOptions="Center"/>
+        <Grid HeightRequest="110" Padding="20,0">
+            <Grid.Background>
+                <LinearGradientBrush StartPoint="0,0" EndPoint="1,1">
+                    <GradientStop Color="#FF7043" Offset="0"/>
+                    <GradientStop Color="#FFA040" Offset="1"/>
+                </LinearGradientBrush>
+            </Grid.Background>
+            <!-- Vòng trang trí -->
+            <Ellipse WidthRequest="120" HeightRequest="120"
+                     HorizontalOptions="End" VerticalOptions="Start"
+                     Margin="0,-30,-20,0" Opacity="0.15">
+                <Ellipse.Fill>
+                    <SolidColorBrush Color="White"/>
+                </Ellipse.Fill>
+            </Ellipse>
+            <HorizontalStackLayout VerticalOptions="Center" Spacing="12">
+                <Border WidthRequest="44" HeightRequest="44" StrokeThickness="0">
+                    <Border.StrokeShape>
+                        <RoundRectangle CornerRadius="14"/>
+                    </Border.StrokeShape>
+                    <Border.Background>
+                        <SolidColorBrush Color="#FFFFFF30"/>
+                    </Border.Background>
+                    <Label Text="🗺️" FontSize="22"
+                           HorizontalOptions="Center" VerticalOptions="Center"/>
+                </Border>
+                <VerticalStackLayout Spacing="2" VerticalOptions="Center">
+                    <Label Text="TourGuide HCM" TextColor="White"
+                           FontSize="17" FontAttributes="Bold"/>
+                    <Label Text="Khám phá Sài Gòn" TextColor="#FFFFFF99" FontSize="12"/>
+                </VerticalStackLayout>
+            </HorizontalStackLayout>
         </Grid>
     </Shell.FlyoutHeader>
 
     <!-- Flyout Content -->
     <Shell.FlyoutContent>
-        <Grid RowDefinitions="350,Auto" BackgroundColor="#2C2C2C">
+        <Grid RowDefinitions="*,Auto" BackgroundColor="#FAFBFF">
 
+            <!-- Danh sách POI -->
             <CollectionView Grid.Row="0"
                             x:Name="PoiFlyoutList"
                             SelectionMode="Single"
                             SelectionChanged="OnPoiFlyoutSelected"
-                            BackgroundColor="#2C2C2C">
+                            BackgroundColor="Transparent"
+                            Margin="0,8">
+                <CollectionView.Header>
+                    <Label Text="ĐỊA ĐIỂM NỔI BẬT"
+                           TextColor="#FF7043" FontSize="11" FontAttributes="Bold"
+                           Margin="16,10,16,6" CharacterSpacing="1.5"/>
+                </CollectionView.Header>
                 <CollectionView.ItemTemplate>
                     <DataTemplate>
-                        <Frame Padding="14" BackgroundColor="#3A3A3A"
-                               CornerRadius="10" Margin="8,4">
-                            <VerticalStackLayout Spacing="4">
-                                <Label Text="{Binding Name}" TextColor="White"
-                                       FontSize="16" FontAttributes="Bold"/>
-                                <Label Text="{Binding Description}" TextColor="#BBBBBB"
-                                       FontSize="13" LineBreakMode="TailTruncation" MaxLines="2"/>
-                            </VerticalStackLayout>
-                        </Frame>
+                        <Border Margin="12,4" StrokeThickness="1"
+                                Stroke="#EEF0F6" Padding="14,12">
+                            <Border.StrokeShape>
+                                <RoundRectangle CornerRadius="16"/>
+                            </Border.StrokeShape>
+                            <Border.Background>
+                                <SolidColorBrush Color="White"/>
+                            </Border.Background>
+                            <Border.Shadow>
+                                <Shadow Brush="#15000000" Offset="0,2" Radius="8" Opacity="0.1"/>
+                            </Border.Shadow>
+                            <Grid ColumnDefinitions="Auto,*" ColumnSpacing="10">
+                                <Border Grid.Column="0" WidthRequest="4" VerticalOptions="Fill"
+                                        StrokeThickness="0">
+                                    <Border.StrokeShape>
+                                        <RoundRectangle CornerRadius="2"/>
+                                    </Border.StrokeShape>
+                                    <Border.Background>
+                                        <LinearGradientBrush StartPoint="0,0" EndPoint="0,1">
+                                            <GradientStop Color="#FF7043" Offset="0"/>
+                                            <GradientStop Color="#FFA040" Offset="1"/>
+                                        </LinearGradientBrush>
+                                    </Border.Background>
+                                </Border>
+                                <VerticalStackLayout Grid.Column="1" Spacing="4">
+                                    <Label Text="{Binding Name}" TextColor="#1A1A2E"
+                                           FontSize="15" FontAttributes="Bold"/>
+                                    <Label Text="{Binding Description}" TextColor="#9AA5B4"
+                                           FontSize="12" LineBreakMode="TailTruncation" MaxLines="2"/>
+                                </VerticalStackLayout>
+                            </Grid>
+                        </Border>
                     </DataTemplate>
                 </CollectionView.ItemTemplate>
             </CollectionView>
 
-            <VerticalStackLayout Grid.Row="1" BackgroundColor="#1E1E1E" Spacing="0">
-                <BoxView BackgroundColor="#555555" HeightRequest="1"/>
-                <Button Text="🗺️  Bản đồ" BackgroundColor="Transparent"
-                        TextColor="White" FontSize="16" HorizontalOptions="Fill"
-                        ContentLayout="Left,10" Padding="20,14" Clicked="OnMapClicked"/>
-                <BoxView BackgroundColor="#333333" HeightRequest="1" Margin="20,0"/>
-                <Button Text="📋  Danh sách POI" BackgroundColor="Transparent"
-                        TextColor="White" FontSize="16" HorizontalOptions="Fill"
-                        ContentLayout="Left,10" Padding="20,14" Clicked="OnPoiListClicked"/>
-                <BoxView BackgroundColor="#555555" HeightRequest="1"/>
-                <Button Text="🚪  Đăng xuất" BackgroundColor="Transparent"
-                        TextColor="#FF6B6B" FontSize="16" HorizontalOptions="Fill"
-                        ContentLayout="Left,10" Padding="20,14" Clicked="OnLogoutClicked"/>
+            <!-- Menu bottom -->
+            <VerticalStackLayout Grid.Row="1" Spacing="0"
+                                 Padding="0,8,0,16" BackgroundColor="White">
+                <BoxView HeightRequest="1" Color="#EEF0F6"/>
+
+                <Button Text="🗺️   Bản đồ" BackgroundColor="Transparent"
+                        TextColor="#1A1A2E" FontSize="15" HorizontalOptions="Fill"
+                        ContentLayout="Left,14" Padding="20,14" Clicked="OnMapClicked"/>
+
+                <BoxView HeightRequest="1" Margin="20,0" Color="#EEF0F6"/>
+
+                <Button Text="📋   Danh sách POI" BackgroundColor="Transparent"
+                        TextColor="#1A1A2E" FontSize="15" HorizontalOptions="Fill"
+                        ContentLayout="Left,14" Padding="20,14" Clicked="OnPoiListClicked"/>
+
+                <BoxView HeightRequest="1" Color="#EEF0F6"/>
+
+                <Button Text="🚪   Đăng xuất" BackgroundColor="Transparent"
+                        TextColor="#FF5252" FontSize="15" HorizontalOptions="Fill"
+                        ContentLayout="Left,14" Padding="20,14" Clicked="OnLogoutClicked"/>
             </VerticalStackLayout>
 
         </Grid>

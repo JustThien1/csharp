@@ -2,57 +2,88 @@
 <ContentPage xmlns="http://schemas.microsoft.com/dotnet/2021/maui"
              xmlns:x="http://schemas.microsoft.com/winfx/2009/xaml"
              x:Class="TourGuideHCM.App.Views.PoiBottomSheet"
-             Title="Chi tiết địa điểm">
+             Title="Chi tiết địa điểm"
+             BackgroundColor="White">
 
-    <VerticalStackLayout Spacing="0">
+	<VerticalStackLayout Spacing="0">
 
-        <!-- Header ảnh + tên -->
-        <Grid HeightRequest="220">
-            <Image Source="{Binding ImageUrl}" 
-                   Aspect="AspectFill"/>
+		<!-- Drag handle -->
+		<BoxView WidthRequest="40" HeightRequest="4" CornerRadius="2"
+                 BackgroundColor="#DDE3EE" HorizontalOptions="Center" Margin="0,10,0,6"/>
 
-            <BoxView BackgroundColor="#80000000" />
+		<!-- Ảnh header -->
+		<Grid HeightRequest="220">
+			<!-- Placeholder cam -->
+			<Border StrokeThickness="0">
+				<Border.StrokeShape>
+					<RoundRectangle CornerRadius="0"/>
+				</Border.StrokeShape>
+				<Border.Background>
+					<LinearGradientBrush StartPoint="0,0" EndPoint="1,1">
+						<GradientStop Color="#FF7043" Offset="0"/>
+						<GradientStop Color="#FFA040" Offset="1"/>
+					</LinearGradientBrush>
+				</Border.Background>
+			</Border>
+			<Image Source="{Binding ImageUrl}" Aspect="AspectFill"/>
+			<BoxView VerticalOptions="Fill" HorizontalOptions="Fill">
+				<BoxView.Background>
+					<LinearGradientBrush StartPoint="0,0" EndPoint="0,1">
+						<GradientStop Color="Transparent" Offset="0.3"/>
+						<GradientStop Color="#CC1A1A2E" Offset="1"/>
+					</LinearGradientBrush>
+				</BoxView.Background>
+			</BoxView>
+			<VerticalStackLayout VerticalOptions="End" Margin="18,0,18,16" Spacing="6">
+				<Label Text="{Binding Name}" TextColor="White"
+                       FontSize="22" FontAttributes="Bold"/>
+				<!-- Tag category -->
+				<Border StrokeThickness="0" Padding="10,4" HorizontalOptions="Start">
+					<Border.StrokeShape>
+						<RoundRectangle CornerRadius="8"/>
+					</Border.StrokeShape>
+					<Border.Background>
+						<LinearGradientBrush StartPoint="0,0" EndPoint="1,0">
+							<GradientStop Color="#00D4AA" Offset="0"/>
+							<GradientStop Color="#00B894" Offset="1"/>
+						</LinearGradientBrush>
+					</Border.Background>
+					<Label Text="{Binding CategoryName}" TextColor="White"
+                           FontSize="12" FontAttributes="Bold"/>
+				</Border>
+			</VerticalStackLayout>
+		</Grid>
 
-            <Label Text="{Binding Name}"
-                   TextColor="White"
-                   FontSize="20"
-                   FontAttributes="Bold"
-                   VerticalOptions="End"
-                   Margin="15,0,15,15"/>
-        </Grid>
+		<!-- Nội dung -->
+		<ScrollView>
+			<VerticalStackLayout Padding="18,16" Spacing="16">
 
-        <!-- Nội dung cuộn được -->
-        <ScrollView>
-            <VerticalStackLayout Padding="15" Spacing="15">
+				<Label Text="Tổng quan" FontSize="16" FontAttributes="Bold" TextColor="#1A1A2E"/>
 
-                <!-- Tổng quan -->
-                <Label Text="Tổng quan" 
-                       FontSize="18" 
-                       FontAttributes="Bold"/>
+				<Label Text="{Binding Description}"
+                       FontSize="14" LineHeight="1.6" TextColor="#6B7A8D"/>
 
-                <Label Text="{Binding Description}"
-                       FontSize="15"
-                       LineHeight="1.4"
-                       TextColor="#EEEEEE"/>
+				<!-- Nút audio -->
+				<Border StrokeThickness="0" Margin="0,4">
+					<Border.StrokeShape>
+						<RoundRectangle CornerRadius="16"/>
+					</Border.StrokeShape>
+					<Border.Background>
+						<LinearGradientBrush StartPoint="0,0" EndPoint="1,0">
+							<GradientStop Color="#FF7043" Offset="0"/>
+							<GradientStop Color="#FFA040" Offset="1"/>
+						</LinearGradientBrush>
+					</Border.Background>
+					<Border.Shadow>
+						<Shadow Brush="#60FF7043" Offset="0,6" Radius="16" Opacity="0.4"/>
+					</Border.Shadow>
+					<Button Text="🔊  Nghe thuyết minh audio"
+                            BackgroundColor="Transparent" TextColor="White"
+                            FontSize="16" FontAttributes="Bold"
+                            HeightRequest="56" Clicked="OnSpeakClicked"/>
+				</Border>
 
-                <!-- Có thể thêm khoảng cách, thời gian mở cửa... sau này -->
-
-                <!-- Phần Audio -->
-                <Frame BackgroundColor="#2C2C2C" 
-                       CornerRadius="12"
-                       Padding="0">
-                    <Button Text="🔊 Nghe thuyết minh audio"
-                            BackgroundColor="#6C4CF1"
-                            TextColor="White"
-                            FontSize="16"
-                            FontAttributes="Bold"
-                            HeightRequest="56"
-                            Clicked="OnSpeakClicked"/>
-                </Frame>
-
-            </VerticalStackLayout>
-        </ScrollView>
-
-    </VerticalStackLayout>
-
+			</VerticalStackLayout>
+		</ScrollView>
+	</VerticalStackLayout>
 </ContentPage>

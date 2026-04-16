@@ -1,5 +1,6 @@
 ﻿using System.Net.Http.Json;
 using System.Text.Json;
+using TourGuideHCM.App.Helpers;
 using TourGuideHCM.App.Models;
 using TourGuideHCM.App.Services.Interfaces;
 
@@ -9,15 +10,8 @@ public class ApiService : IApiService
 {
     private readonly HttpClient _http;
 
-    // ── Base URL – đổi theo môi trường ──────────────────────────────────────
-    // Android emulator  → http://10.0.2.2:5284
-    // iOS simulator     → http://localhost:5284
-    // Thiết bị thật     → http://<IP-LAN>:5284
-#if ANDROID
-    public const string BaseUrl = "http://10.0.2.2:5284";
-#else
-    public const string BaseUrl = "http://localhost:5284";
-#endif
+    // BaseUrl được tính tự động theo thiết bị (emulator / thật / simulator)
+    public static string BaseUrl => DeviceHelper.GetBaseUrl();
 
     private static readonly JsonSerializerOptions _json = new()
     {
@@ -130,7 +124,7 @@ public class ApiService : IApiService
         }
         catch (Exception ex)
         {
-            System.Diagnostics.Debug.WriteLine($"[API] Register: {ex.Message}");
+            System.Diagnostics.Debug.WriteLine($"[API] Register: {ex.Message}\n{ex}");
             return null;
         }
     }
@@ -140,7 +134,6 @@ public class ApiService : IApiService
     /// <summary>
     /// POST /api/poi/trigger
     /// Body: { "lat":..., "lng":... }
-    /// API dùng GetCurrentUserId() từ JWT claim → nếu chưa auth thì userId=0 (vẫn OK)
     /// Response: { "triggered":true, "poiId":1, "poiName":"...", "audioUrl":"...", "narrationText":"..." }
     /// </summary>
     public async Task<GeofenceTriggerResponse?> TriggerGeofenceAsync(double lat, double lng)
@@ -183,7 +176,7 @@ public class ApiService : IApiService
 
     /// <summary>
     /// Chuyển relative path → URL đầy đủ để stream từ API
-    /// "audio/nhatho.mp3" → "http://10.0.2.2:5284/audio/nhatho.mp3"
+    /// "audio/nhatho.mp3" → "http://10.0.2.2:8080/audio/nhatho.mp3"
     /// </summary>
     public string ResolveAudioUrl(string? audioUrl)
     {
@@ -192,7 +185,7 @@ public class ApiService : IApiService
         return $"{BaseUrl}/{audioUrl.TrimStart('/')}";
     }
 
-    // ── Audio URL từ bảng Audios ─────────────────────────────────────────────────
+    // ── Audio URL từ bảng Audios ──────────────────────────────────────────────
 
     /// <summary>
     /// GET /api/audio/poi/{poiId} → lấy AudioUrl đúng ngôn ngữ từ bảng Audios
@@ -204,7 +197,6 @@ public class ApiService : IApiService
             var list = await _http.GetFromJsonAsync<List<AudioItem>>(
                 $"/api/audio/poi/{poiId}", _json) ?? new();
 
-            // Ưu tiên đúng ngôn ngữ, fallback về bất kỳ
             var match = list.FirstOrDefault(a =>
                 a.IsActive && a.Language == language)
                 ?? list.FirstOrDefault(a => a.IsActive);
@@ -212,10 +204,13 @@ public class ApiService : IApiService
             if (match == null) return string.Empty;
 
             var url = match.AudioUrl ?? string.Empty;
-#if ANDROID
-            url = url.Replace("localhost", "10.0.2.2")
-                     .Replace("127.0.0.1", "10.0.2.2");
-#endif
+
+            // Thay localhost/127.0.0.1 bằng IP thực (cho cả emulator lẫn thiết bị thật)
+            url = url.Replace("localhost", DeviceHelper.GetBaseUrl()
+                         .Replace("http://", "").Split(':')[0])
+                     .Replace("127.0.0.1", DeviceHelper.GetBaseUrl()
+                         .Replace("http://", "").Split(':')[0]);
+
             return ResolveAudioUrl(url);
         }
         catch (Exception ex)

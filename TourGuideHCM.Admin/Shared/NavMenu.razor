@@ -3,76 +3,76 @@
 <MudNavMenu Dense="true" Style="padding: 12px 8px;">
 
     <MudText Typo="Typo.overline"
-             Style="font-size: 10px; letter-spacing: 1.5px; color: #475569; padding: 16px 14px 6px 14px; display: block; font-weight: 600;">
+             Style="font-size: 10px; letter-spacing: 1.5px; color: #9AA5B4; padding: 16px 14px 6px 14px; display: block; font-weight: 700;">
         QUẢN LÝ NỘI DUNG
     </MudText>
 
     <MudNavLink Href="/poi"
                 Icon="@Icons.Material.Filled.Place"
-                Style="border-radius: 8px; margin: 2px 0; color: #94a3b8;"
+                Style="border-radius: 12px; margin: 2px 0; color: #6B7A8D;"
                 ActiveClass="nav-active">
         Địa điểm (POI)
     </MudNavLink>
 
     <MudNavLink Href="/audio"
                 Icon="@Icons.Material.Filled.MusicNote"
-                Style="border-radius: 8px; margin: 2px 0; color: #94a3b8;"
+                Style="border-radius: 12px; margin: 2px 0; color: #6B7A8D;"
                 ActiveClass="nav-active">
         Audio Guide
     </MudNavLink>
 
     <MudNavLink Href="/tour"
                 Icon="@Icons.Material.Filled.Map"
-                Style="border-radius: 8px; margin: 2px 0; color: #94a3b8;"
+                Style="border-radius: 12px; margin: 2px 0; color: #6B7A8D;"
                 ActiveClass="nav-active">
         Quản lý Tour
     </MudNavLink>
 
     <MudNavLink Href="/qrcode"
                 Icon="@Icons.Material.Filled.QrCode2"
-                Style="border-radius: 8px; margin: 2px 0; color: #94a3b8;"
+                Style="border-radius: 12px; margin: 2px 0; color: #6B7A8D;"
                 ActiveClass="nav-active">
         QR Code
     </MudNavLink>
 
-    <div style="border-top: 1px solid #1e2d40; margin: 12px 6px;"></div>
+    <div style="border-top: 1px solid #EEF0F6; margin: 12px 6px;"></div>
 
     <MudText Typo="Typo.overline"
-             Style="font-size: 10px; letter-spacing: 1.5px; color: #475569; padding: 8px 14px 6px 14px; display: block; font-weight: 600;">
+             Style="font-size: 10px; letter-spacing: 1.5px; color: #9AA5B4; padding: 8px 14px 6px 14px; display: block; font-weight: 700;">
         PHÂN TÍCH DỮ LIỆU
     </MudText>
 
     <MudNavLink Href="/route-tracking"
                 Icon="@Icons.Material.Filled.Route"
-                Style="border-radius: 8px; margin: 2px 0; color: #94a3b8;"
+                Style="border-radius: 12px; margin: 2px 0; color: #6B7A8D;"
                 ActiveClass="nav-active">
         Tuyến di chuyển
     </MudNavLink>
 
     <MudNavLink Href="/history"
                 Icon="@Icons.Material.Filled.History"
-                Style="border-radius: 8px; margin: 2px 0; color: #94a3b8;"
+                Style="border-radius: 12px; margin: 2px 0; color: #6B7A8D;"
                 ActiveClass="nav-active">
         Lịch sử nghe
     </MudNavLink>
 
     <MudNavLink Href="/heatmap"
                 Icon="@Icons.Material.Filled.Whatshot"
-                Style="border-radius: 8px; margin: 2px 0; color: #94a3b8;"
+                Style="border-radius: 12px; margin: 2px 0; color: #6B7A8D;"
                 ActiveClass="nav-active">
         Heatmap
     </MudNavLink>
 
-    <div style="border-top: 1px solid #1e2d40; margin: 12px 6px;"></div>
+    <div style="border-top: 1px solid #EEF0F6; margin: 12px 6px;"></div>
 
     <MudText Typo="Typo.overline"
-             Style="font-size: 10px; letter-spacing: 1.5px; color: #475569; padding: 8px 14px 6px 14px; display: block; font-weight: 600;">
+             Style="font-size: 10px; letter-spacing: 1.5px; color: #9AA5B4; padding: 8px 14px 6px 14px; display: block; font-weight: 700;">
         HỆ THỐNG
     </MudText>
 
     <MudNavLink Href="/users"
                 Icon="@Icons.Material.Filled.People"
-                Style="border-radius: 8px; margin: 2px 0; color: #94a3b8;"
+                Style="border-radius: 12px; margin: 2px 0; color: #6B7A8D;"
                 ActiveClass="nav-active">
         Người dùng
     </MudNavLink>
@@ -80,17 +80,25 @@
 </MudNavMenu>
 
 <style>
+    /* Active — nền cam nhạt, text + icon cam */
     .nav-active {
-        background-color: #1e3a5f !important;
-        color: #60a5fa !important;
+        background: linear-gradient(90deg, #FFF0EB, #FFF8F4) !important;
+        color: #FF7043 !important;
+        font-weight: 600 !important;
+        border-left: 3px solid #FF7043 !important;
     }
 
         .nav-active .mud-nav-link-icon {
-            color: #3b82f6 !important;
+            color: #FF7043 !important;
         }
 
+    /* Hover — nền mint nhạt, text mint */
     .mud-nav-link:hover {
-        background-color: #1a2535 !important;
-        color: #e2e8f0 !important;
+        background-color: #F0FBF9 !important;
+        color: #00D4AA !important;
     }
+
+        .mud-nav-link:hover .mud-nav-link-icon {
+            color: #00D4AA !important;
+        }
 </style>

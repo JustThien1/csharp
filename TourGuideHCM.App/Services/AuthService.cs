@@ -12,9 +12,9 @@ public class AuthService : IAuthService
     public User? CurrentUser { get; private set; }
     public bool IsAuthenticated => CurrentUser != null;
 
-    public AuthService(HttpClient http, IDatabaseService db)
+    public AuthService(IHttpClientFactory factory, IDatabaseService db)
     {
-        _http = http;
+        _http = factory.CreateClient("AuthClient");
         _db = db;
     }
 
@@ -50,10 +50,6 @@ public class AuthService : IAuthService
         catch { return false; }
     }
 
-    /// <summary>
-    /// Implement interface: RegisterAsync(username, password, fullName, email)
-    /// Phone được lấy từ Preferences nếu RegisterPage đã lưu trước khi gọi
-    /// </summary>
     public async Task<bool> RegisterAsync(string username, string password,
         string fullName, string email)
     {
@@ -61,7 +57,6 @@ public class AuthService : IAuthService
         return await RegisterWithPhoneAsync(username, password, fullName, email, phone);
     }
 
-    /// <summary>Overload mở rộng — dùng trực tiếp từ RegisterPage</summary>
     public async Task<bool> RegisterWithPhoneAsync(string username, string password,
         string? fullName, string? email, string? phone)
     {
@@ -102,7 +97,6 @@ public class AuthService : IAuthService
         catch { return false; }
     }
 
-    // DTO nội bộ
     private class LoginResponse
     {
         public int UserId { get; set; }

@@ -3,92 +3,168 @@
              xmlns:x="http://schemas.microsoft.com/winfx/2009/xaml"
              x:Class="TourGuideHCM.App.Views.RegisterPage"
              Shell.NavBarIsVisible="False"
-             BackgroundColor="{AppThemeBinding Light=#F5F5F5, Dark=#121212}">
+             BackgroundColor="#FAFBFF">
 
 	<ScrollView>
-		<VerticalStackLayout Padding="32" Spacing="14" VerticalOptions="Center">
+		<VerticalStackLayout Padding="28,50,28,40" Spacing="0">
 
-			<Label Text="🗺️" FontSize="56" HorizontalOptions="Center"/>
+			<!-- Header -->
+			<VerticalStackLayout Spacing="6" Margin="0,0,0,32" HorizontalOptions="Center">
+				<Border WidthRequest="72" HeightRequest="72"
+                        HorizontalOptions="Center" StrokeThickness="0">
+					<Border.StrokeShape>
+						<RoundRectangle CornerRadius="22"/>
+					</Border.StrokeShape>
+					<Border.Background>
+						<LinearGradientBrush StartPoint="0,0" EndPoint="1,1">
+							<GradientStop Color="#00D4AA" Offset="0"/>
+							<GradientStop Color="#00B894" Offset="1"/>
+						</LinearGradientBrush>
+					</Border.Background>
+					<Label Text="✨" FontSize="30"
+                           HorizontalOptions="Center" VerticalOptions="Center"/>
+				</Border>
+				<Label x:Name="TitleLabel" Text="Tạo tài khoản"
+                       FontSize="26" FontAttributes="Bold"
+                       HorizontalOptions="Center" TextColor="#1A1A2E" Margin="0,12,0,0"/>
+				<Label Text="Tham gia cùng hàng nghìn du khách"
+                       FontSize="13" HorizontalOptions="Center" TextColor="#9AA5B4"/>
+			</VerticalStackLayout>
 
-			<Label x:Name="TitleLabel"
-                   Text="Tạo tài khoản"
-                   FontSize="24" FontAttributes="Bold"
-                   HorizontalOptions="Center"
-                   TextColor="{AppThemeBinding Light=#1A1A1A, Dark=White}"/>
+			<VerticalStackLayout Spacing="12">
 
-			<!-- Username -->
-			<Frame CornerRadius="12" Padding="0" BorderColor="#E0E0E0" HasShadow="False">
-				<Entry x:Name="UsernameEntry"
-                       Placeholder="Tên đăng nhập *"
-                       Margin="12,0" HeightRequest="48"
-                       BackgroundColor="Transparent"
-                       ReturnType="Next"/>
-			</Frame>
+				<!-- Username -->
+				<Border StrokeThickness="1.5" Stroke="#EEF0F6">
+					<Border.StrokeShape>
+						<RoundRectangle CornerRadius="18"/>
+					</Border.StrokeShape>
+					<Border.Background>
+						<SolidColorBrush Color="White"/>
+					</Border.Background>
+					<Border.Shadow>
+						<Shadow Brush="#20C0C8D8" Offset="0,4" Radius="12" Opacity="0.12"/>
+					</Border.Shadow>
+					<Grid ColumnDefinitions="Auto,*" Padding="16,0">
+						<Label Grid.Column="0" Text="@" FontSize="18" FontAttributes="Bold"
+                               TextColor="#00D4AA" VerticalOptions="Center" Margin="0,0,10,0"/>
+						<Entry Grid.Column="1" x:Name="UsernameEntry" Placeholder="Tên đăng nhập *"
+                               HeightRequest="54" BackgroundColor="Transparent"
+                               TextColor="#1A1A2E" PlaceholderColor="#BCC4D0" ReturnType="Next"/>
+					</Grid>
+				</Border>
 
-			<!-- FullName -->
-			<Frame CornerRadius="12" Padding="0" BorderColor="#E0E0E0" HasShadow="False">
-				<Entry x:Name="FullNameEntry"
-                       Placeholder="Họ và tên"
-                       Margin="12,0" HeightRequest="48"
-                       BackgroundColor="Transparent"
-                       ReturnType="Next"/>
-			</Frame>
+				<!-- FullName -->
+				<Border StrokeThickness="1.5" Stroke="#EEF0F6">
+					<Border.StrokeShape>
+						<RoundRectangle CornerRadius="18"/>
+					</Border.StrokeShape>
+					<Border.Background>
+						<SolidColorBrush Color="White"/>
+					</Border.Background>
+					<Border.Shadow>
+						<Shadow Brush="#20C0C8D8" Offset="0,4" Radius="12" Opacity="0.12"/>
+					</Border.Shadow>
+					<Grid ColumnDefinitions="Auto,*" Padding="16,0">
+						<Label Grid.Column="0" Text="👤" FontSize="18"
+                               VerticalOptions="Center" Margin="0,0,10,0"/>
+						<Entry Grid.Column="1" x:Name="FullNameEntry" Placeholder="Họ và tên"
+                               HeightRequest="54" BackgroundColor="Transparent"
+                               TextColor="#1A1A2E" PlaceholderColor="#BCC4D0" ReturnType="Next"/>
+					</Grid>
+				</Border>
 
-			<!-- Phone -->
-			<Frame CornerRadius="12" Padding="0" BorderColor="#E0E0E0" HasShadow="False">
-				<Entry x:Name="PhoneEntry"
-                       Placeholder="Số điện thoại"
-                       Keyboard="Telephone"
-                       Margin="12,0" HeightRequest="48"
-                       BackgroundColor="Transparent"
-                       ReturnType="Next"/>
-			</Frame>
+				<!-- Phone -->
+				<Border StrokeThickness="1.5" Stroke="#EEF0F6">
+					<Border.StrokeShape>
+						<RoundRectangle CornerRadius="18"/>
+					</Border.StrokeShape>
+					<Border.Background>
+						<SolidColorBrush Color="White"/>
+					</Border.Background>
+					<Border.Shadow>
+						<Shadow Brush="#20C0C8D8" Offset="0,4" Radius="12" Opacity="0.12"/>
+					</Border.Shadow>
+					<Grid ColumnDefinitions="Auto,*" Padding="16,0">
+						<Label Grid.Column="0" Text="📱" FontSize="18"
+                               VerticalOptions="Center" Margin="0,0,10,0"/>
+						<Entry Grid.Column="1" x:Name="PhoneEntry" Placeholder="Số điện thoại"
+                               Keyboard="Telephone" HeightRequest="54" BackgroundColor="Transparent"
+                               TextColor="#1A1A2E" PlaceholderColor="#BCC4D0" ReturnType="Next"/>
+					</Grid>
+				</Border>
 
-			<!-- Email -->
-			<Frame CornerRadius="12" Padding="0" BorderColor="#E0E0E0" HasShadow="False">
-				<Entry x:Name="EmailEntry"
-                       Placeholder="Email (tùy chọn)"
-                       Keyboard="Email"
-                       Margin="12,0" HeightRequest="48"
-                       BackgroundColor="Transparent"
-                       ReturnType="Next"/>
-			</Frame>
+				<!-- Email -->
+				<Border StrokeThickness="1.5" Stroke="#EEF0F6">
+					<Border.StrokeShape>
+						<RoundRectangle CornerRadius="18"/>
+					</Border.StrokeShape>
+					<Border.Background>
+						<SolidColorBrush Color="White"/>
+					</Border.Background>
+					<Border.Shadow>
+						<Shadow Brush="#20C0C8D8" Offset="0,4" Radius="12" Opacity="0.12"/>
+					</Border.Shadow>
+					<Grid ColumnDefinitions="Auto,*" Padding="16,0">
+						<Label Grid.Column="0" Text="✉️" FontSize="18"
+                               VerticalOptions="Center" Margin="0,0,10,0"/>
+						<Entry Grid.Column="1" x:Name="EmailEntry" Placeholder="Email (tùy chọn)"
+                               Keyboard="Email" HeightRequest="54" BackgroundColor="Transparent"
+                               TextColor="#1A1A2E" PlaceholderColor="#BCC4D0" ReturnType="Next"/>
+					</Grid>
+				</Border>
 
-			<!-- Password -->
-			<Frame CornerRadius="12" Padding="0" BorderColor="#E0E0E0" HasShadow="False">
-				<Entry x:Name="PasswordEntry"
-                       Placeholder="Mật khẩu *"
-                       IsPassword="True"
-                       Margin="12,0" HeightRequest="48"
-                       BackgroundColor="Transparent"
-                       ReturnType="Done"/>
-			</Frame>
+				<!-- Password -->
+				<Border StrokeThickness="1.5" Stroke="#EEF0F6">
+					<Border.StrokeShape>
+						<RoundRectangle CornerRadius="18"/>
+					</Border.StrokeShape>
+					<Border.Background>
+						<SolidColorBrush Color="White"/>
+					</Border.Background>
+					<Border.Shadow>
+						<Shadow Brush="#20C0C8D8" Offset="0,4" Radius="12" Opacity="0.12"/>
+					</Border.Shadow>
+					<Grid ColumnDefinitions="Auto,*" Padding="16,0">
+						<Label Grid.Column="0" Text="🔒" FontSize="18"
+                               VerticalOptions="Center" Margin="0,0,10,0"/>
+						<Entry Grid.Column="1" x:Name="PasswordEntry" Placeholder="Mật khẩu *"
+                               IsPassword="True" HeightRequest="54" BackgroundColor="Transparent"
+                               TextColor="#1A1A2E" PlaceholderColor="#BCC4D0" ReturnType="Done"/>
+					</Grid>
+				</Border>
 
-			<!-- Error -->
-			<Label x:Name="ErrorLabel"
-                   TextColor="#E53935" FontSize="13"
-                   IsVisible="False" HorizontalOptions="Center"/>
+				<Label x:Name="ErrorLabel" TextColor="#FF5252" FontSize="13"
+                       IsVisible="False" HorizontalOptions="Center"/>
+				<ActivityIndicator x:Name="LoadingIndicator"
+                                   IsRunning="False" IsVisible="False" Color="#00D4AA"/>
 
-			<!-- Loading -->
-			<ActivityIndicator x:Name="LoadingIndicator"
-                               IsRunning="False" IsVisible="False"
-                               Color="#1976D2"/>
+				<!-- Nút tạo tài khoản -->
+				<Border StrokeThickness="0" Margin="0,8,0,0">
+					<Border.StrokeShape>
+						<RoundRectangle CornerRadius="18"/>
+					</Border.StrokeShape>
+					<Border.Background>
+						<LinearGradientBrush StartPoint="0,0" EndPoint="1,0">
+							<GradientStop Color="#00D4AA" Offset="0"/>
+							<GradientStop Color="#00B894" Offset="1"/>
+						</LinearGradientBrush>
+					</Border.Background>
+					<Border.Shadow>
+						<Shadow Brush="#8000D4AA" Offset="0,6" Radius="16" Opacity="0.45"/>
+					</Border.Shadow>
+					<Button x:Name="RegisterBtn" Text="Tạo tài khoản"
+                            BackgroundColor="Transparent" TextColor="White"
+                            HeightRequest="56" FontSize="16" FontAttributes="Bold"
+                            Clicked="OnRegisterClicked"/>
+				</Border>
 
-			<!-- Register Button -->
-			<Button x:Name="RegisterBtn"
-                    Text="Tạo tài khoản"
-                    BackgroundColor="#1976D2" TextColor="White"
-                    CornerRadius="12" HeightRequest="50" FontSize="16"
-                    Clicked="OnRegisterClicked"/>
+				<!-- Back to login -->
+				<Button x:Name="BackBtn" Text="← Đã có tài khoản? Đăng nhập"
+                        BackgroundColor="Transparent" TextColor="#FF7043"
+                        FontSize="14" FontAttributes="Bold" Margin="0,4,0,0"
+                        Clicked="OnBackClicked"/>
 
-			<!-- Back to Login -->
-			<Button x:Name="BackBtn"
-                    Text="← Đã có tài khoản? Đăng nhập"
-                    BackgroundColor="Transparent"
-                    TextColor="#1976D2"
-                    FontSize="14"
-                    Clicked="OnBackClicked"/>
-
+			</VerticalStackLayout>
 		</VerticalStackLayout>
 	</ScrollView>
 </ContentPage>
