@@ -3,3 +3,4 @@ obj/
 .vs/
 *.db
 *.user
+*zip
