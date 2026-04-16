@@ -25,7 +25,7 @@
 - Tự động phát thuyết minh khi vào vùng bán kính (Geofencing)
 - Quét QR code tại điểm dừng để nghe thuyết minh
 - Đăng nhập / đăng ký tài khoản
-- Hỗ trợ Tiếng Việt, English, Tiếng Trung, Tiếng Hàn
+- Hỗ trợ Tiếng Việt, English
 
 **Trang quản trị:**
 - Quản lý địa điểm POI, audio, tour
