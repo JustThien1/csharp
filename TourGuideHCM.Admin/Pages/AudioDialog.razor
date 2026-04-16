@@ -3,110 +3,177 @@
 @using TourGuideHCM.Admin.Services
 @using System.Net.Http.Headers
 @using Microsoft.AspNetCore.Components.Forms
+@using System.Net.Http.Json
 
 @inject AudioService AudioService
+@inject HttpClient Http
 @inject ISnackbar Snackbar
 
 <MudDialog MaxWidth="MaxWidth.Medium" FullWidth="true">
+    <TitleContent>
+        <MudText Typo="Typo.h6">
+            @(model.Id == 0 ? "🎵 Thêm Audio Guide" : "✏️ Sửa Audio Guide")
+        </MudText>
+    </TitleContent>
     <DialogContent>
         <MudForm @ref="form">
 
-            <!-- Chọn POI -->
-            <MudSelect T="int" Label="Chọn POI *" @bind-Value="model.PoiId"
-                       Required="true" RequiredError="Vui lòng chọn POI" Class="mb-4">
-                @foreach (var poi in Pois)
-                {
-                    <MudSelectItem T="int" Value="@poi.Id">@poi.Name</MudSelectItem>
-                }
-            </MudSelect>
+            <!-- POI + Ngôn ngữ + Giọng -->
+            <MudGrid Spacing="2" Class="mb-3">
+                <MudItem xs="12">
+                    <MudSelect T="int" Label="Địa điểm POI *" @bind-Value="model.PoiId"
+                               Required="true" RequiredError="Vui lòng chọn POI"
+                               Variant="Variant.Outlined">
+                        @foreach (var poi in Pois)
+                        {
+                            <MudSelectItem T="int" Value="@poi.Id">@poi.Name</MudSelectItem>
+                        }
+                    </MudSelect>
+                </MudItem>
+                <MudItem xs="6">
+                    <MudSelect T="string" Label="Ngôn ngữ *" @bind-Value="model.Language"
+                               Required="true" Variant="Variant.Outlined">
+                        <MudSelectItem T="string" Value="@("vi")">🇻🇳 Tiếng Việt</MudSelectItem>
+                        <MudSelectItem T="string" Value="@("en")">🇬🇧 English</MudSelectItem>
+                        <MudSelectItem T="string" Value="@("zh")">🇨🇳 Tiếng Trung</MudSelectItem>
+                        <MudSelectItem T="string" Value="@("ko")">🇰🇷 Tiếng Hàn</MudSelectItem>
+                    </MudSelect>
+                </MudItem>
+                <MudItem xs="3">
+                    <MudSelect T="string" Label="Giọng" @bind-Value="ttsGender"
+                               Variant="Variant.Outlined">
+                        <MudSelectItem T="string" Value="@("female")">👩 Nữ</MudSelectItem>
+                        <MudSelectItem T="string" Value="@("male")">👨 Nam</MudSelectItem>
+                    </MudSelect>
+                </MudItem>
+                <MudItem xs="3">
+                    <MudNumericField T="double" Label="Tốc độ"
+                                     @bind-Value="ttsSpeed"
+                                     Min="0.5" Max="2.0" Step="0.1"
+                                     Variant="Variant.Outlined" Format="F1" />
+                </MudItem>
+            </MudGrid>
 
-            <!-- Ngôn ngữ -->
-            <MudSelect T="string" Label="Ngôn ngữ *" @bind-Value="model.Language"
-                       Required="true" RequiredError="Vui lòng chọn ngôn ngữ" Class="mb-4">
-                <MudSelectItem T="string" Value="@("vi")">Tiếng Việt</MudSelectItem>
-                <MudSelectItem T="string" Value="@("en")">English</MudSelectItem>
-                <MudSelectItem T="string" Value="@("zh")">Tiếng Trung</MudSelectItem>
-                <MudSelectItem T="string" Value="@("ko")">Tiếng Hàn</MudSelectItem>
-            </MudSelect>
+            <!-- Tabs TTS / Upload -->
+            <MudTabs @bind-ActivePanelIndex="activeTab" Elevation="0"
+                     Rounded="true" ApplyEffectsToContainer="true"
+                     PanelClass="pt-3" Class="mb-3">
 
-            <!-- Upload Audio - ĐÃ SỬA -->
-            <MudText Typo="Typo.body2" Class="mb-1 mud-text-secondary">
-                Chọn file audio (.mp3, .wav, .m4a, .ogg) - Tối đa 10MB
-            </MudText>
+                <!-- ── Tab TTS ── -->
+                <MudTabPanel Text="🎙️ Tạo từ văn bản" Icon="@Icons.Material.Filled.RecordVoiceOver">
 
-            <MudFileUpload T="IBrowserFile"
-                           Context="fileInput"
-                           FilesChanged="OnFileSelected"
-                           Accept=".mp3,.wav,.m4a,.ogg"
-                           MaxFiles="1"
-                           Class="mb-4">
+                    <MudTextField T="string"
+                                  Label="Nhập nội dung thuyết minh"
+                                  @bind-Value="ttsText"
+                                  Lines="5"
+                                  Variant="Variant.Outlined"
+                                  Placeholder="Nhập nội dung thuyết minh tại đây..."
+                                  Counter="1000" MaxLength="1000"
+                                  Class="mb-3" />
 
-                <ButtonTemplate>
-                    <MudButton HtmlTag="label"
-                               for="@fileInput"
-                               Variant="Variant.Filled"
-                               Color="Color.Primary"
-                               StartIcon="@Icons.Material.Filled.CloudUpload"
-                               Disabled="@uploading"
+                    <MudButton Variant="Variant.Filled"
+                               Color="Color.Secondary"
+                               Size="Size.Large"
+                               StartIcon="@Icons.Material.Filled.AutoAwesome"
+                               OnClick="ConvertAndSave"
+                               Disabled="@(converting || string.IsNullOrWhiteSpace(ttsText) || model.PoiId == 0)"
                                FullWidth="true">
-                        @if (uploading)
+                        @if (converting)
                         {
                             <MudProgressCircular Size="Size.Small" Indeterminate="true" Class="mr-2" />
-                            <span>Đang upload...</span>
+                            <span>Đang tạo audio...</span>
                         }
                         else
                         {
-                            <span>Chọn file audio</span>
+                            <MudIcon Icon="@Icons.Material.Filled.Bolt" Class="mr-1" />
+                            <span>Convert & Lưu ngay</span>
                         }
                     </MudButton>
-                </ButtonTemplate>
-            </MudFileUpload>
+                </MudTabPanel>
 
-            <!-- Preview Audio -->
+                <!-- ── Tab Upload ── -->
+                <MudTabPanel Text="📁 Upload file" Icon="@Icons.Material.Filled.UploadFile">
+
+                    <MudFileUpload T="IBrowserFile"
+                                   Context="fileInput"
+                                   FilesChanged="OnFileSelected"
+                                   Accept=".mp3,.wav,.m4a,.ogg,.aac"
+                                   MaxFiles="1" Class="mb-3">
+                        <ButtonTemplate>
+                            <MudButton HtmlTag="label" for="@fileInput"
+                                       Variant="Variant.Outlined" Color="Color.Primary"
+                                       StartIcon="@Icons.Material.Filled.CloudUpload"
+                                       Disabled="@uploading" FullWidth="true">
+                                @if (uploading)
+                                {
+                                    <MudProgressCircular Size="Size.Small" Indeterminate="true" Class="mr-2" />
+                                    <span>Đang upload...</span>
+                                }
+                                else
+                                {
+                                    <span>@(string.IsNullOrEmpty(model.AudioUrl) ? "Chọn file audio" : "Đổi file")</span>
+                                }
+                            </MudButton>
+                        </ButtonTemplate>
+                    </MudFileUpload>
+
+                    <MudTextField T="string" Label="Hoặc nhập URL trực tiếp"
+                                  @bind-Value="model.AudioUrl"
+                                  Variant="Variant.Outlined"
+                                  Placeholder="https://... hoặc /audio/file.mp3"
+                                  Adornment="Adornment.Start"
+                                  AdornmentIcon="@Icons.Material.Filled.Link"
+                                  Class="mb-3" />
+
+                    @if (activeTab == 1 && !string.IsNullOrEmpty(model.AudioUrl))
+                    {
+                        <MudButton Variant="Variant.Filled" Color="Color.Primary"
+                                   StartIcon="@Icons.Material.Filled.Save"
+                                   OnClick="SaveUpload" FullWidth="true"
+                                   Disabled="@uploading">
+                            💾 Lưu audio này
+                        </MudButton>
+                    }
+                </MudTabPanel>
+            </MudTabs>
+
+            <!-- Preview audio (hiện sau khi convert hoặc upload) -->
             @if (!string.IsNullOrEmpty(model.AudioUrl))
             {
-                <MudPaper Elevation="0" Class="pa-3 mb-4" Style="background:#f5f5f5; border-radius:8px;">
-                    <MudText Typo="Typo.caption" Class="mb-1">Xem trước audio:</MudText>
-                    <audio src="@model.AudioUrl" controls style="width:100%;"></audio>
+                <MudPaper Elevation="1" Class="pa-3" Style="border-radius:10px; background:#f0f7ff;">
+                    <div class="d-flex align-center mb-1" style="gap:8px;">
+                        <MudIcon Icon="@Icons.Material.Filled.CheckCircle" Color="Color.Success" Size="Size.Small" />
+                        <MudText Typo="Typo.caption" Color="Color.Success">
+                            <strong>Audio đã sẵn sàng</strong> · @model.DurationSeconds giây
+                        </MudText>
+                    </div>
+                    <audio src="@model.AudioUrl" controls style="width:100%; height:36px;"></audio>
                 </MudPaper>
             }
-
-            <!-- Thời lượng -->
-            <MudNumericField T="int" Label="Thời lượng (giây) *"
-                             @bind-Value="model.DurationSeconds"
-                             Required="true" RequiredError="Vui lòng nhập thời lượng"
-                             Min="0" Class="mb-4" />
-
-            <!-- Mô tả -->
-            <MudTextField T="string" Label="Mô tả"
-                          @bind-Value="model.Description" Lines="3" Class="mb-4" />
-
-            <!-- Kích hoạt -->
-            <MudSwitch T="bool" @bind-Value="model.IsActive"
-                       Label="Kích hoạt" Color="Color.Success" />
 
         </MudForm>
     </DialogContent>
 
     <DialogActions>
-        <MudButton OnClick="Cancel" Variant="Variant.Text">Hủy</MudButton>
-        <MudButton OnClick="Save" Color="Color.Primary" Variant="Variant.Filled"
-                   StartIcon="@Icons.Material.Filled.Save"
-                   Disabled="@(uploading || string.IsNullOrEmpty(model.AudioUrl))">
-            Lưu
-        </MudButton>
+        <MudButton OnClick="Cancel" Variant="Variant.Text">Đóng</MudButton>
     </DialogActions>
 </MudDialog>
 
 @code {
     [CascadingParameter] MudDialogInstance MudDialog { get; set; } = default!;
-
     [Parameter] public AudioDto Audio { get; set; } = new();
     [Parameter] public List<PoiDto> Pois { get; set; } = new();
 
     private MudForm form = default!;
     private AudioDto model = new();
     private bool uploading = false;
+    private bool converting = false;
+    private int activeTab = 0; // 0=TTS, 1=Upload
+
+    // TTS state
+    private string ttsText = "";
+    private string ttsGender = "female";
+    private double ttsSpeed = 1.0;
 
     protected override void OnInitialized()
     {
@@ -115,77 +182,111 @@
             Id = Audio.Id,
             PoiId = Audio.PoiId,
             Language = string.IsNullOrEmpty(Audio.Language) ? "vi" : Audio.Language,
-            AudioUrl = Audio.AudioUrl,
+            AudioUrl = Audio.AudioUrl ?? "",
             DurationSeconds = Audio.DurationSeconds,
-            Description = Audio.Description,
+            Description = Audio.Description ?? "",
             IsActive = Audio.IsActive
         };
+        // Nếu edit audio cũ → mặc định mở tab Upload
+        if (Audio.Id > 0) activeTab = 1;
     }
 
-    private async Task OnFileSelected(IBrowserFile? file)
+    // ── Convert text → audio → lưu DB luôn ───────────────────────────────────
+    private async Task ConvertAndSave()
     {
-        if (file is null) return;
+        if (string.IsNullOrWhiteSpace(ttsText) || model.PoiId == 0) return;
 
-        if (file.Size > 10 * 1024 * 1024)
-        {
-            Snackbar.Add("File quá lớn! Tối đa 10MB.", Severity.Error);
-            return;
-        }
-
-        uploading = true;
-        StateHasChanged();
-
+        converting = true;
         try
         {
-            var content = new MultipartFormDataContent();
-            var fileContent = new StreamContent(file.OpenReadStream(maxAllowedSize: 10 * 1024 * 1024));
-            fileContent.Headers.ContentType = new MediaTypeHeaderValue(file.ContentType ?? "audio/mpeg");
-            content.Add(fileContent, "file", file.Name);
-
-            var (success, url) = await AudioService.UploadAudioAsync(content);
-
-            if (success && !string.IsNullOrEmpty(url))
+            var req = new
             {
-                model.AudioUrl = url.Trim('"');
-                Snackbar.Add("✅ Upload audio thành công!", Severity.Success);
+                poiId = model.PoiId,
+                text = ttsText,
+                language = model.Language,
+                gender = ttsGender,
+                speed = ttsSpeed
+            };
+
+            var response = await Http.PostAsJsonAsync("api/audio/convert", req);
+            if (response.IsSuccessStatusCode)
+            {
+                var result = await response.Content.ReadFromJsonAsync<ConvertResult>();
+                if (result != null)
+                {
+                    model.Id = result.Id;
+                    model.AudioUrl = result.AudioUrl;
+                    model.DurationSeconds = result.Duration;
+                    Snackbar.Add(result.Message, Severity.Success);
+                    // Đóng dialog và reload danh sách
+                    MudDialog.Close(DialogResult.Ok(true));
+                }
             }
             else
             {
-                Snackbar.Add("❌ Upload thất bại!", Severity.Error);
+                var err = await response.Content.ReadAsStringAsync();
+                Snackbar.Add($"❌ {err}", Severity.Error);
             }
         }
         catch (Exception ex)
         {
-            Snackbar.Add($"Lỗi upload: {ex.Message}", Severity.Error);
+            Snackbar.Add($"❌ {ex.Message}", Severity.Error);
         }
-        finally
-        {
-            uploading = false;
-            StateHasChanged();
-        }
+        finally { converting = false; }
     }
 
-    private async Task Save()
+    // ── Upload file thủ công ──────────────────────────────────────────────────
+    private async Task OnFileSelected(IBrowserFile? file)
     {
-        await form.Validate();
-        if (!form.IsValid) return;
+        if (file is null) return;
+        if (file.Size > 20 * 1024 * 1024) { Snackbar.Add("File quá lớn! Tối đa 20MB.", Severity.Error); return; }
 
-        if (string.IsNullOrEmpty(model.AudioUrl))
+        uploading = true;
+        StateHasChanged();
+        try
         {
-            Snackbar.Add("Vui lòng upload file audio trước!", Severity.Warning);
-            return;
+            var content = new MultipartFormDataContent();
+            var fileContent = new StreamContent(file.OpenReadStream(maxAllowedSize: 20 * 1024 * 1024));
+            fileContent.Headers.ContentType = new MediaTypeHeaderValue(file.ContentType ?? "audio/mpeg");
+            content.Add(fileContent, "file", file.Name);
+
+            var (success, url) = await AudioService.UploadAudioAsync(content);
+            if (success && !string.IsNullOrEmpty(url))
+            {
+                model.AudioUrl = url.Trim('"');
+                Snackbar.Add($"✅ Upload thành công!", Severity.Success);
+            }
+            else Snackbar.Add("❌ Upload thất bại!", Severity.Error);
         }
-
-        if (model.Id == 0)
-            await AudioService.CreateAsync(model);
-        else
-            await AudioService.UpdateAsync(model);
-
-        MudDialog.Close(DialogResult.Ok(true));
+        catch (Exception ex) { Snackbar.Add($"Lỗi: {ex.Message}", Severity.Error); }
+        finally { uploading = false; StateHasChanged(); }
     }
 
-    private void Cancel()
+    // ── Lưu sau khi upload file ───────────────────────────────────────────────
+    private async Task SaveUpload()
     {
-        MudDialog.Cancel();
+        if (model.PoiId == 0) { Snackbar.Add("Vui lòng chọn POI!", Severity.Warning); return; }
+        if (string.IsNullOrEmpty(model.AudioUrl)) { Snackbar.Add("Chưa có audio!", Severity.Warning); return; }
+
+        bool success = model.Id == 0
+            ? await AudioService.CreateAsync(model)
+            : await AudioService.UpdateAsync(model);
+
+        if (success)
+        {
+            Snackbar.Add("✅ Lưu thành công!", Severity.Success);
+            MudDialog.Close(DialogResult.Ok(true));
+        }
+        else Snackbar.Add("❌ Lưu thất bại!", Severity.Error);
+    }
+
+    private void Cancel() => MudDialog.Cancel();
+
+    private class ConvertResult
+    {
+        public int Id { get; set; }
+        public string AudioUrl { get; set; } = "";
+        public int Duration { get; set; }
+        public string Message { get; set; } = "";
     }
 }

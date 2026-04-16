@@ -1,4 +1,5 @@
 ﻿using TourGuideHCM.App.Models;
+using TourGuideHCM.App.Services;
 using TourGuideHCM.App.Services.Interfaces;
 
 namespace TourGuideHCM.App.Views;
@@ -12,11 +13,7 @@ public partial class PoiDetailPage : ContentPage
     public POI? Poi
     {
         get => _poi;
-        set
-        {
-            _poi = value;
-            BindingContext = value;
-        }
+        set { _poi = value; BindingContext = value; }
     }
 
     public PoiDetailPage(INarrationService narration)
@@ -36,12 +33,30 @@ public partial class PoiDetailPage : ContentPage
             MainThread.BeginInvokeOnMainThread(() => UpdateButtons(true));
         _narration.NarrationCompleted += (_, _) =>
             MainThread.BeginInvokeOnMainThread(() => UpdateButtons(false));
+
+        LanguageService.LanguageChanged += (_, _) => RefreshText();
+        RefreshText();
+    }
+
+    private void RefreshText()
+    {
+        MainThread.BeginInvokeOnMainThread(() =>
+        {
+            PlayViBtn.Text = "▶  Tiếng Việt";
+            PlayEnBtn.Text = "▶  English";
+            StopBtn.Text = LanguageService.IsEnglish
+                                    ? "⏹  Stop Narration"
+                                    : "⏹  Dừng thuyết minh";
+            IntroLabel.Text = LanguageService.IsEnglish ? "Introduction" : "Giới thiệu";
+            LocationInfoLabel.Text = LanguageService.IsEnglish ? "Location Info" : "Thông tin vị trí";
+            LatLabel.Text = LanguageService.IsEnglish ? "Latitude" : "Vĩ độ";
+            LngLabel.Text = LanguageService.IsEnglish ? "Longitude" : "Kinh độ";
+        });
     }
 
     private async Task PlayAsync(string language)
     {
         if (_poi is null) return;
-
         await _narration.PlayAsync(new NarrationRequest
         {
             Poi = _poi,

@@ -1,4 +1,5 @@
 ﻿using Plugin.Maui.Audio;
+using System.Net.Http.Json;
 using TourGuideHCM.App.Models;
 using TourGuideHCM.App.Services.Interfaces;
 
@@ -38,7 +39,19 @@ public class NarrationService : INarrationService, IDisposable
             NarrationStarted?.Invoke(this, EventArgs.Empty);
 
             var poi = request.Poi;
-            var audioUrl = _api.ResolveAudioUrl(poi.AudioUrl);
+            // Lấy audio URL từ bảng Audios (do TTS tạo ra) thay vì POI.AudioUrl cũ
+            var audioUrl = await _api.GetAudioUrlAsync(poi.Id, request.Language);
+            if (string.IsNullOrEmpty(audioUrl))
+            {
+                // Fallback về POI.AudioUrl nếu chưa có TTS
+                var rawUrl = poi.AudioUrl;
+#if ANDROID
+                if (!string.IsNullOrEmpty(rawUrl))
+                    rawUrl = rawUrl.Replace("localhost", "10.0.2.2")
+                                   .Replace("127.0.0.1", "10.0.2.2");
+#endif
+                audioUrl = _api.ResolveAudioUrl(rawUrl);
+            }
 
             // Debug log
             System.Diagnostics.Debug.WriteLine($"[Narration] POI: {poi.Name}");

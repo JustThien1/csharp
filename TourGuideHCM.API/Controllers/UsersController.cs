@@ -20,34 +20,46 @@ namespace TourGuideHCM.API.Controllers
         [HttpGet]
         public async Task<ActionResult<List<UserDto>>> GetAll()
         {
-            // Cách tối ưu: Group PlaybackLogs trước rồi join với Users
-            var playbackCounts = await _context.PlaybackLogs
-                .GroupBy(pl => pl.UserId)
-                .Select(g => new
-                {
-                    UserId = g.Key,
-                    TotalListens = g.Count()
-                })
-                .ToDictionaryAsync(x => x.UserId, x => x.TotalListens);
+            // Đếm từ PlaybackHistories (app ghi vào đây)
+            var countFromHistory = await _context.PlaybackHistories
+                .GroupBy(p => p.UserId)
+                .Select(g => new { UserId = g.Key, Count = g.Count() })
+                .ToDictionaryAsync(x => x.UserId, x => x.Count);
+
+            // Đếm từ PlaybackLogs (cũ) — lọc null UserId trước
+            var countFromLogs = await _context.PlaybackLogs
+                .Where(p => p.UserId != null)
+                .GroupBy(p => p.UserId!)
+                .Select(g => new { UserId = g.Key, Count = g.Count() })
+                .ToDictionaryAsync(x => x.UserId, x => x.Count);
 
             var users = await _context.Users
+                .OrderByDescending(u => u.CreatedAt)
                 .Select(u => new UserDto
                 {
                     Id = u.Id,
                     FullName = u.FullName ?? u.Username ?? "Chưa có tên",
                     Email = u.Email ?? "",
-                    Phone = "",
+                    Phone = u.Phone ?? "",
                     Role = "User",
-                    IsActive = true,
+                    IsActive = u.IsActive,
                     CreatedDate = u.CreatedAt,
-                    TotalListens = playbackCounts.GetValueOrDefault(u.Id, 0)   // Lấy từ dictionary
+                    TotalListens = 0 // tính sau
                 })
                 .ToListAsync();
+
+            // Gán TotalListens sau khi load
+            foreach (var u in users)
+            {
+                var fromHistory = countFromHistory.GetValueOrDefault(u.Id, 0);
+                var fromLogs = countFromLogs.GetValueOrDefault(u.Id, 0);
+                u.TotalListens = fromHistory + fromLogs;
+            }
 
             return Ok(users);
         }
 
-        // GET: api/users/{id}  (dùng cho Edit nếu cần)
+        // GET: api/users/{id}
         [HttpGet("{id}")]
         public async Task<ActionResult<UserDto>> GetById(int id)
         {
@@ -55,25 +67,22 @@ namespace TourGuideHCM.API.Controllers
             if (user == null)
                 return NotFound(new { message = "Không tìm thấy người dùng" });
 
-            var totalListens = await _context.PlaybackLogs
-                .CountAsync(pl => pl.UserId == id);
+            var fromHistory = await _context.PlaybackHistories.CountAsync(p => p.UserId == id);
+            var fromLogs = await _context.PlaybackLogs.CountAsync(p => p.UserId == id);
 
-            var dto = new UserDto
+            return Ok(new UserDto
             {
                 Id = user.Id,
                 FullName = user.FullName ?? user.Username ?? "Chưa có tên",
                 Email = user.Email ?? "",
-                Phone = "",
+                Phone = user.Phone ?? "",
                 Role = "User",
-                IsActive = true,
+                IsActive = user.IsActive,
                 CreatedDate = user.CreatedAt,
-                TotalListens = totalListens
-            };
-
-            return Ok(dto);
+                TotalListens = fromHistory + fromLogs
+            });
         }
 
-        // Các phương thức Create, Update, Delete giữ nguyên như cũ
         [HttpPost]
         public async Task<IActionResult> Create([FromBody] UserDto dto)
         {
@@ -114,9 +123,22 @@ namespace TourGuideHCM.API.Controllers
 
             user.FullName = dto.FullName;
             user.Email = dto.Email;
+            user.Phone = dto.Phone;   // ← Lưu SĐT
 
             await _context.SaveChangesAsync();
             return Ok(dto);
+        }
+
+        [HttpPut("{id}/toggle-active")]
+        public async Task<IActionResult> ToggleActive(int id, [FromBody] ToggleActiveDto? dto = null)
+        {
+            var user = await _context.Users.FindAsync(id);
+            if (user == null)
+                return NotFound("Không tìm thấy người dùng");
+
+            user.IsActive = dto != null ? dto.IsActive : !user.IsActive;
+            await _context.SaveChangesAsync();
+            return Ok(new { isActive = user.IsActive, message = "Đã cập nhật trạng thái" });
         }
 
         [HttpDelete("{id}")]
@@ -131,5 +153,8 @@ namespace TourGuideHCM.API.Controllers
 
             return Ok(new { message = "Xóa người dùng thành công" });
         }
+
     }
+    public class ToggleActiveDto { public bool IsActive { get; set; } }
+
 }

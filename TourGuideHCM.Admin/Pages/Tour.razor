@@ -1,3 +1,351 @@
 ﻿@page "/tour"
+@using MudBlazor
+@using System.Net.Http.Json
+@using Microsoft.AspNetCore.Components.Web
+@inject HttpClient Http
+@inject ISnackbar Snackbar
+@inject IDialogService DialogService
 
-<MudText Typo="Typo.h4">🗺 Tour</MudText>
+<div class="d-flex align-center mb-6">
+    <MudText Typo="Typo.h4" Class="font-weight-bold">🗺️ Quản lý Tour</MudText>
+    <MudSpacer />
+    <MudChip Color="Color.Info">@tours.Count tour</MudChip>
+    <MudButton Variant="Variant.Filled" Color="Color.Success"
+               StartIcon="@Icons.Material.Filled.Add"
+               OnClick="NewTour" Class="ml-3">
+        Tạo Tour mới
+    </MudButton>
+</div>
+
+<MudGrid Spacing="4">
+    <!-- Danh sách tour -->
+    <MudItem xs="12" md="4">
+        <MudPaper Class="pa-4" Elevation="3" Style="border-radius:16px;">
+            <MudText Typo="Typo.h6" Class="mb-3">
+                <MudIcon Icon="@Icons.Material.Filled.FormatListBulleted" Class="mr-1" />
+                Danh sách Tour
+            </MudText>
+
+            @if (loading)
+            {
+                <MudProgressLinear Indeterminate="true" Color="Color.Primary" />
+            }
+            else if (!tours.Any())
+            {
+                <MudAlert Severity="Severity.Info" Dense="true">
+                    Chưa có tour nào. Nhấn "Tạo Tour mới" để bắt đầu!
+                </MudAlert>
+            }
+            else
+            {
+                @foreach (var tour in tours)
+                {
+                    var isSelected = selectedTour?.Id == tour.Id;
+                    <MudPaper Class="pa-3 mb-2 cursor-pointer" Elevation="@(isSelected ? 4 : 1)"
+                              Style="@(isSelected ? "border-left:4px solid #1976D2; border-radius:10px;" : "border-radius:10px;")"
+                              @onclick="() => SelectTour(tour)">
+                        <div class="d-flex justify-space-between align-center">
+                            <div>
+                                <MudText Typo="Typo.subtitle2" Class="font-weight-bold">@tour.Name</MudText>
+                                <MudText Typo="Typo.caption" Color="Color.Secondary">
+                                    @tour.Stops.Count điểm dừng
+                                    @if (!string.IsNullOrEmpty(tour.Description))
+                                    {
+                                        <span> · @(tour.Description.Length > 30 ? tour.Description[..30] + "…" : tour.Description)</span>
+                                    }
+                                </MudText>
+                            </div>
+                            <div class="d-flex align-center" style="gap:4px;">
+                                <MudIconButton Icon="@Icons.Material.Filled.Edit"
+                                               Size="Size.Small" Color="Color.Warning"
+                                               OnClick="@(() => SelectTour(tour))"
+                                               title="Sửa tour" />
+                                <MudIconButton Icon="@Icons.Material.Filled.Delete"
+                                               Size="Size.Small" Color="Color.Error"
+                                               OnClick="@(() => DeleteTour(tour))"
+                                               title="Xóa tour" />
+                            </div>
+                        </div>
+                    </MudPaper>
+                }
+            }
+        </MudPaper>
+    </MudItem>
+
+    <!-- Chi tiết / Editor tour -->
+    <MudItem xs="12" md="8">
+        @if (selectedTour != null)
+        {
+            <MudPaper Class="pa-6" Elevation="3" Style="border-radius:16px;">
+                <div class="d-flex align-center mb-4">
+                    <MudIcon Icon="@Icons.Material.Filled.Edit" Color="Color.Primary" Class="mr-2" />
+                    <MudText Typo="Typo.h6">
+                        @(selectedTour.Id == 0 ? "Tạo tour mới" : $"Sửa: {selectedTour.Name}")
+                    </MudText>
+                    <MudSpacer />
+                    <MudButton Variant="Variant.Text" OnClick="() => selectedTour = null">
+                        ✕ Đóng
+                    </MudButton>
+                </div>
+
+                <MudTextField @bind-Value="selectedTour.Name"
+                              Label="Tên tour *" Variant="Variant.Outlined"
+                              Class="mb-3" FullWidth="true"
+                              Placeholder="VD: Tour trung tâm Sài Gòn" />
+
+                <MudTextField @bind-Value="selectedTour.Description"
+                              Label="Mô tả tour" Lines="2"
+                              Variant="Variant.Outlined" Class="mb-4" FullWidth="true"
+                              Placeholder="Mô tả ngắn về tour này..." />
+
+                <!-- Danh sách stops -->
+                <MudText Typo="Typo.h6" Class="mb-2">
+                    📍 Điểm dừng (@selectedTour.Stops.Count)
+                </MudText>
+
+                @if (!selectedTour.Stops.Any())
+                {
+                    <MudAlert Severity="Severity.Info" Dense="true" Class="mb-3">
+                        Thêm điểm dừng bên dưới
+                    </MudAlert>
+                }
+
+                @for (int i = 0; i < selectedTour.Stops.Count; i++)
+                {
+                    var stop = selectedTour.Stops[i];
+                    var idx = i;
+                    <MudPaper Class="pa-3 mb-2" Elevation="1" Style="border-radius:10px;">
+                        <div class="d-flex align-center">
+                            <MudAvatar Size="Size.Small" Color="Color.Primary" Class="mr-3"
+                                       Style="font-size:12px; min-width:32px;">
+                                @(idx + 1)
+                            </MudAvatar>
+                            <div class="flex-grow-1">
+                                <MudText Typo="Typo.subtitle2">@stop.PoiName</MudText>
+                                <MudText Typo="Typo.caption" Color="Color.Secondary">
+                                    ⏱ @stop.DurationMinutes phút
+                                </MudText>
+                            </div>
+                            <MudIconButton Icon="@Icons.Material.Filled.ArrowUpward"
+                                           Size="Size.Small" Disabled="@(idx == 0)"
+                                           OnClick="() => MoveUp(idx)" />
+                            <MudIconButton Icon="@Icons.Material.Filled.ArrowDownward"
+                                           Size="Size.Small"
+                                           Disabled="@(idx == selectedTour.Stops.Count - 1)"
+                                           OnClick="() => MoveDown(idx)" />
+                            <MudIconButton Icon="@Icons.Material.Filled.Delete"
+                                           Size="Size.Small" Color="Color.Error"
+                                           OnClick="() => RemoveStop(idx)" />
+                        </div>
+                    </MudPaper>
+                }
+
+                <!-- Thêm điểm dừng -->
+                <MudPaper Class="pa-4 mt-3" Elevation="0"
+                          Style="border:2px dashed #ccc; border-radius:12px;">
+                    <MudText Typo="Typo.subtitle2" Class="mb-2">➕ Thêm điểm dừng</MudText>
+                    <MudGrid Spacing="2">
+                        <MudItem xs="6">
+                            <MudSelect T="PoiItem" @bind-Value="newStopPoi"
+                                       Label="Chọn POI" Variant="Variant.Outlined"
+                                       ToStringFunc="@(p => p?.Name ?? "")">
+                                @foreach (var poi in allPois)
+                                {
+                                    <MudSelectItem T="PoiItem" Value="poi">@poi.Name</MudSelectItem>
+                                }
+                            </MudSelect>
+                        </MudItem>
+                        <MudItem xs="3">
+                            <MudNumericField @bind-Value="newStopDuration"
+                                             Label="Phút" Min="1" Max="180"
+                                             Variant="Variant.Outlined" />
+                        </MudItem>
+                        <MudItem xs="3" Class="d-flex align-end">
+                            <MudButton Variant="Variant.Filled" Color="Color.Primary"
+                                       FullWidth="true" OnClick="AddStop"
+                                       Disabled="@(newStopPoi == null)">
+                                Thêm
+                            </MudButton>
+                        </MudItem>
+                    </MudGrid>
+                </MudPaper>
+
+                <!-- Lưu -->
+                <div class="d-flex justify-end mt-4" style="gap:12px;">
+                    <MudButton Variant="Variant.Outlined" OnClick="() => selectedTour = null">
+                        Hủy
+                    </MudButton>
+                    <MudButton Variant="Variant.Filled" Color="Color.Primary"
+                               StartIcon="@Icons.Material.Filled.Save"
+                               OnClick="SaveTour" Disabled="@saving">
+                        @(saving ? "Đang lưu..." : "💾 Lưu Tour")
+                    </MudButton>
+                </div>
+            </MudPaper>
+        }
+        else
+        {
+            <MudPaper Class="pa-12 text-center" Elevation="1"
+                      Style="border-radius:16px; border:2px dashed #ddd;">
+                <MudIcon Icon="@Icons.Material.Filled.Map" Size="Size.Large" Color="Color.Secondary" />
+                <MudText Typo="Typo.h6" Color="Color.Secondary" Class="mt-2">
+                    Chọn tour để xem & chỉnh sửa
+                </MudText>
+                <MudText Typo="Typo.body2" Color="Color.Secondary">
+                    hoặc nhấn "Tạo Tour mới"
+                </MudText>
+            </MudPaper>
+        }
+    </MudItem>
+</MudGrid>
+
+@code {
+    private List<TourModel> tours = new();
+    private List<PoiItem> allPois = new();
+    private TourModel? selectedTour;
+    private PoiItem? newStopPoi;
+    private int newStopDuration = 15;
+    private bool loading = true;
+    private bool saving = false;
+
+    protected override async Task OnInitializedAsync()
+    {
+        await LoadData();
+    }
+
+    private async Task LoadData()
+    {
+        loading = true;
+        try
+        {
+            var opts = new System.Text.Json.JsonSerializerOptions
+            {
+                PropertyNameCaseInsensitive = true
+            };
+            allPois = await Http.GetFromJsonAsync<List<PoiItem>>("api/poi", opts) ?? new();
+            tours = await Http.GetFromJsonAsync<List<TourModel>>("api/tour", opts) ?? new();
+        }
+        catch (Exception ex)
+        {
+            Snackbar.Add($"Lỗi load: {ex.Message}", Severity.Error);
+            tours = new();
+        }
+        finally { loading = false; StateHasChanged(); }
+    }
+
+    private void SelectTour(TourModel tour)
+    {
+        selectedTour = new TourModel
+        {
+            Id = tour.Id,
+            Name = tour.Name,
+            Description = tour.Description,
+            Stops = tour.Stops.Select(s => new TourStop
+            {
+                Order = s.Order,
+                PoiId = s.PoiId,
+                PoiName = s.PoiName,
+                DurationMinutes = s.DurationMinutes
+            }).ToList()
+        };
+        newStopPoi = null;
+    }
+
+    private void NewTour()
+    {
+        selectedTour = new TourModel { Id = 0, Name = "Tour mới", Description = "" };
+        newStopPoi = null;
+    }
+
+    private async Task DeleteTour(TourModel tour)
+    {
+        bool? confirm = await DialogService.ShowMessageBox(
+            "Xác nhận xóa", $"Xóa tour \"{tour.Name}\"?",
+            yesText: "Xóa", cancelText: "Hủy");
+
+        if (confirm != true) return;
+
+        var res = await Http.DeleteAsync($"api/tour/{tour.Id}");
+        if (res.IsSuccessStatusCode)
+        {
+            tours.Remove(tour);
+            if (selectedTour?.Id == tour.Id) selectedTour = null;
+            Snackbar.Add("Đã xóa tour!", Severity.Success);
+        }
+        else Snackbar.Add("Xóa thất bại!", Severity.Error);
+    }
+
+    private async Task SaveTour()
+    {
+        if (selectedTour == null) return;
+        if (string.IsNullOrWhiteSpace(selectedTour.Name))
+        {
+            Snackbar.Add("Vui lòng nhập tên tour!", Severity.Warning);
+            return;
+        }
+
+        saving = true;
+        try
+        {
+            for (int i = 0; i < selectedTour.Stops.Count; i++)
+                selectedTour.Stops[i].Order = i + 1;
+
+            HttpResponseMessage res;
+            if (selectedTour.Id == 0)
+                res = await Http.PostAsJsonAsync("api/tour", selectedTour);
+            else
+                res = await Http.PutAsJsonAsync($"api/tour/{selectedTour.Id}", selectedTour);
+
+            var body = await res.Content.ReadAsStringAsync();
+
+            if (res.IsSuccessStatusCode)
+            {
+                Snackbar.Add("✅ Lưu tour thành công!", Severity.Success);
+                selectedTour = null;
+                // Reload riêng biệt sau khi đóng editor
+                await Task.Delay(200);
+                await LoadData();
+                StateHasChanged();
+            }
+            else
+            {
+                Snackbar.Add($"❌ Lưu thất bại! {body}", Severity.Error);
+            }
+        }
+        catch (Exception ex) { Snackbar.Add($"Lỗi: {ex.Message}", Severity.Error); }
+        finally { saving = false; StateHasChanged(); }
+    }
+
+    private void AddStop()
+    {
+        if (newStopPoi == null || selectedTour == null) return;
+        selectedTour.Stops.Add(new TourStop
+        {
+            Order = selectedTour.Stops.Count + 1,
+            PoiId = newStopPoi.Id,
+            PoiName = newStopPoi.Name,
+            DurationMinutes = newStopDuration
+        });
+        newStopPoi = null;
+    }
+
+    private void RemoveStop(int idx) => selectedTour?.Stops.RemoveAt(idx);
+
+    private void MoveUp(int idx)
+    {
+        if (selectedTour == null || idx <= 0) return;
+        (selectedTour.Stops[idx - 1], selectedTour.Stops[idx]) =
+            (selectedTour.Stops[idx], selectedTour.Stops[idx - 1]);
+    }
+
+    private void MoveDown(int idx)
+    {
+        if (selectedTour == null || idx >= selectedTour.Stops.Count - 1) return;
+        (selectedTour.Stops[idx + 1], selectedTour.Stops[idx]) =
+            (selectedTour.Stops[idx], selectedTour.Stops[idx + 1]);
+    }
+
+    public class TourModel { public int Id { get; set; } public string Name { get; set; } = ""; public string Description { get; set; } = ""; public List<TourStop> Stops { get; set; } = new(); }
+    public class TourStop { public int Order { get; set; } public int PoiId { get; set; } public string PoiName { get; set; } = ""; public int DurationMinutes { get; set; } = 15; }
+    public class PoiItem { public int Id { get; set; } public string Name { get; set; } = ""; }
+}

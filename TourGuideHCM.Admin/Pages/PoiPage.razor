@@ -1,49 +1,63 @@
 ﻿@page "/poi"
-
 @using MudBlazor
 @using TourGuideHCM.Admin.Models
 @using TourGuideHCM.Admin.Services
-
 @inject PoiService Service
 @inject IDialogService DialogService
-@inject ISnackbar Snackbar   // Để hiển thị thông báo thành công/thất bại
+@inject ISnackbar Snackbar
+@inject NavigationManager Nav
 
-<MudText Typo="Typo.h4" Class="mb-4">📍 Quản lý POI</MudText>
-
-<div class="d-flex justify-space-between align-center mb-4">
-    <MudTextField @bind-Value="search"
-                  Placeholder="Tìm kiếm theo tên POI..."
-                  Adornment="Adornment.Start"
-                  AdornmentIcon="@Icons.Material.Filled.Search"
-                  Style="min-width: 400px;" />
-
-    <MudButton Color="Color.Success" Variant="Variant.Filled" OnClick="NewPoi" StartIcon="@Icons.Material.Filled.Add">
-        ➕ Thêm POI mới
-    </MudButton>
+<div class="d-flex align-center mb-6">
+    <MudText Typo="Typo.h4" Class="font-weight-bold">📍 Quản lý Địa điểm (POI)</MudText>
+    <MudSpacer />
+    <MudButton Color="Color.Success" Variant="Variant.Filled" OnClick="NewPoi"
+               StartIcon="@Icons.Material.Filled.Add">Thêm POI mới</MudButton>
 </div>
 
-<MudTable Items="@filteredPois" Hover="true" Dense="true" Bordered="true" Loading="@loading">
+<div class="d-flex align-center mb-4" style="gap:16px;">
+    <MudTextField @bind-Value="search" Placeholder="Tìm kiếm theo tên POI..."
+                  Adornment="Adornment.Start" AdornmentIcon="@Icons.Material.Filled.Search"
+                  Style="min-width:400px;" />
+    <MudChip Color="Color.Primary" Icon="@Icons.Material.Filled.Place">@pois.Count địa điểm</MudChip>
+</div>
+
+<MudTable Items="@filteredPois" Hover="true" Dense="true" Bordered="false"
+          Loading="@loading" Elevation="3" Style="border-radius:16px;">
     <HeaderContent>
         <MudTh>ID</MudTh>
         <MudTh>Tên địa điểm</MudTh>
-        <MudTh>Vị trí</MudTh>
-        <MudTh>Bán kính</MudTh>
-        <MudTh>Audio</MudTh>
+        <MudTh>Tọa độ</MudTh>
+        <MudTh>Bán kính KH</MudTh>
+        <MudTh>Danh mục</MudTh>
+        <MudTh>QR</MudTh>
         <MudTh>Hành động</MudTh>
     </HeaderContent>
     <RowTemplate Context="poi">
-        <MudTd>@poi.Id</MudTd>
-        <MudTd>@poi.Name</MudTd>
-        <MudTd>@poi.Lat, @poi.Lng</MudTd>
-        <MudTd>500m</MudTd>
+        <MudTd><MudChip Size="Size.Small" Color="Color.Default">@poi.Id</MudChip></MudTd>
         <MudTd>
-            <MudChip Color="Color.Info" Size="Size.Small">Có audio</MudChip>
+            <MudText Typo="Typo.subtitle2">@poi.Name</MudText>
+            <MudText Typo="Typo.caption" Color="Color.Secondary">@poi.Address</MudText>
         </MudTd>
         <MudTd>
-            <MudButton Size="Size.Small" Color="Color.Warning" OnClick="() => Edit(poi)" StartIcon="@Icons.Material.Filled.Edit">Sửa</MudButton>
-            <MudButton Size="Size.Small" Color="Color.Error" OnClick="() => Delete(poi.Id)" StartIcon="@Icons.Material.Filled.Delete">Xóa</MudButton>
+            <MudText Typo="Typo.caption" Style="font-family:monospace;">@poi.Lat.ToString("F4"), @poi.Lng.ToString("F4")</MudText>
+        </MudTd>
+        <MudTd><MudChip Size="Size.Small" Color="Color.Info">100m</MudChip></MudTd>
+        <MudTd><MudChip Size="Size.Small" Color="Color.Secondary">@GetCategoryName(poi.CategoryId)</MudChip></MudTd>
+        <MudTd>
+            <MudIconButton Icon="@Icons.Material.Filled.QrCode" Size="Size.Small" Color="Color.Primary"
+                           OnClick="GoToQr"
+                           Title="Xem QR Code" />
+        </MudTd>
+        <MudTd>
+            <MudButton Size="Size.Small" Color="Color.Warning" OnClick="() => Edit(poi)"
+                       StartIcon="@Icons.Material.Filled.Edit">Sửa</MudButton>
+            <MudButton Size="Size.Small" Color="Color.Error" OnClick="() => Delete(poi.Id)"
+                       StartIcon="@Icons.Material.Filled.Delete">Xóa</MudButton>
         </MudTd>
     </RowTemplate>
+    <NoRecordsContent>
+        <MudText Class="pa-8 text-center" Color="Color.Secondary">Không tìm thấy POI nào</MudText>
+    </NoRecordsContent>
 </MudTable>
 
 @code {
@@ -51,14 +65,12 @@
     private string search = "";
     private bool loading = true;
 
-    private IEnumerable<PoiDto> filteredPois =>
-        pois.Where(p => string.IsNullOrWhiteSpace(search) ||
-                        p.Name.Contains(search, StringComparison.OrdinalIgnoreCase));
+    private IEnumerable<PoiDto> filteredPois => pois.Where(p =>
+        string.IsNullOrWhiteSpace(search) ||
+        p.Name.Contains(search, StringComparison.OrdinalIgnoreCase) ||
+        p.Address.Contains(search, StringComparison.OrdinalIgnoreCase));
 
-    protected override async Task OnInitializedAsync()
-    {
-        await Load();
-    }
+    protected override async Task OnInitializedAsync() => await Load();
 
     private async Task Load()
     {
@@ -67,54 +79,39 @@
         loading = false;
     }
 
-    // ====================== THÊM POI MỚI ======================
     private async Task NewPoi()
     {
-        var parameters = new DialogParameters();
-        var dialog = await DialogService.ShowAsync<PoiDialog>("Thêm POI mới", parameters);
-        var result = await dialog.Result;
-
-        if (!result.Canceled)
-        {
-            Snackbar.Add("Thêm POI thành công!", Severity.Success);
-            await Load();
-        }
+        var dialog = await DialogService.ShowAsync<PoiDialog>("Thêm POI mới");
+        if (!(await dialog.Result).Canceled) { Snackbar.Add("✅ Thêm POI thành công!", Severity.Success); await Load(); }
     }
 
-    // ====================== SỬA POI ======================
     private async Task Edit(PoiDto poi)
     {
-        var parameters = new DialogParameters { ["Poi"] = poi };
-        var dialog = await DialogService.ShowAsync<PoiDialog>("Sửa POI", parameters);
-        var result = await dialog.Result;
-
-        if (!result.Canceled)
-        {
-            Snackbar.Add("Cập nhật POI thành công!", Severity.Success);
-            await Load();
-        }
+        var p = new DialogParameters { ["Poi"] = poi };
+        var dialog = await DialogService.ShowAsync<PoiDialog>("Sửa POI", p);
+        if (!(await dialog.Result).Canceled) { Snackbar.Add("✅ Cập nhật thành công!", Severity.Success); await Load(); }
     }
 
-    // ====================== XÓA POI ======================
     private async Task Delete(int id)
     {
-        bool? confirm = await DialogService.ShowMessageBox(
-            "Xác nhận xóa",
-            "Bạn có chắc chắn muốn xóa POI này? Hành động này không thể hoàn tác.",
-            yesText: "Xóa", cancelText: "Hủy", options: new DialogOptions { MaxWidth = MaxWidth.Small });
-
-        if (confirm == true)
+        var ok = await DialogService.ShowMessageBox("Xác nhận xóa",
+            "Bạn có chắc muốn xóa POI này? Dữ liệu audio liên quan cũng bị ảnh hưởng.",
+            yesText: "Xóa", cancelText: "Hủy");
+        if (ok == true)
         {
-            var success = await Service.Delete(id);
-            if (success)
-            {
-                Snackbar.Add("Xóa POI thành công!", Severity.Success);
-                await Load();
-            }
-            else
-            {
-                Snackbar.Add("Xóa thất bại!", Severity.Error);
-            }
+            if (await Service.Delete(id)) { Snackbar.Add("✅ Xóa thành công!", Severity.Success); await Load(); }
+            else Snackbar.Add("❌ Xóa thất bại!", Severity.Error);
         }
     }
+
+    private void GoToQr() => Nav.NavigateTo("/qrcode");
+
+    private string GetCategoryName(int id) => id switch
+    {
+        1 => "Di tích",
+        2 => "Kiến trúc",
+        3 => "Ẩm thực",
+        4 => "Mua sắm",
+        _ => "Khác"
+    };
 }

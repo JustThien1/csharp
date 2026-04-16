@@ -3,135 +3,101 @@
              xmlns:x="http://schemas.microsoft.com/winfx/2009/xaml"
              xmlns:vm="clr-namespace:TourGuideHCM.App.ViewModels"
              xmlns:models="clr-namespace:TourGuideHCM.App.Models"
-             x:Class="TourGuideHCM.App.Views.PoiListPage"
-             Title="Điểm tham quan">
+             x:Class="TourGuideHCM.App.Views.PoiListPage">
 
-	<Grid RowDefinitions="Auto,Auto,*">
+    <Grid RowDefinitions="Auto,Auto,*">
 
-		<!-- Thanh tìm kiếm -->
-		<SearchBar Grid.Row="0"
-                   Placeholder="Tìm kiếm điểm tham quan..."
+        <!-- Thanh tìm kiếm -->
+        <SearchBar x:Name="SearchBar"
+                   Grid.Row="0"
                    Text="{Binding SearchText}"
                    Margin="12,12,12,0"
                    BackgroundColor="{AppThemeBinding Light=#F5F5F5, Dark=#2A2A2A}"/>
 
-		<!-- Filter category -->
-		<CollectionView Grid.Row="1"
+        <!-- Filter category -->
+        <CollectionView Grid.Row="1"
                         ItemsSource="{Binding Categories}"
                         SelectionMode="Single"
                         SelectedItem="{Binding SelectedCategory}"
                         Margin="12,8,12,0"
                         HeightRequest="40">
-			<CollectionView.ItemsLayout>
-				<LinearItemsLayout Orientation="Horizontal" ItemSpacing="8"/>
-			</CollectionView.ItemsLayout>
-			<CollectionView.ItemTemplate>
-				<DataTemplate x:DataType="x:String">
-					<Frame CornerRadius="16"
-                           Padding="12,4"
-                           HasShadow="False">
-						<Label Text="{Binding .}"
-                               FontSize="13"
-                               VerticalOptions="Center"/>
-					</Frame>
-				</DataTemplate>
-			</CollectionView.ItemTemplate>
-		</CollectionView>
+            <CollectionView.ItemsLayout>
+                <LinearItemsLayout Orientation="Horizontal" ItemSpacing="8"/>
+            </CollectionView.ItemsLayout>
+            <CollectionView.ItemTemplate>
+                <DataTemplate x:DataType="x:String">
+                    <Frame CornerRadius="16" Padding="12,4" HasShadow="False">
+                        <Label Text="{Binding .}" FontSize="13" VerticalOptions="Center"/>
+                    </Frame>
+                </DataTemplate>
+            </CollectionView.ItemTemplate>
+        </CollectionView>
 
-		<!-- Danh sách POI -->
-		<RefreshView Grid.Row="2"
+        <!-- Danh sách POI -->
+        <RefreshView Grid.Row="2"
                      IsRefreshing="{Binding IsLoading}"
                      Command="{Binding RefreshCommand}">
-			<CollectionView ItemsSource="{Binding FilteredPois}"
+            <CollectionView ItemsSource="{Binding FilteredPois}"
                             SelectionMode="None"
                             Margin="12,8">
-				<CollectionView.EmptyView>
-					<VerticalStackLayout HorizontalOptions="Center"
+                <CollectionView.EmptyView>
+                    <VerticalStackLayout HorizontalOptions="Center"
                                          VerticalOptions="Center"
-                                         Spacing="16"
-                                         Padding="32">
-						<Label Text="Không tìm thấy điểm tham quan"
+                                         Spacing="16" Padding="32">
+                        <Label x:Name="EmptyLabel"
                                FontSize="16"
                                HorizontalOptions="Center"
                                TextColor="#999"/>
-					</VerticalStackLayout>
-				</CollectionView.EmptyView>
+                    </VerticalStackLayout>
+                </CollectionView.EmptyView>
 
-				<CollectionView.ItemTemplate>
-					<DataTemplate x:DataType="models:POI">
-						<Grid Padding="0,4">
-							<Frame CornerRadius="16"
-                                   Padding="0"
-                                   HasShadow="True"
+                <CollectionView.ItemTemplate>
+                    <DataTemplate x:DataType="models:POI">
+                        <Grid Padding="0,4">
+                            <Frame CornerRadius="16" Padding="0" HasShadow="True"
                                    BorderColor="Transparent"
-                                   BackgroundColor="{AppThemeBinding Light=White, Dark=#1E1E1E}"
-                                   >
-								<Grid ColumnDefinitions="120,*">
-
-									<!-- Ảnh POI -->
-									<Image Grid.Column="0"
+                                   BackgroundColor="{AppThemeBinding Light=White, Dark=#1E1E1E}">
+                                <Grid ColumnDefinitions="120,*">
+                                    <Image Grid.Column="0"
                                            Source="{Binding ImageUrl}"
                                            Aspect="AspectFill"
                                            HeightRequest="100"/>
-
-									<!-- Thông tin -->
-									<Grid Grid.Column="1"
+                                    <Grid Grid.Column="1"
                                           RowDefinitions="Auto,Auto,Auto,*"
-                                          Padding="12,10"
-                                          RowSpacing="4">
-
-										<!-- Tên + Category -->
-										<Label Grid.Row="0"
-                                               Text="{Binding Name}"
-                                               FontSize="15"
-                                               FontAttributes="Bold"
+                                          Padding="12,10" RowSpacing="4">
+                                        <Label Grid.Row="0" Text="{Binding Name}"
+                                               FontSize="15" FontAttributes="Bold"
                                                TextColor="{AppThemeBinding Light=#1A1A1A, Dark=White}"
                                                MaxLines="1"/>
-
-										<Label Grid.Row="1"
-                                               Text="{Binding CategoryName}"
-                                               FontSize="11"
-                                               TextColor="White"
+                                        <Label Grid.Row="1" Text="{Binding CategoryName}"
+                                               FontSize="11" TextColor="White"
                                                BackgroundColor="#1976D2"
-                                               Padding="6,2"
-                                               HorizontalOptions="Start"/>
-
-										<!-- Mô tả ngắn -->
-										<Label Grid.Row="2"
-                                               Text="{Binding ShortDescription}"
-                                               FontSize="12"
-                                               TextColor="#777"
-                                               MaxLines="2"
-                                               LineBreakMode="TailTruncation"/>
-
-										<!-- Actions -->
-										<HorizontalStackLayout Grid.Row="3"
-                                                               Spacing="8"
-                                                               VerticalOptions="End">
-											<Button Text="Chi tiết"
+                                               Padding="6,2" HorizontalOptions="Start"/>
+                                        <Label Grid.Row="2" Text="{Binding ShortDescription}"
+                                               FontSize="12" TextColor="#777"
+                                               MaxLines="2" LineBreakMode="TailTruncation"/>
+                                        <HorizontalStackLayout Grid.Row="3" Spacing="8" VerticalOptions="End">
+                                            <Button x:Name="DetailBtn"
                                                     FontSize="12"
                                                     BackgroundColor="Transparent"
-                                                    TextColor="#1976D2"
-                                                    Padding="0"
+                                                    TextColor="#1976D2" Padding="0"
                                                     Command="{Binding Source={RelativeSource AncestorType={x:Type ContentPage}}, Path=BindingContext.SelectCommand}"
                                                     CommandParameter="{Binding .}"/>
-
-											<Button Text="▶ Nghe"
+                                            <Button x:Name="ListenBtn"
                                                     FontSize="12"
                                                     BackgroundColor="#1976D2"
                                                     TextColor="White"
-                                                    CornerRadius="12"
-                                                    Padding="10,4"
+                                                    CornerRadius="12" Padding="10,4"
                                                     Command="{Binding Source={RelativeSource AncestorType={x:Type ContentPage}}, Path=BindingContext.PlayCommand}"
                                                     CommandParameter="{Binding .}"/>
-										</HorizontalStackLayout>
-									</Grid>
-								</Grid>
-							</Frame>
-						</Grid>
-					</DataTemplate>
-				</CollectionView.ItemTemplate>
-			</CollectionView>
-		</RefreshView>
-	</Grid>
+                                        </HorizontalStackLayout>
+                                    </Grid>
+                                </Grid>
+                            </Frame>
+                        </Grid>
+                    </DataTemplate>
+                </CollectionView.ItemTemplate>
+            </CollectionView>
+        </RefreshView>
+    </Grid>
 </ContentPage>

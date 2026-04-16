@@ -24,10 +24,12 @@
         android:supportsRtl="true"
         android:usesCleartextTraffic="true">
 
-		<!-- Google Maps API Key - thay bằng key thật -->
+		<!-- Google Maps API Key -->
 		<meta-data
             android:name="com.google.android.geo.API_KEY"
-            android:value="keycode" />
+            android:value="AIzaSyAOWI1npRcuYMD7NJ6r0VXIZS9ujCX5S0g" />
+
+		<!-- Activity và IntentFilter được cấu hình qua [IntentFilter] attribute trong MainActivity.cs -->
 
 	</application>
 

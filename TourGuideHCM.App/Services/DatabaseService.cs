@@ -89,4 +89,11 @@ public class DatabaseService : IDatabaseService
         var db = await GetDbAsync();
         await db.InsertAsync(evt);
     }
+
+    /// <summary>Xóa toàn bộ POI cache để force reload từ API</summary>
+    public async Task ClearPoisAsync()
+    {
+        var db = await GetDbAsync();
+        await db.DeleteAllAsync<POI>();
+    }
 }

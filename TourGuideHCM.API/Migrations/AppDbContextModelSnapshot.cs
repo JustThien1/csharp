@@ -290,9 +290,41 @@ namespace TourGuideHCM.API.Migrations
                     b.Property<DateTime>("Timestamp")
                         .HasColumnType("TEXT");
 
+                    b.Property<int?>("UserId")
+                        .HasColumnType("INTEGER");
+
                     b.HasKey("Id");
 
+                    b.HasIndex("UserId");
+
                     b.ToTable("RouteLogs");
+                });
+
+            modelBuilder.Entity("TourGuideHCM.API.Models.Tour", b =>
+                {
+                    b.Property<int>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("INTEGER");
+
+                    b.Property<DateTime>("CreatedAt")
+                        .HasColumnType("TEXT");
+
+                    b.Property<string>("Description")
+                        .HasColumnType("TEXT");
+
+                    b.Property<string>("Name")
+                        .IsRequired()
+                        .HasColumnType("TEXT");
+
+                    b.Property<string>("StopsJson")
+                        .HasColumnType("TEXT");
+
+                    b.Property<DateTime?>("UpdatedAt")
+                        .HasColumnType("TEXT");
+
+                    b.HasKey("Id");
+
+                    b.ToTable("Tours");
                 });
 
             modelBuilder.Entity("TourGuideHCM.API.Models.User", b =>
@@ -310,8 +342,14 @@ namespace TourGuideHCM.API.Migrations
                     b.Property<string>("FullName")
                         .HasColumnType("TEXT");
 
+                    b.Property<bool>("IsActive")
+                        .HasColumnType("INTEGER");
+
                     b.Property<string>("PasswordHash")
                         .IsRequired()
+                        .HasColumnType("TEXT");
+
+                    b.Property<string>("Phone")
                         .HasColumnType("TEXT");
 
                     b.Property<string>("Username")
@@ -415,6 +453,15 @@ namespace TourGuideHCM.API.Migrations
                         .IsRequired();
 
                     b.Navigation("POI");
+
+                    b.Navigation("User");
+                });
+
+            modelBuilder.Entity("TourGuideHCM.API.Models.RouteLog", b =>
+                {
+                    b.HasOne("TourGuideHCM.API.Models.User", "User")
+                        .WithMany()
+                        .HasForeignKey("UserId");
 
                     b.Navigation("User");
                 });

@@ -156,6 +156,22 @@ public class MapViewModel : INotifyPropertyChanged
         // Khi ngôn ngữ UI thay đổi → refresh text
         LanguageService.LanguageChanged += (_, _) =>
             MainThread.BeginInvokeOnMainThread(RefreshLanguage);
+
+        // Lắng nghe deep link tourguide://poi/{id}
+        DeepLinkService.PoiRequested += async (_, poiId) =>
+        {
+            // Đợi POI load xong nếu chưa có
+            var retry = 0;
+            while (!Pois.Any() && retry++ < 10)
+                await Task.Delay(500);
+
+            var poi = Pois.FirstOrDefault(p => p.Id == poiId);
+            if (poi != null)
+            {
+                MainThread.BeginInvokeOnMainThread(() => SelectedPoi = poi);
+                await PlayNarrationAsync(poi, "deeplink");
+            }
+        };
     }
 
     // ── Language refresh ──────────────────────────────────────────────────────
@@ -260,7 +276,19 @@ public class MapViewModel : INotifyPropertyChanged
         {
             NearestPoi = nearest;
             HighlightNearest(nearest.Id);
+            _ = LogRouteLocation(e.Lat, e.Lng);  // Lưu tuyến đường
         }
+    }
+
+    private DateTime _lastRouteLog = DateTime.MinValue;
+
+    private async Task LogRouteLocation(double lat, double lng)
+    {
+        // Log mỗi 30 giây để tránh spam DB
+        if ((DateTime.UtcNow - _lastRouteLog).TotalSeconds < 30) return;
+        _lastRouteLog = DateTime.UtcNow;
+        var userId = _auth.CurrentUser?.Id ?? 0;
+        await _api.LogRouteAsync(userId, lat, lng);
     }
 
     private void HighlightNearest(int poiId)

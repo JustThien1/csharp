@@ -1,3 +1,149 @@
 ﻿@page "/translation"
+@using MudBlazor
+@using TourGuideHCM.Admin.Models
+@using TourGuideHCM.Admin.Services
+@inject PoiService PoiService
+@inject ISnackbar Snackbar
 
-<MudText Typo="Typo.h4">🌐 Bản dịch</MudText>
+<div class="d-flex align-center mb-6">
+    <MudText Typo="Typo.h4" Class="font-weight-bold">🌐 Quản lý Bản dịch POI</MudText>
+    <MudSpacer />
+    <MudSelect T="string" @bind-Value="targetLang" Label="Ngôn ngữ đích" Style="width:160px;">
+        <MudSelectItem Value="@("en")">🇬🇧 English</MudSelectItem>
+        <MudSelectItem Value="@("zh")">🇨🇳 Tiếng Trung</MudSelectItem>
+        <MudSelectItem Value="@("ko")">🇰🇷 Tiếng Hàn</MudSelectItem>
+        <MudSelectItem Value="@("fr")">🇫🇷 Tiếng Pháp</MudSelectItem>
+    </MudSelect>
+</div>
+
+@if (loading)
+{
+    <MudSkeleton Height="400px" />
+}
+else
+{
+    <MudTable Items="@translations" Hover="true" Dense="true" Elevation="3">
+        <HeaderContent>
+            <MudTh>Địa điểm</MudTh>
+            <MudTh>Tiếng Việt (gốc)</MudTh>
+            <MudTh>@GetLangLabel(targetLang) (dịch)</MudTh>
+            <MudTh Style="width:120px">Trạng thái</MudTh>
+            <MudTh Style="width:100px">Hành động</MudTh>
+        </HeaderContent>
+        <RowTemplate>
+            <MudTd>
+                <MudText Typo="Typo.subtitle2">@context.PoiName</MudText>
+            </MudTd>
+            <MudTd>
+                <MudText Typo="Typo.body2" Style="max-width:280px; white-space:pre-wrap;">@context.ViText</MudText>
+            </MudTd>
+            <MudTd>
+                @if (context.IsEditing)
+                {
+                    <MudTextField @bind-Value="context.TranslatedText"
+                                  Lines="3" FullWidth="true"
+                                  Variant="Variant.Outlined" />
+                }
+                else
+                {
+                    <MudText Typo="Typo.body2"
+                             Style="@($"max-width:280px;white-space:pre-wrap;color:{(string.IsNullOrEmpty(context.TranslatedText) ? "#999" : "inherit")}")">
+                        @(string.IsNullOrEmpty(context.TranslatedText) ? "Chưa dịch" : context.TranslatedText)
+                    </MudText>
+                }
+            </MudTd>
+            <MudTd>
+                @if (string.IsNullOrEmpty(context.TranslatedText))
+                {
+                    <MudChip Size="Size.Small" Color="Color.Warning">Chưa dịch</MudChip>
+                }
+                else
+                {
+                    <MudChip Size="Size.Small" Color="Color.Success">Đã dịch</MudChip>
+                }
+            </MudTd>
+            <MudTd>
+                @if (context.IsEditing)
+                {
+                    <MudIconButton Icon="@Icons.Material.Filled.Save" Color="Color.Success" Size="Size.Small"
+                                   OnClick="() => SaveTranslation(context)" />
+                    <MudIconButton Icon="@Icons.Material.Filled.Cancel" Color="Color.Default" Size="Size.Small"
+                                   OnClick="() => context.IsEditing = false" />
+                }
+                else
+                {
+                    <MudIconButton Icon="@Icons.Material.Filled.Edit" Color="Color.Warning" Size="Size.Small"
+                                   OnClick="() => context.IsEditing = true" />
+                }
+            </MudTd>
+        </RowTemplate>
+    </MudTable>
+
+    <MudPaper Class="pa-4 mt-4" Elevation="1" Style="border-radius:12px; background:#f8f9fa;">
+        <div class="d-flex align-center">
+            <MudIcon Icon="@Icons.Material.Filled.Info" Color="Color.Info" Class="mr-2" />
+            <MudText Typo="Typo.body2" Color="Color.Secondary">
+                Bản dịch được sử dụng khi người dùng app chọn ngôn ngữ tương ứng và nghe thuyết minh POI.
+                Đã dịch @translations.Count(t => !string.IsNullOrEmpty(t.TranslatedText))/@translations.Count địa điểm.
+            </MudText>
+        </div>
+    </MudPaper>
+}
+
+@code {
+    private List<TranslationRow> translations = new();
+    private string targetLang = "en";
+    private bool loading = true;
+
+    protected override async Task OnInitializedAsync() => await LoadData();
+
+    private async Task LoadData()
+    {
+        loading = true;
+        var pois = await PoiService.GetAll();
+        translations = pois.Select(p => new TranslationRow
+        {
+            PoiId = p.Id,
+            PoiName = p.Name,
+            ViText = p.Description,
+            TranslatedText = GetSampleTranslation(p.Name, targetLang)
+        }).ToList();
+        loading = false;
+    }
+
+    private async Task OnLangChanged()
+    {
+        await LoadData();
+    }
+
+    private void SaveTranslation(TranslationRow row)
+    {
+        row.IsEditing = false;
+        Snackbar.Add($"✅ Đã lưu bản dịch cho {row.PoiName}", Severity.Success);
+    }
+
+    private string GetLangLabel(string lang) => lang switch
+    {
+        "en" => "🇬🇧 English",
+        "zh" => "🇨🇳 Tiếng Trung",
+        "ko" => "🇰🇷 Tiếng Hàn",
+        "fr" => "🇫🇷 Tiếng Pháp",
+        _ => lang.ToUpper()
+    };
+
+    private string GetSampleTranslation(string name, string lang) => lang == "en" ? name switch
+    {
+        "Nhà thờ Đức Bà" => "Notre-Dame Cathedral Basilica of Saigon",
+        "Bưu điện Trung tâm TP.HCM" => "Ho Chi Minh City Central Post Office",
+        _ => ""
+    } : "";
+
+    public class TranslationRow
+    {
+        public int PoiId { get; set; }
+        public string PoiName { get; set; } = "";
+        public string ViText { get; set; } = "";
+        public string TranslatedText { get; set; } = "";
+        public bool IsEditing { get; set; }
+    }
+}

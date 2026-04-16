@@ -31,6 +31,7 @@ namespace TourGuideHCM.API.Controllers
                 PasswordHash = request.PasswordHash,
                 FullName = request.FullName,
                 Email = request.Email,
+                Phone = request.Phone,   // ← Lưu SĐT
                 CreatedAt = DateTime.UtcNow
             };
 
@@ -40,7 +41,8 @@ namespace TourGuideHCM.API.Controllers
             return Ok(new
             {
                 message = "Đăng ký thành công",
-                userId = user.Id
+                userId = user.Id,
+                username = user.Username
             });
         }
 
@@ -62,7 +64,9 @@ namespace TourGuideHCM.API.Controllers
             {
                 message = "Đăng nhập thành công",
                 userId = user.Id,
-                username = user.Username
+                username = user.Username,
+                fullName = user.FullName,
+                phone = user.Phone        // ← Trả về SĐT
             });
         }
     }

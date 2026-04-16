@@ -26,7 +26,11 @@ public class ApiService : IApiService
 
     public ApiService()
     {
-        _http = new HttpClient
+        var handler = new HttpClientHandler
+        {
+            ServerCertificateCustomValidationCallback = (m, c, ch, e) => true
+        };
+        _http = new HttpClient(handler)
         {
             BaseAddress = new Uri(BaseUrl),
             Timeout = TimeSpan.FromSeconds(30)
@@ -186,5 +190,59 @@ public class ApiService : IApiService
         if (string.IsNullOrEmpty(audioUrl)) return string.Empty;
         if (audioUrl.StartsWith("http")) return audioUrl;
         return $"{BaseUrl}/{audioUrl.TrimStart('/')}";
+    }
+
+    // ── Audio URL từ bảng Audios ─────────────────────────────────────────────────
+
+    /// <summary>
+    /// GET /api/audio/poi/{poiId} → lấy AudioUrl đúng ngôn ngữ từ bảng Audios
+    /// </summary>
+    public async Task<string> GetAudioUrlAsync(int poiId, string language = "vi")
+    {
+        try
+        {
+            var list = await _http.GetFromJsonAsync<List<AudioItem>>(
+                $"/api/audio/poi/{poiId}", _json) ?? new();
+
+            // Ưu tiên đúng ngôn ngữ, fallback về bất kỳ
+            var match = list.FirstOrDefault(a =>
+                a.IsActive && a.Language == language)
+                ?? list.FirstOrDefault(a => a.IsActive);
+
+            if (match == null) return string.Empty;
+
+            var url = match.AudioUrl ?? string.Empty;
+#if ANDROID
+            url = url.Replace("localhost", "10.0.2.2")
+                     .Replace("127.0.0.1", "10.0.2.2");
+#endif
+            return ResolveAudioUrl(url);
+        }
+        catch (Exception ex)
+        {
+            System.Diagnostics.Debug.WriteLine($"[API] GetAudioUrl: {ex.Message}");
+            return string.Empty;
+        }
+    }
+
+    private class AudioItem
+    {
+        public int Id { get; set; }
+        public string Language { get; set; } = "";
+        public string? AudioUrl { get; set; }
+        public bool IsActive { get; set; }
+    }
+
+    // ── Route Log ─────────────────────────────────────────────────────────────
+
+    /// <summary>POST /api/route/log — Lưu vị trí để tạo tuyến di chuyển</summary>
+    public async Task LogRouteAsync(int userId, double lat, double lng)
+    {
+        try
+        {
+            if (userId <= 0) return;
+            await _http.PostAsJsonAsync("/api/route/log", new { userId, lat, lng });
+        }
+        catch { /* fire-and-forget */ }
     }
 }

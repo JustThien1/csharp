@@ -17,6 +17,7 @@ namespace TourGuideHCM.API.Data
         public DbSet<Favorite> Favorites { get; set; }
         public DbSet<PlaybackLog> PlaybackLogs { get; set; }
         public DbSet<RouteLog> RouteLogs { get; set; }
+        public DbSet<Tour> Tours { get; set; }
 
         // ====================== THÊM DbSet cho Audio ======================
         public DbSet<Audio> Audios { get; set; }

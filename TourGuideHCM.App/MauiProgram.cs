@@ -23,7 +23,14 @@ public static class MauiProgram
                 fonts.AddFont("OpenSans-Semibold.ttf", "OpenSansSemibold");
             });
 
-        // IAudioManager – chỉ định rõ namespace tránh nhầm Android.Media
+        // ── HttpClient ────────────────────────────────────────────────────────
+        builder.Services.AddSingleton(sp => new HttpClient
+        {
+            BaseAddress = new Uri("http://10.0.2.2:5284/"),
+            Timeout = TimeSpan.FromSeconds(30)
+        });
+
+        // IAudioManager
         builder.Services.AddSingleton<IAudioManager>(
             Plugin.Maui.Audio.AudioManager.Current);
 

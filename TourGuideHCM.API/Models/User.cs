@@ -7,6 +7,8 @@
         public string PasswordHash { get; set; } = string.Empty;
         public string? FullName { get; set; }
         public string? Email { get; set; }
+        public string? Phone { get; set; }  // ← Thêm SĐT
+        public bool IsActive { get; set; } = true;
         public DateTime CreatedAt { get; set; } = DateTime.UtcNow;
 
         public ICollection<Review> Reviews { get; set; } = new List<Review>();

@@ -1,60 +1,258 @@
 ﻿@page "/history"
-@inject TourGuideHCM.Admin.Services.PlaybackService PlaybackService
-@using TourGuideHCM.Admin.Models
 @using MudBlazor
+@using System.Net.Http.Json
+@using Microsoft.AspNetCore.Components.Web
+@inject HttpClient Http
+@inject ISnackbar Snackbar
 
-<MudText Typo="Typo.h4" Class="mb-4">📜 Lịch sử sử dụng</MudText>
+<div class="d-flex align-center mb-6">
+    <MudText Typo="Typo.h4" Class="font-weight-bold">📜 Lịch sử nghe</MudText>
+    <MudSpacer />
+    <MudText Typo="Typo.body2" Color="Color.Secondary">
+        Tổng: <strong>@history.Count lượt nghe</strong>
+    </MudText>
+</div>
 
-@if (_loading)
+<!-- Filter panel -->
+<MudPaper Class="pa-5 mb-5" Elevation="3" Style="border-radius:16px;">
+    <MudGrid Spacing="3" AlignItems="Center.Center">
+
+        <!-- Search SĐT -->
+        <MudItem xs="12" sm="4">
+            <MudTextField @bind-Value="searchPhone"
+                          Label="Tìm theo số điện thoại"
+                          Placeholder="VD: 0901234567"
+                          Adornment="Adornment.Start"
+                          AdornmentIcon="@Icons.Material.Filled.Phone"
+                          Variant="Variant.Outlined"
+                          Immediate="false"
+                          OnKeyUp="@OnPhoneKeyUp" />
+        </MudItem>
+
+        <!-- Search tên / POI -->
+        <MudItem xs="12" sm="4">
+            <MudTextField @bind-Value="searchText"
+                          Label="Tìm theo tên / địa điểm"
+                          Placeholder="Nhà thờ, Bưu điện..."
+                          Adornment="Adornment.Start"
+                          AdornmentIcon="@Icons.Material.Filled.Search"
+                          Variant="Variant.Outlined"
+                          Immediate="true" />
+        </MudItem>
+
+        <!-- Nút filter thời gian -->
+        <MudItem xs="12" sm="4">
+            <div class="d-flex" style="gap:8px; flex-wrap:wrap;">
+                @foreach (var (label, days) in timeFilters)
+                {
+                    <MudButton Size="Size.Small"
+                               Variant="@(selectedDays == days ? Variant.Filled : Variant.Outlined)"
+                               Color="Color.Primary"
+                               OnClick="() => ApplyDays(days)">@label</MudButton>
+                }
+            </div>
+        </MudItem>
+
+        <!-- From / To datetime -->
+        <MudItem xs="12" sm="5">
+            <MudDatePicker @bind-Date="fromDate" Label="Từ ngày" Variant="Variant.Outlined"
+                           DateFormat="dd/MM/yyyy" Clearable="true" />
+        </MudItem>
+        <MudItem xs="12" sm="5">
+            <MudDatePicker @bind-Date="toDate" Label="Đến ngày" Variant="Variant.Outlined"
+                           DateFormat="dd/MM/yyyy" Clearable="true" />
+        </MudItem>
+        <MudItem xs="12" sm="2">
+            <MudButton Variant="Variant.Filled" Color="Color.Primary" FullWidth="true"
+                       StartIcon="@Icons.Material.Filled.FilterAlt"
+                       OnClick="ApplyFilter" Disabled="@loading">
+                Lọc
+            </MudButton>
+        </MudItem>
+
+    </MudGrid>
+
+    @if (loading)
+    {
+        <MudProgressLinear Indeterminate="true" Color="Color.Primary" Class="mt-3" />
+    }
+</MudPaper>
+
+<!-- Kết quả -->
+@if (!loading && !filtered.Any())
 {
-    <MudProgressCircular Indeterminate="true" />
-}
-else if (_history == null || !_history.Any())
-{
-    <MudAlert Severity="Severity.Info">Chưa có lịch sử nào.</MudAlert>
+    <MudAlert Severity="Severity.Info">
+        Không có lịch sử nào khớp với bộ lọc. Thử thay đổi điều kiện tìm kiếm.
+    </MudAlert>
 }
 else
 {
-    <MudTable Items="_history" Hover="true" Striped="true" Dense="true">
-        <HeaderContent>
-            <MudTh>Người dùng</MudTh>
-            <MudTh>Địa điểm</MudTh>
-            <MudTh>Thời gian</MudTh>
-            <MudTh>Thời lượng (giây)</MudTh>
-        </HeaderContent>
-        <RowTemplate>
-            <MudTd>@context.User</MudTd>
-            <MudTd>@context.Poi</MudTd>
-            <MudTd>@context.Time.ToLocalTime().ToString("dd/MM/yyyy HH:mm:ss")</MudTd>
-            <MudTd>@(context.Duration?.ToString("F1") ?? "-")</MudTd>
-        </RowTemplate>
-    </MudTable>
+    <MudPaper Elevation="3" Style="border-radius:16px; overflow:hidden;">
+        <MudTable Items="@filtered" Hover="true" Dense="true" Elevation="0"
+                  Striped="true" FixedHeader="true" Height="580px">
+            <HeaderContent>
+                <MudTh>
+                    <MudTableSortLabel SortBy="@(new Func<HistoryRow, object>(x => x.User))">
+                        Người dùng
+                    </MudTableSortLabel>
+                </MudTh>
+                <MudTh>
+                    <MudTableSortLabel SortBy="@(new Func<HistoryRow, object>(x => x.Phone))">
+                        Số ĐT
+                    </MudTableSortLabel>
+                </MudTh>
+                <MudTh>
+                    <MudTableSortLabel SortBy="@(new Func<HistoryRow, object>(x => x.Poi))">
+                        Địa điểm
+                    </MudTableSortLabel>
+                </MudTh>
+                <MudTh>
+                    <MudTableSortLabel SortBy="@(new Func<HistoryRow, object>(x => x.Time))">
+                        Thời gian
+                    </MudTableSortLabel>
+                </MudTh>
+                <MudTh>Thời lượng</MudTh>
+                <MudTh>Loại</MudTh>
+            </HeaderContent>
+            <RowTemplate>
+                <MudTd>
+                    <div class="d-flex align-center">
+                        <MudAvatar Size="Size.Small" Color="Color.Primary" Class="mr-2"
+                                   Style="font-size:11px; min-width:32px;">
+                            @(context.User.Length > 0 ? context.User[0].ToString().ToUpper() : "?")
+                        </MudAvatar>
+                        <MudText Typo="Typo.body2">@context.User</MudText>
+                    </div>
+                </MudTd>
+                <MudTd>
+                    <MudText Typo="Typo.caption" Color="Color.Secondary">@(context.Phone ?? "-")</MudText>
+                </MudTd>
+                <MudTd>
+                    <div class="d-flex align-center" style="gap:6px;">
+                        <MudIcon Icon="@Icons.Material.Filled.Place" Color="Color.Error" Size="Size.Small" />
+                        <MudText Typo="Typo.body2">@context.Poi</MudText>
+                    </div>
+                </MudTd>
+                <MudTd>
+                    <MudText Typo="Typo.body2">@context.Time.ToLocalTime().ToString("HH:mm")</MudText>
+                    <MudText Typo="Typo.caption" Color="Color.Secondary">
+                        @context.Time.ToLocalTime().ToString("dd/MM/yyyy")
+                    </MudText>
+                </MudTd>
+                <MudTd>
+                    @if (context.Duration.HasValue && context.Duration > 0)
+                    {
+                        <MudChip Size="Size.Small" Color="Color.Success">
+                            @(context.Duration.Value >= 60
+                                ? $"{context.Duration.Value / 60:F0}p {context.Duration.Value % 60:F0}s"
+                                : $"{context.Duration.Value:F0}s")
+                        </MudChip>
+                    }
+                    else
+                    {
+                        <MudText Color="Color.Secondary">-</MudText>
+                    }
+                </MudTd>
+                <MudTd>
+                    <MudChip Size="Size.Small"
+                             Color="@(context.TriggerType == "geofence" ? Color.Warning : Color.Default)">
+                        @(context.TriggerType ?? "manual")
+                    </MudChip>
+                </MudTd>
+            </RowTemplate>
+            <PagerContent>
+                <MudTablePager PageSizeOptions="new int[] { 20, 50, 100 }" />
+            </PagerContent>
+        </MudTable>
+    </MudPaper>
 }
 
 @code {
-    private List<PlaybackHistoryDto>? _history;
-    private bool _loading = true;
+    private List<HistoryRow> history = new();
+    private List<HistoryRow> filtered = new();
+    private bool loading = true;
+
+    // Filter state
+    private string searchPhone = "";
+    private string searchText = "";
+    private int selectedDays = 30;
+    private DateTime? fromDate = null;
+    private DateTime? toDate = null;
+
+    private (string label, int days)[] timeFilters =
+    {
+        ("Hôm nay", 1), ("7 ngày", 7), ("30 ngày", 30), ("Tất cả", 0)
+    };
 
     protected override async Task OnInitializedAsync()
     {
-        await LoadHistory();
+        await LoadData();
     }
 
-    private async Task LoadHistory()
+    private async Task LoadData()
     {
-        _loading = true;
+        loading = true;
         try
         {
-            _history = await PlaybackService.GetHistoryAsync();
+            var url = selectedDays == 0
+                ? "api/playback/table?limit=1000"
+                : $"api/playback/table?limit=1000&days={selectedDays}";
+            history = await Http.GetFromJsonAsync<List<HistoryRow>>(url) ?? new();
         }
-        catch (Exception ex)
-        {
-            Console.WriteLine($"❌ Lỗi load history: {ex.Message}");
-            _history = new List<PlaybackHistoryDto>();
-        }
-        finally
-        {
-            _loading = false;
-        }
+        catch { history = new(); }
+        finally { loading = false; }
+        ApplyLocalFilter();
+    }
+
+    private void ApplyLocalFilter()
+    {
+        var q = history.AsEnumerable();
+
+        // Filter SĐT
+        if (!string.IsNullOrWhiteSpace(searchPhone))
+            q = q.Where(h => (h.Phone ?? "").Contains(searchPhone.Trim()));
+
+        // Filter text (tên user hoặc POI)
+        if (!string.IsNullOrWhiteSpace(searchText))
+            q = q.Where(h =>
+                h.User.Contains(searchText, StringComparison.OrdinalIgnoreCase) ||
+                h.Poi.Contains(searchText, StringComparison.OrdinalIgnoreCase));
+
+        // Filter ngày từ
+        if (fromDate.HasValue)
+            q = q.Where(h => h.Time.ToLocalTime().Date >= fromDate.Value.Date);
+
+        // Filter ngày đến
+        if (toDate.HasValue)
+            q = q.Where(h => h.Time.ToLocalTime().Date <= toDate.Value.Date);
+
+        filtered = q.ToList();
+    }
+
+    private async Task ApplyFilter()
+    {
+        await LoadData();
+    }
+
+    private void ApplyDays(int days)
+    {
+        selectedDays = days;
+        fromDate = null;
+        toDate = null;
+    }
+
+    private async Task OnPhoneKeyUp(KeyboardEventArgs e)
+    {
+        if (e.Key == "Enter") await ApplyFilter();
+    }
+
+    public class HistoryRow
+    {
+        public string User { get; set; } = "";
+        public string? Phone { get; set; }
+        public string Poi { get; set; } = "";
+        public DateTime Time { get; set; }
+        public double? Duration { get; set; }
+        public string? TriggerType { get; set; }
     }
 }

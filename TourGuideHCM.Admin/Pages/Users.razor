@@ -12,7 +12,7 @@
 
 <div class="d-flex justify-space-between align-center mb-4">
     <MudTextField @bind-Value="search"
-                  Placeholder="Tìm kiếm theo tên hoặc email..."
+                  Placeholder="Tìm theo tên, email hoặc số điện thoại..."
                   Adornment="Adornment.Start"
                   AdornmentIcon="@Icons.Material.Filled.Search"
                   Style="min-width: 420px;" />
@@ -37,13 +37,28 @@
         <MudTd>@user.Id</MudTd>
         <MudTd>@user.FullName</MudTd>
         <MudTd>@user.Email</MudTd>
-        <MudTd>@user.Phone</MudTd>
+        <MudTd>
+            @if (!string.IsNullOrWhiteSpace(user.Phone))
+            {
+                <div class="d-flex align-center" style="gap:4px;">
+                    <MudIcon Icon="@Icons.Material.Filled.Phone" Size="Size.Small" Color="Color.Secondary" />
+                    <MudText Typo="Typo.body2">@user.Phone</MudText>
+                </div>
+            }
+            else
+            {
+                <MudText Color="Color.Secondary">-</MudText>
+            }
+        </MudTd>
         <MudTd>
             <MudChip Color="@(user.Role == "Admin" ? Color.Error : Color.Info)">@user.Role</MudChip>
         </MudTd>
         <MudTd>@user.TotalListens</MudTd>
         <MudTd>
-            <MudSwitch @bind-Value="user.IsActive" Color="Color.Success" Disabled="true" />
+            <MudSwitch Value="@user.IsActive"
+                       Color="Color.Success"
+                       ValueChanged="@((bool v) => ToggleActive(user, v))"
+                       title="@(user.IsActive ? "Khóa tài khoản" : "Mở khóa tài khoản")" />
         </MudTd>
         <MudTd>
             <MudButton Size="Size.Small" Color="Color.Warning" OnClick="() => EditUser(user)">✏️ Sửa</MudButton>
@@ -60,7 +75,8 @@
     private IEnumerable<UserDto> filteredUsers =>
         users.Where(u => string.IsNullOrWhiteSpace(search) ||
                          u.FullName.Contains(search, StringComparison.OrdinalIgnoreCase) ||
-                         u.Email.Contains(search, StringComparison.OrdinalIgnoreCase));
+                         u.Email.Contains(search, StringComparison.OrdinalIgnoreCase) ||
+                         (u.Phone ?? "").Contains(search, StringComparison.OrdinalIgnoreCase));
 
     protected override async Task OnInitializedAsync()
     {
@@ -124,6 +140,20 @@
             {
                 Snackbar.Add("Xóa thất bại! Có thể người dùng không tồn tại.", Severity.Error);
             }
+        }
+    }
+
+    private async Task ToggleActive(UserDto user, bool newValue)
+    {
+        var success = await UserService.ToggleActiveAsync(user.Id);
+        if (success)
+        {
+            user.IsActive = newValue;
+            Snackbar.Add(newValue ? $"Đã mở khóa {user.FullName}" : $"Đã khóa {user.FullName}", Severity.Success);
+        }
+        else
+        {
+            Snackbar.Add("Cập nhật trạng thái thất bại!", Severity.Error);
         }
     }
 }

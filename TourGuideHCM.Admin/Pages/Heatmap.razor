@@ -1,32 +1,328 @@
 ﻿@page "/heatmap"
-
 @using MudBlazor
-@using TourGuideHCM.Admin.Models
+@using System.Net.Http.Json
+@using Microsoft.AspNetCore.Components.Web
+@using Microsoft.JSInterop
+@inject HttpClient Http
+@inject ISnackbar Snackbar
+@inject IJSRuntime JS
 
-<MudText Typo="Typo.h4" Class="mb-6">🔥 Heatmap vị trí người dùng (ẩn danh)</MudText>
+<div class="d-flex align-center mb-6">
+    <MudText Typo="Typo.h4" Class="font-weight-bold">🔥 Heatmap địa điểm</MudText>
+    <MudSpacer />
+    <MudChip Color="Color.Success" Icon="@Icons.Material.Filled.People">Tổng hợp tất cả người dùng</MudChip>
+</div>
 
-<MudPaper Class="pa-6" Elevation="3">
-    <MudHeatMap T="int"
-                Title="Số lượt nghe theo vị trí"
-                XLabels="@xLabels"
-                YLabels="@yLabels"
-                Data="@heatmapData"
-                Height="600px"
-                Width="100%" />
+<!-- Filter thời gian -->
+<MudPaper Class="pa-5 mb-5" Elevation="3" Style="border-radius:16px;">
+    <MudText Typo="Typo.h6" Class="mb-4">📅 Lọc theo thời gian</MudText>
+    <div class="d-flex align-center" style="gap:12px; flex-wrap:wrap;">
+        @foreach (var (label, days) in filters)
+        {
+            <MudButton Variant="@(selectedDays == days ? Variant.Filled : Variant.Outlined)"
+                       Color="Color.Primary"
+                       OnClick="() => ApplyFilter(days)">
+                @label
+            </MudButton>
+        }
+    </div>
+
+    @if (loading)
+    {
+        <MudProgressLinear Indeterminate="true" Color="Color.Primary" Class="mt-3" />
+    }
+
+    <!-- KPI tổng quan -->
+    <MudGrid Spacing="3" Class="mt-4">
+        <MudItem xs="6" sm="3">
+            <MudPaper Class="pa-4 text-center" Elevation="2" Style="border-radius:12px;background:#e3f2fd;">
+                <MudText Typo="Typo.h5" Class="font-weight-bold">@totalPlays</MudText>
+                <MudText Typo="Typo.caption" Color="Color.Secondary">Tổng lượt nghe</MudText>
+            </MudPaper>
+        </MudItem>
+        <MudItem xs="6" sm="3">
+            <MudPaper Class="pa-4 text-center" Elevation="2" Style="border-radius:12px;background:#e8f5e9;">
+                <MudText Typo="Typo.h5" Class="font-weight-bold">@totalUsers</MudText>
+                <MudText Typo="Typo.caption" Color="Color.Secondary">Người dùng</MudText>
+            </MudPaper>
+        </MudItem>
+        <MudItem xs="6" sm="3">
+            <MudPaper Class="pa-4 text-center" Elevation="2" Style="border-radius:12px;background:#fff3e0;">
+                <MudText Typo="Typo.h5" Class="font-weight-bold">@activePois</MudText>
+                <MudText Typo="Typo.caption" Color="Color.Secondary">POI có lượt nghe</MudText>
+            </MudPaper>
+        </MudItem>
+        <MudItem xs="6" sm="3">
+            <MudPaper Class="pa-4 text-center" Elevation="2" Style="border-radius:12px;background:#fce4ec;">
+                <MudText Typo="Typo.subtitle1" Class="font-weight-bold">@hotPoi</MudText>
+                <MudText Typo="Typo.caption" Color="Color.Secondary">POI nóng nhất</MudText>
+            </MudPaper>
+        </MudItem>
+    </MudGrid>
 </MudPaper>
 
-@code {
-    // Dữ liệu mẫu (sau này thay bằng API call)
-    private string[] xLabels = { "10:00", "11:00", "12:00", "13:00", "14:00", "15:00", "16:00", "17:00" };
-    private string[] yLabels = { "Bảo tàng", "Nhà thờ", "Công viên", "Chợ", "Cầu", "Bến cảng" };
+<MudGrid Spacing="4">
+    <!-- Bản đồ nhiệt -->
+    <MudItem xs="12" md="8">
+        <MudPaper Class="pa-0" Elevation="3" Style="border-radius:16px; overflow:hidden;">
+            <div class="pa-4 d-flex align-center" style="border-bottom:1px solid #eee;">
+                <MudIcon Icon="@Icons.Material.Filled.Whatshot" Color="Color.Error" Class="mr-2" />
+                <MudText Typo="Typo.h6">Mật độ nghe tại các địa điểm</MudText>
+                <MudSpacer />
+                <MudChip Size="Size.Small" Color="Color.Error">@heatPoints.Count POI</MudChip>
+            </div>
 
-    private int[][] heatmapData = new int[][]
-    {
-        new[] { 5, 12, 18, 25, 30, 22, 15, 8 },
-        new[] { 8, 15, 22, 28, 35, 27, 19, 11 },
-        new[] { 3, 9, 14, 20, 25, 18, 12, 6 },
-        new[] { 10, 18, 24, 31, 38, 29, 21, 13 },
-        new[] { 6, 13, 19, 26, 32, 24, 17, 9 },
-        new[] { 4, 11, 16, 23, 29, 21, 14, 7 }
+            <div id="heatMap" style="height:480px; width:100%;"></div>
+
+            <div class="pa-3 d-flex align-center" style="gap:16px; border-top:1px solid #eee; flex-wrap:wrap;">
+                <div style="display:flex;align-items:center;gap:6px;">
+                    <div style="width:50px;height:10px;background:linear-gradient(to right,#DBEAFE,#3B82F6,#7C3AED,#EF4444);border-radius:5px;"></div>
+                    <MudText Typo="Typo.caption">Ít → Nhiều lượt nghe</MudText>
+                </div>
+                <div style="display:flex;align-items:center;gap:6px;">
+                    <div style="width:10px;height:10px;background:#E53935;border:2px solid white;border-radius:50%;"></div>
+                    <MudText Typo="Typo.caption">Địa điểm POI (nhấn để xem chi tiết)</MudText>
+                </div>
+            </div>
+        </MudPaper>
+    </MudItem>
+
+    <!-- Thống kê -->
+    <MudItem xs="12" md="4">
+        <!-- Giờ cao điểm -->
+        <MudPaper Class="pa-5 mb-4" Elevation="3" Style="border-radius:16px;">
+            <MudText Typo="Typo.h6" Class="mb-3">⏰ Giờ cao điểm</MudText>
+            @foreach (var peak in peakHours)
+            {
+                <div class="d-flex align-center mb-2">
+                    <MudText Typo="Typo.body2" Style="width:38px; font-weight:600;">@peak.Hour</MudText>
+                    <div style="flex:1; margin:0 10px;">
+                        <MudProgressLinear Value="@peak.Percent" Color="Color.Error" Rounded="true" Size="Size.Medium" />
+                    </div>
+                    <MudText Typo="Typo.caption" Color="Color.Secondary" Style="width:50px;text-align:right;">@peak.Count lượt</MudText>
+                </div>
+            }
+            @if (!peakHours.Any())
+            {
+                <MudText Typo="Typo.caption" Color="Color.Secondary">Chưa có dữ liệu</MudText>
+            }
+        </MudPaper>
+
+        <!-- Top POI -->
+        <MudPaper Class="pa-5" Elevation="3" Style="border-radius:16px;">
+            <MudText Typo="Typo.h6" Class="mb-3">🏆 Top POI được nghe nhiều nhất</MudText>
+            @foreach (var (poi, i) in topPois.Select((p, i) => (p, i)))
+            {
+                <div class="d-flex align-center mb-3">
+                    <MudAvatar Size="Size.Small"
+                               Style="@($"background:{GetRankColor(i)};color:white;margin-right:10px;font-size:11px;min-width:32px;")">
+                        @(i + 1)
+                    </MudAvatar>
+                    <div class="flex-grow-1">
+                        <MudText Typo="Typo.body2">@poi.Name</MudText>
+                        <MudProgressLinear Value="@poi.Percent" Color="Color.Warning" Rounded="true" Size="Size.Small" />
+                    </div>
+                    <MudText Typo="Typo.caption" Class="ml-2" Style="white-space:nowrap;">@poi.Count lượt</MudText>
+                </div>
+            }
+        </MudPaper>
+    </MudItem>
+
+    <!-- Bảng heatmap giờ × POI -->
+    <MudItem xs="12">
+        <MudPaper Class="pa-5" Elevation="3" Style="border-radius:16px;">
+            <MudText Typo="Typo.h6" Class="mb-1">📊 Lượt nghe theo giờ × địa điểm</MudText>
+            <MudText Typo="Typo.caption" Color="Color.Secondary" Class="mb-4">
+                Tổng hợp từ tất cả người dùng trong @filterLabel
+            </MudText>
+            <div style="overflow-x:auto;">
+                <table style="border-collapse:collapse; width:100%;">
+                    <thead>
+                        <tr>
+                            <th style="padding:8px; text-align:left; font-size:12px; color:#666; min-width:150px;">Địa điểm</th>
+                            @foreach (var h in hours)
+                            {
+                                <th style="padding:4px 6px; font-size:11px; color:#666; text-align:center;">@h</th>
+                            }
+                            <th style="padding:4px 8px; font-size:11px; color:#666; text-align:center;">Tổng</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        @foreach (var row in heatmapGrid)
+                        {
+                            <tr>
+                                <td style="padding:5px 8px; font-size:12px; white-space:nowrap; color:#374151; font-weight:500;">
+                                    @row.Label
+                                </td>
+                                @foreach (var val in row.Values)
+                                {
+                                    <td style="padding:2px;">
+                                        <div style="@GetCellStyle(val, maxCell)" title="@val lượt">
+                                            @if (val > 0)
+                                            {
+                                                <span style="font-size:10px;">@val</span>
+                                            }
+                                        </div>
+                                    </td>
+                                }
+                                <td style="padding:5px 8px; font-size:12px; font-weight:600; color:#1976D2; text-align:center;">
+                                    @row.Values.Sum()
+                                </td>
+                            </tr>
+                        }
+                    </tbody>
+                </table>
+            </div>
+            <div class="d-flex align-center mt-3" style="gap:6px;">
+                <MudText Typo="Typo.caption" Color="Color.Secondary">Ít</MudText>
+                @foreach (var c in new[] { "#EFF6FF", "#DBEAFE", "#93C5FD", "#3B82F6", "#1D4ED8" })
+                {
+                    <div style="width:22px;height:14px;background:@c;border-radius:3px;"></div>
+                }
+                <MudText Typo="Typo.caption" Color="Color.Secondary">Nhiều</MudText>
+            </div>
+        </MudPaper>
+    </MudItem>
+</MudGrid>
+
+@code {
+    // Filter
+    private (string label, int days)[] filters = {
+        ("Hôm nay", 1), ("7 ngày", 7), ("30 ngày", 30), ("90 ngày", 90), ("Tất cả", 0)
     };
+    private int selectedDays = 30;
+    private string filterLabel = "30 ngày qua";
+    private bool loading = false;
+
+    // Stats
+    private int totalPlays = 0;
+    private int totalUsers = 0;
+    private int activePois = 0;
+    private string hotPoi = "-";
+    private int maxCell = 1;
+
+    private string[] hours = { "7h", "8h", "9h", "10h", "11h", "12h", "13h", "14h", "15h", "16h", "17h", "18h" };
+
+    private List<HeatHistoryItem> history = new();
+    private List<PoiPoint> allPois = new();
+    private List<HeatPoint> heatPoints = new();
+    private List<PeakHour> peakHours = new();
+    private List<TopPoi> topPois = new();
+    private List<HeatRow> heatmapGrid = new();
+
+    private bool mapReady = false;
+
+    protected override async Task OnInitializedAsync()
+    {
+        try { allPois = await Http.GetFromJsonAsync<List<PoiPoint>>("api/poi") ?? new(); }
+        catch { }
+        await LoadData();
+    }
+
+    protected override async Task OnAfterRenderAsync(bool firstRender)
+    {
+        if (firstRender)
+        {
+            await JS.InvokeVoidAsync("initHeatMap", 10.7769, 106.7009, 13);
+            mapReady = true;
+            await RefreshMap();
+        }
+    }
+
+    private async Task ApplyFilter(int days)
+    {
+        selectedDays = days;
+        filterLabel = days == 0 ? "tất cả thời gian"
+                     : days == 1 ? "hôm nay"
+                     : $"{days} ngày qua";
+        await LoadData();
+        await RefreshMap();
+    }
+
+    private async Task LoadData()
+    {
+        loading = true;
+        try
+        {
+            var url = selectedDays == 0
+                ? "api/playback/history?limit=2000"
+                : $"api/playback/history?limit=2000&days={selectedDays}";
+            history = await Http.GetFromJsonAsync<List<HeatHistoryItem>>(url) ?? new();
+        }
+        catch { history = new(); }
+        finally { loading = false; }
+
+        BuildStats();
+        StateHasChanged();
+    }
+
+    private void BuildStats()
+    {
+        totalPlays = history.Count;
+        totalUsers = history.Select(h => h.UserId).Where(id => id > 0).Distinct().Count();
+        activePois = history.Select(h => h.PoiName).Distinct().Count();
+
+        // Top POI
+        var grouped = history.GroupBy(h => h.PoiName)
+            .Select(g => new TopPoi { Name = g.Key, Count = g.Count() })
+            .OrderByDescending(x => x.Count).Take(7).ToList();
+        var maxPoi = grouped.FirstOrDefault()?.Count ?? 1;
+        foreach (var p in grouped) p.Percent = (double)p.Count / maxPoi * 100;
+        topPois = grouped;
+        hotPoi = topPois.FirstOrDefault()?.Name ?? "-";
+        if (hotPoi.Length > 18) hotPoi = hotPoi[..18] + "…";
+
+        // Giờ cao điểm
+        peakHours = hours.Select((h, i) =>
+        {
+            var count = history.Count(x => x.TriggeredAt.ToLocalTime().Hour == i + 7);
+            return new PeakHour { Hour = h, Count = count };
+        }).Where(x => x.Count > 0).OrderByDescending(x => x.Count).Take(6).ToList();
+        var maxPeak = peakHours.FirstOrDefault()?.Count ?? 1;
+        foreach (var p in peakHours) p.Percent = (double)p.Count / maxPeak * 100;
+
+        // Grid heatmap
+        var poiNames = grouped.Select(p => p.Name).Take(8).ToList();
+        heatmapGrid = poiNames.Select(name => new HeatRow
+        {
+            Label = name.Length > 22 ? name[..22] + "…" : name,
+            Values = hours.Select((h, i) =>
+                history.Count(x => x.PoiName == name && x.TriggeredAt.ToLocalTime().Hour == i + 7)).ToList()
+        }).ToList();
+        maxCell = heatmapGrid.Any() ? heatmapGrid.Max(r => r.Values.Max()) : 1;
+        if (maxCell == 0) maxCell = 1;
+
+        // Heat points cho bản đồ
+        heatPoints = grouped.Select(g =>
+        {
+            var poi = allPois.FirstOrDefault(p => p.Name == g.Name);
+            if (poi == null) return null;
+            return new HeatPoint { Lat = poi.Lat, Lng = poi.Lng, Weight = g.Count, Name = g.Name };
+        }).Where(x => x != null).Select(x => x!).ToList();
+    }
+
+    private async Task RefreshMap()
+    {
+        if (!mapReady) return;
+        var poiPoints = allPois.Select(p => new { p.Lat, p.Lng, p.Name }).ToList();
+        await JS.InvokeVoidAsync("updateHeatMap", heatPoints, poiPoints);
+    }
+
+    private string GetCellStyle(int val, int max)
+    {
+        if (val == 0) return "width:28px;height:22px;background:#F8FAFC;border-radius:4px;display:flex;align-items:center;justify-content:center;";
+        var ratio = (double)val / max;
+        var bg = ratio < 0.25 ? "#DBEAFE" : ratio < 0.5 ? "#93C5FD" : ratio < 0.75 ? "#3B82F6" : "#1D4ED8";
+        var color = ratio >= 0.5 ? "white" : "#1e293b";
+        return $"width:28px;height:22px;background:{bg};color:{color};border-radius:4px;display:flex;align-items:center;justify-content:center;font-size:10px;";
+    }
+
+    private string GetRankColor(int i) => i switch { 0 => "#FF6B6B", 1 => "#FFA500", 2 => "#FFD700", _ => "#1976D2" };
+
+    public class HeatHistoryItem { public string PoiName { get; set; } = ""; public int UserId { get; set; } public DateTime TriggeredAt { get; set; } }
+    public class PoiPoint { public int Id { get; set; } public string Name { get; set; } = ""; public double Lat { get; set; } public double Lng { get; set; } public string Address { get; set; } = ""; }
+    public class HeatPoint { public double Lat { get; set; } public double Lng { get; set; } public int Weight { get; set; } public string Name { get; set; } = ""; }
+    public class PeakHour { public string Hour { get; set; } = ""; public int Count { get; set; } public double Percent { get; set; } }
+    public class TopPoi { public string Name { get; set; } = ""; public int Count { get; set; } public double Percent { get; set; } }
+    public class HeatRow { public string Label { get; set; } = ""; public List<int> Values { get; set; } = new(); }
 }

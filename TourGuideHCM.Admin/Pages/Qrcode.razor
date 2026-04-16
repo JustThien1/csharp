@@ -1,0 +1,184 @@
+﻿@page "/qrcode"
+@using MudBlazor
+@using Microsoft.JSInterop
+@inject IJSRuntime JS
+@inject ISnackbar Snackbar
+
+<div class="d-flex align-center mb-6">
+    <MudText Typo="Typo.h4" Class="font-weight-bold">📲 QR Code - TourGuide HCM</MudText>
+</div>
+
+<MudGrid Spacing="4" JustifyContent="JustifyContent.Center">
+
+    <!-- QR mở app -->
+    <MudItem xs="12" sm="6" md="4">
+        <MudPaper Class="pa-6 text-center" Elevation="3" Style="border-radius:16px;">
+            <MudText Typo="Typo.h6" Class="mb-1">🚀 Mở ứng dụng</MudText>
+            <MudText Typo="Typo.caption" Color="Color.Secondary" Class="mb-4">
+                Quét để mở app (nếu đã cài). Nếu chưa cài → tới Google Play.
+            </MudText>
+
+            <!-- QR container -->
+            <div id="qr-app"
+                 style="background:white; padding:16px; border-radius:12px;
+                display:inline-block; margin-bottom:16px;
+                box-shadow:0 2px 8px rgba(0,0,0,.1);">
+            </div>
+
+            <div class="mb-3">
+                <MudChip Size="Size.Small" Color="Color.Primary" Icon="@Icons.Material.Filled.Android">
+                    TourGuideHCM.App
+                </MudChip>
+            </div>
+
+            <MudText Typo="Typo.caption" Color="Color.Secondary" Class="mb-4"
+                     Style="word-break:break-all; font-family:monospace;">
+                @appUrl
+            </MudText>
+
+            <div class="d-flex justify-center" style="gap:8px; flex-wrap:wrap;">
+                <MudButton Variant="Variant.Filled" Color="Color.Primary"
+                           StartIcon="@Icons.Material.Filled.Download"
+                           OnClick="DownloadAppQr">
+                    Tải QR
+                </MudButton>
+                <MudButton Variant="Variant.Outlined" Color="Color.Secondary"
+                           StartIcon="@Icons.Material.Filled.ContentCopy"
+                           OnClick="CopyAppUrl">
+                    Copy URL
+                </MudButton>
+                <MudButton Variant="Variant.Outlined" Color="Color.Default"
+                           StartIcon="@Icons.Material.Filled.Print"
+                           OnClick="Print">
+                    In QR
+                </MudButton>
+            </div>
+        </MudPaper>
+    </MudItem>
+
+    <!-- Hướng dẫn -->
+    <MudItem xs="12" sm="6" md="4">
+        <MudPaper Class="pa-6" Elevation="2" Style="border-radius:16px; background:#f8f9fa;">
+            <MudText Typo="Typo.h6" Class="mb-4">📖 Hướng dẫn sử dụng</MudText>
+
+            <div class="d-flex align-start mb-3" style="gap:12px;">
+                <MudAvatar Size="Size.Small" Color="Color.Primary">1</MudAvatar>
+                <div>
+                    <MudText Typo="Typo.subtitle2">Đã cài app</MudText>
+                    <MudText Typo="Typo.body2" Color="Color.Secondary">
+                        Quét QR → App TourGuide HCM mở ngay
+                    </MudText>
+                </div>
+            </div>
+
+            <div class="d-flex align-start mb-3" style="gap:12px;">
+                <MudAvatar Size="Size.Small" Color="Color.Warning">2</MudAvatar>
+                <div>
+                    <MudText Typo="Typo.subtitle2">Chưa cài app</MudText>
+                    <MudText Typo="Typo.body2" Color="Color.Secondary">
+                        Quét QR → Mở Google Play Store → Cài đặt
+                    </MudText>
+                </div>
+            </div>
+
+            <div class="d-flex align-start mb-4" style="gap:12px;">
+                <MudAvatar Size="Size.Small" Color="Color.Success">3</MudAvatar>
+                <div>
+                    <MudText Typo="Typo.subtitle2">In & dán tại điểm dừng</MudText>
+                    <MudText Typo="Typo.body2" Color="Color.Secondary">
+                        Tải PNG → In ra → Dán tại điểm dừng xe buýt, bảng thông tin
+                    </MudText>
+                </div>
+            </div>
+
+            <MudDivider Class="mb-4" />
+
+            <MudText Typo="Typo.subtitle2" Class="mb-2">ℹ️ Lưu ý</MudText>
+            <MudAlert Severity="Severity.Info" Dense="true" Class="mb-3">
+                QR dùng scheme <strong>tourguide://open</strong>.<br />
+                Điện thoại cần <strong>đã cài app</strong> và dùng
+                Google Lens / camera để quét.
+            </MudAlert>
+            <MudAlert Severity="Severity.Warning" Dense="true">
+                Chưa cài app → quét sẽ không nhận ra.<br />
+                Sau khi publish Play Store, liên hệ admin để cập nhật URL fallback.
+            </MudAlert>
+        </MudPaper>
+    </MudItem>
+
+</MudGrid>
+
+@code {
+    // Intent URL: thử mở app trước, fallback Play Store
+    private string playStoreUrl = "https://play.google.com/store/apps/details?id=TourGuideHCM.App";
+
+    // Deep link đơn giản — camera/Google Lens nhận và mở app nếu đã cài
+    private string appUrl => "tourguide://open";
+
+    private bool rendered = false;
+
+    protected override async Task OnAfterRenderAsync(bool firstRender)
+    {
+        if (firstRender)
+        {
+            await Task.Delay(150);
+            await RenderQr();
+            rendered = true;
+        }
+    }
+
+    private async Task DownloadAppQr()
+    {
+        await DownloadQr("qr-app", "TourGuideHCM_QR.png");
+    }
+
+    private async Task RenderQr()
+    {
+        try
+        {
+            await JS.InvokeVoidAsync("renderQrCode", "qr-app", appUrl, 200);
+        }
+        catch (Exception ex)
+        {
+            Snackbar.Add($"Lỗi render QR: {ex.Message}", Severity.Error);
+        }
+    }
+
+    private async Task RegenerateQr()
+    {
+        await Task.Delay(100);
+        await RenderQr();
+        Snackbar.Add("✅ Đã tạo lại QR!", Severity.Success);
+    }
+
+    private async Task DownloadQr(string elementId, string fileName)
+    {
+        try
+        {
+            await JS.InvokeVoidAsync("downloadQrCode", elementId, fileName);
+            Snackbar.Add("📥 Đang tải QR...", Severity.Success);
+        }
+        catch
+        {
+            Snackbar.Add("Trình duyệt không hỗ trợ tải trực tiếp.", Severity.Warning);
+        }
+    }
+
+    private async Task CopyAppUrl()
+    {
+        try
+        {
+            await JS.InvokeVoidAsync("navigator.clipboard.writeText", appUrl);
+            Snackbar.Add("✅ Đã copy URL!", Severity.Success);
+        }
+        catch
+        {
+            Snackbar.Add($"URL: {appUrl}", Severity.Info);
+        }
+    }
+
+    private async Task Print()
+    {
+        await JS.InvokeVoidAsync("window.print");
+    }
+}

@@ -28,6 +28,10 @@ public interface IApiService
 
     // Audio URL resolver
     string ResolveAudioUrl(string? audioUrl);
+    Task<string> GetAudioUrlAsync(int poiId, string language = "vi");
+
+    // Route log
+    Task LogRouteAsync(int userId, double lat, double lng);
 }
 
 // ── IDatabaseService ──────────────────────────────────────────────────────────
@@ -43,6 +47,7 @@ public interface IDatabaseService
     Task AddPlaybackHistoryAsync(PlaybackHistory history);
     Task<List<PlaybackHistory>> GetPlaybackHistoryAsync(int limit = 50);
     Task AddGeofenceEventAsync(GeofenceEvent evt);
+    Task ClearPoisAsync();
 }
 
 // ── IGeofenceService ──────────────────────────────────────────────────────────

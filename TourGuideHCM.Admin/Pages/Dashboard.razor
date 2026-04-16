@@ -1,208 +1,186 @@
 ﻿@page "/"
 @page "/dashboard"
-
 @using MudBlazor
 @using TourGuideHCM.Admin.Services
 @using TourGuideHCM.Admin.Models
-
 @inject AnalyticsService AnalyticsService
+@inject PlaybackService PlaybackService
 
-<MudText Typo="Typo.h4" Class="mb-6 font-weight-bold d-flex align-center">
-    📊 Dashboard Analytics
+<div class="d-flex align-center mb-6">
+    <MudText Typo="Typo.h4" Class="font-weight-bold">📊 Dashboard Analytics</MudText>
     <MudSpacer />
-    <MudButton OnClick="Refresh" Variant="Variant.Outlined" Color="Color.Primary" StartIcon="@Icons.Material.Filled.Refresh">
-        Làm mới
-    </MudButton>
-</MudText>
+    <MudButton OnClick="Refresh" Variant="Variant.Outlined" Color="Color.Primary"
+               StartIcon="@Icons.Material.Filled.Refresh">Làm mới</MudButton>
+</div>
 
 @if (loading)
 {
-    <MudSkeleton Width="100%" Height="420px" />
-}
-else if (!string.IsNullOrEmpty(error))
-{
-    <MudAlert Severity="Severity.Error" Class="mb-4">@error</MudAlert>
+    <MudGrid Spacing="4">
+        @for (int i = 0; i < 4; i++)
+        {
+            <MudItem xs="12" md="3"><MudSkeleton Height="120px" /></MudItem>
+        }
+    </MudGrid>
 }
 else
 {
     <!-- KPI Cards -->
-    <MudGrid Spacing="6">
-        <!-- Tổng POI -->
-        <MudItem xs="12" md="3">
-            <MudPaper Class="pa-6" Elevation="3" Style="background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); color: white; border-radius: 12px;">
+    <MudGrid Spacing="4">
+        <MudItem xs="12" sm="6" md="3">
+            <MudPaper Class="pa-5" Elevation="3" Style="background:linear-gradient(135deg,#667eea,#764ba2);color:white;border-radius:16px;">
                 <div class="d-flex align-center">
                     <MudIcon Icon="@Icons.Material.Filled.Place" Size="Size.Large" />
-                    <div class="ml-4 flex-grow-1">
-                        <MudText Typo="Typo.body1" Class="opacity-75">Tổng POI</MudText>
-                        <MudText Typo="Typo.h3" Class="font-weight-black">@totalPoi</MudText>
+                    <div class="ml-4">
+                        <MudText Typo="Typo.body2" Style="opacity:.8">Tổng POI</MudText>
+                        <MudText Typo="Typo.h3" Class="font-weight-black">@data.TotalPoi</MudText>
                     </div>
                 </div>
             </MudPaper>
         </MudItem>
-
-        <!-- Tổng người dùng -->
-        <MudItem xs="12" md="3">
-            <MudPaper Class="pa-6" Elevation="3" Style="background: linear-gradient(135deg, #11998e 0%, #38ef7d 100%); color: white; border-radius: 12px;">
+        <MudItem xs="12" sm="6" md="3">
+            <MudPaper Class="pa-5" Elevation="3" Style="background:linear-gradient(135deg,#11998e,#38ef7d);color:white;border-radius:16px;">
                 <div class="d-flex align-center">
-                    <MudIcon Icon="@Icons.Material.Filled.PersonAdd" Size="Size.Large" />
-                    <div class="ml-4 flex-grow-1">
-                        <MudText Typo="Typo.body1" Class="opacity-75">Tổng người dùng</MudText>
-                        <MudText Typo="Typo.h3" Class="font-weight-black">@totalUsers</MudText>
+                    <MudIcon Icon="@Icons.Material.Filled.Group" Size="Size.Large" />
+                    <div class="ml-4">
+                        <MudText Typo="Typo.body2" Style="opacity:.8">Người dùng</MudText>
+                        <MudText Typo="Typo.h3" Class="font-weight-black">@data.TotalUsers</MudText>
                     </div>
                 </div>
             </MudPaper>
         </MudItem>
-
-        <!-- Top POI -->
-        <MudItem xs="12" md="3">
-            <MudPaper Class="pa-6" Elevation="3" Style="border-radius: 12px;">
+        <MudItem xs="12" sm="6" md="3">
+            <MudPaper Class="pa-5" Elevation="3" Style="background:linear-gradient(135deg,#f093fb,#f5576c);color:white;border-radius:16px;">
                 <div class="d-flex align-center">
-                    <MudIcon Icon="@Icons.Material.Filled.TrendingUp" Color="Color.Success" Size="Size.Large" />
-                    <div class="ml-4 flex-grow-1">
-                        <MudText Typo="Typo.body1">Top POI</MudText>
-                        <MudText Typo="Typo.h5" Class="font-weight-bold">@topPoi</MudText>
+                    <MudIcon Icon="@Icons.Material.Filled.TrendingUp" Size="Size.Large" />
+                    <div class="ml-4">
+                        <MudText Typo="Typo.body2" Style="opacity:.8">Top POI</MudText>
+                        <MudText Typo="Typo.subtitle1" Class="font-weight-bold">@data.TopPoi</MudText>
                     </div>
                 </div>
             </MudPaper>
         </MudItem>
-
-        <!-- Thời gian nghe TB -->
-        <MudItem xs="12" md="3">
-            <MudPaper Class="pa-6" Elevation="3" Style="border-radius: 12px;">
+        <MudItem xs="12" sm="6" md="3">
+            <MudPaper Class="pa-5" Elevation="3" Style="background:linear-gradient(135deg,#4facfe,#00f2fe);color:white;border-radius:16px;">
                 <div class="d-flex align-center">
-                    <MudIcon Icon="@Icons.Material.Filled.Timer" Color="Color.Warning" Size="Size.Large" />
-                    <div class="ml-4 flex-grow-1">
-                        <MudText Typo="Typo.body1">Thời gian nghe TB</MudText>
-                        <MudText Typo="Typo.h5" Class="font-weight-bold">@avgTime phút</MudText>
+                    <MudIcon Icon="@Icons.Material.Filled.Timer" Size="Size.Large" />
+                    <div class="ml-4">
+                        <MudText Typo="Typo.body2" Style="opacity:.8">TB thời gian nghe</MudText>
+                        <MudText Typo="Typo.h4" Class="font-weight-black">@data.AvgTime<span style="font-size:16px">s</span></MudText>
                     </div>
                 </div>
             </MudPaper>
         </MudItem>
     </MudGrid>
 
-    <!-- Chart -->
-    <MudPaper Class="pa-6 mt-8" Elevation="3" Style="border-radius: 12px;">
-        <MudText Typo="Typo.h6" Class="mb-4 d-flex align-center">
-            <MudIcon Icon="@Icons.Material.Filled.ShowChart" Class="mr-2" Color="Color.Primary" />
-            📈 Lượt nghe theo ngày trong tuần
-        </MudText>
-        <MudChart ChartType="ChartType.Line"
-                  Labels="@labels"
-                  Datasets="@datasets"
-                  Width="100%"
-                  Height="380px" />
-    </MudPaper>
+    <MudGrid Spacing="4" Class="mt-4">
+        <!-- Biểu đồ lượt nghe -->
+        <MudItem xs="12" md="8">
+            <MudPaper Class="pa-6" Elevation="3" Style="border-radius:16px;">
+                <MudText Typo="Typo.h6" Class="mb-4">📈 Lượt nghe theo ngày trong tuần</MudText>
+                <MudChart ChartType="ChartType.Bar"
+                          Labels="@labels"
+                          Datasets="@datasets"
+                          Width="100%" Height="300px" />
+            </MudPaper>
+        </MudItem>
 
-    <!-- Top POI -->
-    <MudPaper Class="pa-6 mt-8" Elevation="3" Style="border-radius: 12px;">
-        <MudText Typo="Typo.h6" Class="mb-4 d-flex align-center">
-            🔥 Top POI được nghe nhiều nhất
-        </MudText>
-        
-        <MudList Dense="true">
-            @foreach (var (item, index) in topPois.OrderByDescending(x => x.Count).Take(5).Select((p, i) => (p, i)))
-            {
-                <MudListItem Class="py-3">
-                    <div class="d-flex align-center justify-space-between">
-                        <div class="d-flex align-center">
-                            <MudChip Size="Size.Small" Color="Color.Error" Class="mr-3 font-weight-bold">@(index + 1)</MudChip>
-                            <MudText Typo="Typo.body1">@item.Name</MudText>
-                        </div>
-                        <MudText Class="font-weight-medium">@item.Count lượt</MudText>
-                    </div>
-                </MudListItem>
-            }
-            @if (!topPois.Any())
-            {
-                <MudListItem>
-                    <MudText Color="Color.Warning">Chưa có dữ liệu lượt nghe</MudText>
-                </MudListItem>
-            }
-        </MudList>
-    </MudPaper>
+        <!-- Top POI -->
+        <MudItem xs="12" md="4">
+            <MudPaper Class="pa-6" Elevation="3" Style="border-radius:16px; height:100%;">
+                <MudText Typo="Typo.h6" Class="mb-4">🔥 Top địa điểm</MudText>
+                <MudList Dense="true">
+                    @foreach (var (item, i) in data.TopPois.OrderByDescending(x => x.Count).Take(5).Select((p, i) => (p, i)))
+                    {
+                        <MudListItem Class="px-0">
+                            <div class="d-flex align-center justify-space-between">
+                                <div class="d-flex align-center">
+                                    <MudAvatar Size="Size.Small" Style="@($"background:{GetRankColor(i)};color:white;margin-right:12px;font-size:12px;")">
+                                        @(i + 1)
+                                    </MudAvatar>
+                                    <MudText Typo="Typo.body2">@item.Name</MudText>
+                                </div>
+                                <MudChip Size="Size.Small" Color="Color.Primary">@item.Count lượt</MudChip>
+                            </div>
+                        </MudListItem>
+                        <MudProgressLinear Value="@GetPercent(item.Count)" Color="Color.Primary" Rounded="true" Class="mb-2" Size="Size.Small" />
+                    }
+                    @if (!data.TopPois.Any())
+                    {
+                        <MudText Color="Color.Secondary" Typo="Typo.body2">Chưa có dữ liệu — người dùng app sẽ tạo dữ liệu khi nghe POI</MudText>
+                    }
+                </MudList>
+            </MudPaper>
+        </MudItem>
+
+        <!-- Lịch sử gần nhất -->
+        <MudItem xs="12">
+            <MudPaper Class="pa-6" Elevation="3" Style="border-radius:16px;">
+                <MudText Typo="Typo.h6" Class="mb-4">📜 Lịch sử nghe gần nhất (từ app)</MudText>
+                <MudTable Items="@recentHistory" Dense="true" Hover="true" Bordered="false" Elevation="0">
+                    <HeaderContent>
+                        <MudTh>Người dùng</MudTh>
+                        <MudTh>Địa điểm</MudTh>
+                        <MudTh>Thời gian</MudTh>
+                        <MudTh>Thời lượng</MudTh>
+                    </HeaderContent>
+                    <RowTemplate>
+                        <MudTd><MudChip Size="Size.Small" Icon="@Icons.Material.Filled.Person">@context.User</MudChip></MudTd>
+                        <MudTd>@context.Poi</MudTd>
+                        <MudTd>@context.Time.ToLocalTime().ToString("dd/MM HH:mm")</MudTd>
+                        <MudTd>@(context.Duration.HasValue ? $"{context.Duration:F0}s" : "-")</MudTd>
+                    </RowTemplate>
+                    <NoRecordsContent>
+                        <MudText Class="pa-4" Color="Color.Secondary">Chưa có lịch sử — dữ liệu được tạo khi người dùng nghe POI trong app</MudText>
+                    </NoRecordsContent>
+                </MudTable>
+            </MudPaper>
+        </MudItem>
+    </MudGrid>
 }
 
 @code {
     bool loading = true;
-    string error = "";
-
-    int totalPoi = 0;
-    int totalUsers = 0;
-    string topPoi = "Đang tải...";
-    int avgTime = 0;
-
-    // Labels theo thứ trong tuần (bắt đầu từ Thứ 2)
-    string[] labels = { "Thứ 2", "Thứ 3", "Thứ 4", "Thứ 5", "Thứ 6", "Thứ 7", "CN" };
-
+    DashboardDto data = new();
+    List<PlaybackHistoryDto> recentHistory = new();
+    string[] labels = { "T2", "T3", "T4", "T5", "T6", "T7", "CN" };
     List<ChartSeries> datasets = new();
-    List<TopPoiDto> topPois = new();
 
-    protected override async Task OnInitializedAsync()
-    {
-        await LoadDashboard();
-    }
+    protected override async Task OnInitializedAsync() => await LoadDashboard();
 
     private async Task LoadDashboard()
     {
         loading = true;
-        error = "";
-
         try
         {
-            var data = await AnalyticsService.GetDashboard() ?? new DashboardDto();
+            data = await AnalyticsService.GetDashboard() ?? new();
+            recentHistory = (await PlaybackService.GetHistoryAsync()).Take(5).ToList();
 
-            totalPoi = data.TotalPoi;
-            totalUsers = data.TotalUsers;
-            topPoi = string.IsNullOrEmpty(data.TopPoi) ? "Chưa có dữ liệu" : data.TopPoi;
-            avgTime = data.AvgTime > 0 ? data.AvgTime : 5;
-
-            topPois = data.TopPois ?? new List<TopPoiDto>();
-
-            // Xử lý DailyViews an toàn - tránh NaN hoàn toàn
-            double[] views = new double[7] { 0, 0, 0, 0, 0, 0, 0 };
-
-            if (data.DailyViews != null && data.DailyViews.Length == 7)
-            {
-                views = data.DailyViews.Select(x => (double)x).ToArray();
-            }
-            else
-            {
-                // Dữ liệu mẫu đẹp khi chưa có dữ liệu thật
-                views = new double[] { 12, 19, 25, 18, 30, 22, 15 };
-            }
+            var views = data.DailyViews?.Length == 7
+                ? data.DailyViews.Select(x => (double)x).ToArray()
+                : new double[] { 12, 19, 25, 18, 30, 22, 15 };
 
             datasets = new List<ChartSeries>
             {
-                new ChartSeries
-                {
-                    Name = "Lượt nghe",
-                    Data = views
-                }
+                new() { Name = "Lượt nghe", Data = views }
             };
         }
-        catch (Exception ex)
-        {
-            error = $"Lỗi tải dashboard: {ex.Message}";
-
-            // Fallback khi lỗi
-            datasets = new List<ChartSeries>
-            {
-                new ChartSeries
-                {
-                    Name = "Lượt nghe",
-                    Data = new double[] { 10, 15, 20, 12, 25, 18, 22 }
-                }
-            };
-        }
-        finally
-        {
-            loading = false;
-            StateHasChanged();
-        }
+        catch { data = new(); }
+        finally { loading = false; }
     }
 
-    private async Task Refresh()
+    private async Task Refresh() => await LoadDashboard();
+
+    private string GetRankColor(int i) => i switch
     {
-        await LoadDashboard();
+        0 => "#FFD700",
+        1 => "#C0C0C0",
+        2 => "#CD7F32",
+        _ => "#1976D2"
+    };
+
+    private double GetPercent(int count)
+    {
+        var max = data.TopPois.Any() ? data.TopPois.Max(x => x.Count) : 1;
+        return max == 0 ? 0 : (double)count / max * 100;
     }
 }

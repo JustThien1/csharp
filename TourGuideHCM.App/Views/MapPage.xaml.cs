@@ -1,5 +1,6 @@
 ﻿using Microsoft.Maui.Controls.Maps;
 using Microsoft.Maui.Maps;
+using TourGuideHCM.App.Services;
 using TourGuideHCM.App.ViewModels;
 
 namespace TourGuideHCM.App.Views;
@@ -16,6 +17,25 @@ public partial class MapPage : ContentPage
         InitializeComponent();
         _vm = vm;
         BindingContext = vm;
+
+        LanguageService.LanguageChanged += (_, _) => RefreshText();
+        RefreshText();
+    }
+
+    private void RefreshText()
+    {
+        MainThread.BeginInvokeOnMainThread(() =>
+        {
+            Title = AppLanguage.MapTitle;
+            LangBtn.Text = LanguageService.Instance.CurrentLanguage;
+            NearestLabel.Text = AppLanguage.NearestPoint;
+            ListenBtn.Text = AppLanguage.ListenBtn;
+            ListenDetailBtn.Text = AppLanguage.ListenNarration;
+            StopBtn.Text = AppLanguage.StopBtn;
+            // Radius label dùng binding nên chỉ cần prefix
+            RadiusLabel.Text = string.Format(AppLanguage.Radius,
+                                    _vm.ActivationRadiusLabel);
+        });
     }
 
     protected override async void OnAppearing()
@@ -27,6 +47,11 @@ public partial class MapPage : ContentPage
             _initialized = true;
             await _vm.InitializeAsync();
             _vm.Pois.CollectionChanged += (_, _) => RefreshPins();
+            _vm.PropertyChanged += (_, e) =>
+            {
+                if (e.PropertyName == nameof(MapViewModel.ActivationRadius))
+                    RefreshRadiusLabel();
+            };
 
             var hcmCenter = new Location(10.7769, 106.7009);
             MainMap.MoveToRegion(MapSpan.FromCenterAndRadius(
@@ -44,6 +69,12 @@ public partial class MapPage : ContentPage
         _vm.PropertyChanged -= OnViewModelPropertyChanged;
     }
 
+    private void RefreshRadiusLabel()
+    {
+        MainThread.BeginInvokeOnMainThread(() =>
+            RadiusLabel.Text = string.Format(AppLanguage.Radius, _vm.ActivationRadiusLabel));
+    }
+
     private void OnViewModelPropertyChanged(object? sender,
         System.ComponentModel.PropertyChangedEventArgs e)
     {
@@ -51,7 +82,6 @@ public partial class MapPage : ContentPage
                            or nameof(MapViewModel.UserLng))
             UpdateUserLocation();
 
-        // Khi POI gần nhất thay đổi → cập nhật highlight
         if (e.PropertyName == nameof(MapViewModel.NearestPoi))
             RefreshCircles();
     }
@@ -89,16 +119,10 @@ public partial class MapPage : ContentPage
         });
     }
 
-    /// <summary>
-    /// Vẽ vòng tròn bán kính cho TẤT CẢ POI.
-    /// POI gần nhất → viền xanh đậm, nền xanh nhạt.
-    /// POI khác     → viền xám, nền trong suốt.
-    /// </summary>
     private void RefreshCircles()
     {
         MainThread.BeginInvokeOnMainThread(() =>
         {
-            // Xóa toàn bộ circle cũ
             MainMap.MapElements.Clear();
             _circles.Clear();
 
@@ -115,11 +139,11 @@ public partial class MapPage : ContentPage
                     Radius = Distance.FromMeters(radius),
                     StrokeWidth = isNearest ? 3 : 1,
                     StrokeColor = isNearest
-                        ? Color.FromArgb("#FF1976D2")   // xanh đậm
-                        : Color.FromArgb("#88888888"),  // xám nhạt
+                        ? Color.FromArgb("#FF1976D2")
+                        : Color.FromArgb("#88888888"),
                     FillColor = isNearest
-                        ? Color.FromArgb("#221976D2")   // xanh rất nhạt
-                        : Color.FromArgb("#11888888"),  // xám rất nhạt
+                        ? Color.FromArgb("#221976D2")
+                        : Color.FromArgb("#11888888"),
                 };
 
                 _circles[poi.Id] = circle;
@@ -128,10 +152,6 @@ public partial class MapPage : ContentPage
         });
     }
 
-    private void OnMapClicked(object sender, MapClickedEventArgs e)
-    {
-        _vm.SelectedPoi = null;
-    }
     private async void OnMyLocationClicked(object sender, EventArgs e)
     {
         try
@@ -144,15 +164,18 @@ public partial class MapPage : ContentPage
                         });
 
             if (location is not null)
-            {
                 MainMap.MoveToRegion(MapSpan.FromCenterAndRadius(
                     new Location(location.Latitude, location.Longitude),
                     Distance.FromKilometers(1)));
-            }
         }
         catch (Exception ex)
         {
             System.Diagnostics.Debug.WriteLine($"[Location] {ex.Message}");
         }
+    }
+
+    private void OnMapClicked(object sender, MapClickedEventArgs e)
+    {
+        _vm.SelectedPoi = null;
     }
 }
