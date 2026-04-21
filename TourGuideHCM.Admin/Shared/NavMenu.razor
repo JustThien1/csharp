@@ -1,4 +1,8 @@
 ﻿@using MudBlazor
+@using TourGuideHCM.Admin.Services
+@inject DuplicateReportService DuplicateService
+@inject POIApprovalService ApprovalService
+@implements IDisposable
 
 <MudNavMenu Dense="true" Style="padding: 12px 8px;">
 
@@ -7,80 +11,93 @@
         QUẢN LÝ NỘI DUNG
     </MudText>
 
-    <MudNavLink Href="/poi"
-                Icon="@Icons.Material.Filled.Place"
-                Style="border-radius: 12px; margin: 2px 0; color: #6B7A8D;"
-                ActiveClass="nav-active">
+    <MudNavLink Href="/poi" Icon="@Icons.Material.Filled.Place" ActiveClass="nav-active">
         Địa điểm (POI)
     </MudNavLink>
 
-    <MudNavLink Href="/audio"
-                Icon="@Icons.Material.Filled.MusicNote"
-                Style="border-radius: 12px; margin: 2px 0; color: #6B7A8D;"
-                ActiveClass="nav-active">
+    <MudNavLink Href="/audio" Icon="@Icons.Material.Filled.MusicNote" ActiveClass="nav-active">
         Audio Guide
     </MudNavLink>
 
-    <MudNavLink Href="/tour"
-                Icon="@Icons.Material.Filled.Map"
-                Style="border-radius: 12px; margin: 2px 0; color: #6B7A8D;"
-                ActiveClass="nav-active">
-        Quản lý Tour
+    <MudNavLink Href="/audio-recovery" Icon="@Icons.Material.Filled.RestoreFromTrash" ActiveClass="nav-active">
+        Khôi phục Audio
     </MudNavLink>
 
-    <MudNavLink Href="/qrcode"
-                Icon="@Icons.Material.Filled.QrCode2"
-                Style="border-radius: 12px; margin: 2px 0; color: #6B7A8D;"
-                ActiveClass="nav-active">
+    <MudNavLink Href="/qrcode" Icon="@Icons.Material.Filled.QrCode2" ActiveClass="nav-active">
         QR Code
     </MudNavLink>
 
+    <!-- MỚI: Duyệt POI của saler -->
+    <div class="nav-link-with-badge">
+        <MudNavLink Href="/poi-approval" Icon="@Icons.Material.Filled.FactCheck" ActiveClass="nav-active">
+            <span class="d-flex align-center justify-space-between" style="width:100%;">
+                <span>Duyệt POI</span>
+                @if (pendingCount > 0)
+                {
+                    <MudChip T="string" Size="Size.Small" Color="Color.Warning" Class="ml-2" Style="height:20px;font-size:10px;">
+                        @pendingCount
+                    </MudChip>
+                }
+            </span>
+        </MudNavLink>
+    </div>
+
+    <!-- Duplicate Reports với badge -->
+    <div class="nav-link-with-badge">
+        <MudNavLink Href="/duplicate-reports" Icon="@Icons.Material.Filled.FindInPage" ActiveClass="nav-active">
+            <span class="d-flex align-center justify-space-between" style="width:100%;">
+                <span>Cảnh báo trùng lặp</span>
+                @if (duplicateCount > 0)
+                {
+                    <MudChip T="string" Size="Size.Small" Color="Color.Error" Class="ml-2" Style="height:20px;font-size:10px;">
+                        @duplicateCount
+                    </MudChip>
+                }
+            </span>
+        </MudNavLink>
+    </div>
+
     <div style="border-top: 1px solid #EEF0F6; margin: 12px 6px;"></div>
 
     <MudText Typo="Typo.overline"
              Style="font-size: 10px; letter-spacing: 1.5px; color: #9AA5B4; padding: 8px 14px 6px 14px; display: block; font-weight: 700;">
-        PHÂN TÍCH DỮ LIỆU
+        MONITORING REALTIME
     </MudText>
 
-    <MudNavLink Href="/route-tracking"
-                Icon="@Icons.Material.Filled.Route"
-                Style="border-radius: 12px; margin: 2px 0; color: #6B7A8D;"
-                ActiveClass="nav-active">
+    <MudNavLink Href="/dashboard" Icon="@Icons.Material.Filled.Dashboard" ActiveClass="nav-active">
+        Dashboard Analytics
+    </MudNavLink>
+
+    <MudNavLink Href="/monitoring" Icon="@Icons.Material.Filled.Monitor" ActiveClass="nav-active">
+        Monitoring Realtime
+    </MudNavLink>
+
+    <MudNavLink Href="/tts-queue" Icon="@Icons.Material.Filled.Queue" ActiveClass="nav-active">
+        Hàng đợi TTS
+    </MudNavLink>
+
+    <div style="border-top: 1px solid #EEF0F6; margin: 12px 6px;"></div>
+
+    <MudText Typo="Typo.overline"
+             Style="font-size: 10px; letter-spacing: 1.5px; color: #9AA5B4; padding: 8px 14px 6px 14px; display: block; font-weight: 700;">
+        PHÂN TÍCH
+    </MudText>
+
+    <MudNavLink Href="/route-tracking" Icon="@Icons.Material.Filled.Route" ActiveClass="nav-active">
         Tuyến di chuyển
     </MudNavLink>
 
-    <MudNavLink Href="/history"
-                Icon="@Icons.Material.Filled.History"
-                Style="border-radius: 12px; margin: 2px 0; color: #6B7A8D;"
-                ActiveClass="nav-active">
+    <MudNavLink Href="/history" Icon="@Icons.Material.Filled.History" ActiveClass="nav-active">
         Lịch sử nghe
     </MudNavLink>
 
-    <MudNavLink Href="/heatmap"
-                Icon="@Icons.Material.Filled.Whatshot"
-                Style="border-radius: 12px; margin: 2px 0; color: #6B7A8D;"
-                ActiveClass="nav-active">
+    <MudNavLink Href="/heatmap" Icon="@Icons.Material.Filled.Whatshot" ActiveClass="nav-active">
         Heatmap
-    </MudNavLink>
-
-    <div style="border-top: 1px solid #EEF0F6; margin: 12px 6px;"></div>
-
-    <MudText Typo="Typo.overline"
-             Style="font-size: 10px; letter-spacing: 1.5px; color: #9AA5B4; padding: 8px 14px 6px 14px; display: block; font-weight: 700;">
-        HỆ THỐNG
-    </MudText>
-
-    <MudNavLink Href="/users"
-                Icon="@Icons.Material.Filled.People"
-                Style="border-radius: 12px; margin: 2px 0; color: #6B7A8D;"
-                ActiveClass="nav-active">
-        Người dùng
     </MudNavLink>
 
 </MudNavMenu>
 
 <style>
-    /* Active — nền cam nhạt, text + icon cam */
     .nav-active {
         background: linear-gradient(90deg, #FFF0EB, #FFF8F4) !important;
         color: #FF7043 !important;
@@ -88,17 +105,49 @@
         border-left: 3px solid #FF7043 !important;
     }
 
-        .nav-active .mud-nav-link-icon {
-            color: #FF7043 !important;
-        }
-
-    /* Hover — nền mint nhạt, text mint */
     .mud-nav-link:hover {
         background-color: #F0FBF9 !important;
         color: #00D4AA !important;
     }
 
-        .mud-nav-link:hover .mud-nav-link-icon {
-            color: #00D4AA !important;
-        }
+    .nav-link-with-badge .mud-nav-link-text {
+        width: 100%;
+    }
 </style>
+
+@code {
+    private int duplicateCount = 0;
+    private int pendingCount = 0;
+    private System.Timers.Timer? refreshTimer;
+
+    protected override async Task OnInitializedAsync()
+    {
+        await LoadCountAsync();
+
+        // Refresh badges mỗi 30s
+        refreshTimer = new System.Timers.Timer(30_000);
+        refreshTimer.Elapsed += async (_, _) => await InvokeAsync(LoadCountAsync);
+        refreshTimer.Start();
+    }
+
+    private async Task LoadCountAsync()
+    {
+        try
+        {
+            var tDup = DuplicateService.GetOpenCountAsync();
+            var tApp = ApprovalService.GetPendingCountAsync();
+            await Task.WhenAll(tDup, tApp);
+
+            duplicateCount = tDup.Result;
+            pendingCount = tApp.Result;
+            StateHasChanged();
+        }
+        catch { /* bỏ qua lỗi tạm thời */ }
+    }
+
+    public void Dispose()
+    {
+        refreshTimer?.Stop();
+        refreshTimer?.Dispose();
+    }
+}

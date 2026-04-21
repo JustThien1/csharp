@@ -1,0 +1,352 @@
+﻿@page "/poi-approval"
+@using MudBlazor
+@using TourGuideHCM.Admin.Models
+@using TourGuideHCM.Admin.Services
+@inject POIApprovalService ApprovalService
+@inject HttpClient Http
+@inject ISnackbar Snackbar
+@inject IDialogService DialogService
+
+<div class="d-flex align-center mb-6">
+    <MudText Typo="Typo.h4" Class="font-weight-bold">✅ Duyệt POI</MudText>
+    <MudSpacer />
+    <MudChip T="string" Color="Color.Warning" Icon="@Icons.Material.Filled.HourglassEmpty">
+        @pendingCount chờ duyệt
+    </MudChip>
+    <MudButton Variant="Variant.Filled" Color="Color.Primary" Class="ml-2"
+               StartIcon="@Icons.Material.Filled.Refresh"
+               OnClick="LoadAsync" Disabled="@loading">
+        Làm mới
+    </MudButton>
+</div>
+
+<MudPaper Class="mb-4" Elevation="2" Style="border-radius:12px;">
+    <MudTabs Elevation="0" Rounded="false" ActivePanelIndexChanged="OnTabChanged">
+        <MudTabPanel Text="🟡 Chờ duyệt" />
+        <MudTabPanel Text="✅ Đã duyệt" />
+        <MudTabPanel Text="❌ Đã từ chối" />
+        <MudTabPanel Text="🔒 Đã khoá" />
+    </MudTabs>
+</MudPaper>
+
+@if (loading)
+{
+    <MudProgressLinear Indeterminate="true" Color="Color.Primary" Class="my-4" />
+}
+else if (!items.Any())
+{
+    <MudPaper Class="pa-8 text-center" Elevation="2" Style="border-radius:16px;">
+        <MudIcon Icon="@Icons.Material.Filled.CheckCircle" Size="Size.Large" Color="Color.Success" Class="mb-3" />
+        <MudText Typo="Typo.h6" Class="mb-2">Không có POI nào trong tab này</MudText>
+    </MudPaper>
+}
+else
+{
+    <MudGrid Spacing="3">
+        @foreach (var item in items)
+        {
+            <MudItem xs="12" md="6">
+                <MudPaper Class="pa-4" Elevation="3" Style="border-radius:14px;">
+
+                    <!-- Header: trạng thái + tên saler -->
+                    <div class="d-flex align-center mb-3" style="gap:8px;flex-wrap:wrap;">
+                        <MudChip T="string" Size="Size.Small"
+                                 Color="@GetStatusColor(item.ReviewStatus)"
+                                 Icon="@GetStatusIcon(item.ReviewStatus)">
+                            @GetStatusLabel(item.ReviewStatus)
+                        </MudChip>
+                        <MudChip T="string" Size="Size.Small" Color="Color.Info" Variant="Variant.Outlined"
+                                 Icon="@Icons.Material.Filled.Person">
+                            @(item.CreatedByFullName ?? item.CreatedByUsername)
+                        </MudChip>
+                        @if (item.Audios.Any())
+                        {
+                            <MudChip T="string" Size="Size.Small" Color="Color.Success" Variant="Variant.Outlined"
+                                     Icon="@Icons.Material.Filled.AudioFile">
+                                @item.Audios.Count audio
+                            </MudChip>
+                        }
+                        <MudSpacer />
+                        <MudText Typo="Typo.caption" Color="Color.Secondary">
+                            @item.CreatedAt.ToLocalTime().ToString("dd/MM HH:mm")
+                        </MudText>
+                    </div>
+
+                    <MudText Typo="Typo.h6" Class="mb-1">@item.Name</MudText>
+
+                    <!-- Hình ảnh nếu có -->
+                    @if (!string.IsNullOrWhiteSpace(item.ImageUrl))
+                    {
+                        <img src="@item.ImageUrl"
+                             alt="@item.Name"
+                             style="width:100%;max-height:180px;border-radius:8px;object-fit:cover;margin-bottom:8px;"
+                             onerror="this.style.display='none';" />
+                    }
+
+                    @if (!string.IsNullOrEmpty(item.CategoryName))
+                    {
+                        <MudChip T="string" Size="Size.Small" Color="Color.Primary" Variant="Variant.Outlined" Class="mb-2">
+                            @item.CategoryName
+                        </MudChip>
+                    }
+
+                    @if (!string.IsNullOrEmpty(item.Address))
+                    {
+                        <MudText Typo="Typo.body2" Color="Color.Secondary" Class="mb-2">
+                            📍 @item.Address
+                        </MudText>
+                    }
+
+                    @if (!string.IsNullOrEmpty(item.Description))
+                    {
+                        <MudText Typo="Typo.body2" Class="mb-2" Style="color:#555;">
+                            @item.Description
+                        </MudText>
+                    }
+
+                    <MudText Typo="Typo.caption" Color="Color.Secondary" Class="mb-2"
+                             Style="font-family:monospace;display:block;">
+                        @item.Lat.ToString("F5"), @item.Lng.ToString("F5") · bán kính @item.Radius m
+                    </MudText>
+
+                    @if (!string.IsNullOrEmpty(item.NarrationText))
+                    {
+                        <MudExpansionPanels Elevation="0" Class="mb-2">
+                            <MudExpansionPanel Text="📖 Nội dung thuyết minh">
+                                <MudText Typo="Typo.body2" Style="white-space:pre-wrap;">
+                                    @item.NarrationText
+                                </MudText>
+                            </MudExpansionPanel>
+                        </MudExpansionPanels>
+                    }
+
+                    <!-- Audio preview -->
+                    @if (item.Audios.Any())
+                    {
+                        <MudExpansionPanels Elevation="0" Class="mb-2">
+                            <MudExpansionPanel>
+                                <TitleContent>
+                                    <MudIcon Icon="@Icons.Material.Filled.AudioFile" Color="Color.Primary" Size="Size.Small" />
+                                    <span style="margin-left:8px;">🎧 Nghe thử audio (@item.Audios.Count)</span>
+                                </TitleContent>
+                                <ChildContent>
+                                    @foreach (var audio in item.Audios)
+                                    {
+                                        <div class="mb-2">
+                                            <div class="d-flex align-center mb-1" style="gap:8px;">
+                                                <MudChip T="string" Size="Size.Small" Color="@GetLangColor(audio.Language)">
+                                                    @audio.Language.ToUpper()
+                                                </MudChip>
+                                                <MudText Typo="Typo.caption" Color="Color.Secondary">
+                                                    @audio.DurationSeconds giây
+                                                </MudText>
+                                            </div>
+                                            <audio controls preload="none" src="@GetAbsoluteUrl(audio.AudioUrl)"
+                                                   style="width:100%;height:36px;"></audio>
+                                        </div>
+                                    }
+                                </ChildContent>
+                            </MudExpansionPanel>
+                        </MudExpansionPanels>
+                    }
+
+                    @if (!string.IsNullOrEmpty(item.RejectionReason))
+                    {
+                        <MudAlert Severity="@(item.ReviewStatus == "Locked" ? Severity.Warning : Severity.Error)"
+                                  Dense="true" Class="mb-3">
+                            <strong>Lý do:</strong> @item.RejectionReason
+                        </MudAlert>
+                    }
+
+                    <!-- Actions -->
+                    <MudDivider Class="my-2" />
+                    <div class="d-flex" style="gap:6px;flex-wrap:wrap;">
+                        @if (item.ReviewStatus == "PendingReview")
+                        {
+                            <MudButton Size="Size.Small" Variant="Variant.Filled" Color="Color.Success"
+                                       StartIcon="@Icons.Material.Filled.Check"
+                                       OnClick="@(() => ApproveAsync(item))">
+                                Duyệt @(item.Audios.Any() ? $"(POI + {item.Audios.Count} audio)" : "")
+                            </MudButton>
+                            <MudButton Size="Size.Small" Variant="Variant.Outlined" Color="Color.Error"
+                                       StartIcon="@Icons.Material.Filled.Close"
+                                       OnClick="@(() => RejectAsync(item))">
+                                Từ chối
+                            </MudButton>
+                        }
+                        else if (item.ReviewStatus == "Approved")
+                        {
+                            <MudButton Size="Size.Small" Variant="Variant.Outlined" Color="Color.Warning"
+                                       StartIcon="@Icons.Material.Filled.Lock"
+                                       OnClick="@(() => LockAsync(item))">
+                                Khoá
+                            </MudButton>
+                        }
+                        else if (item.ReviewStatus == "Rejected")
+                        {
+                            <MudButton Size="Size.Small" Variant="Variant.Filled" Color="Color.Success"
+                                       StartIcon="@Icons.Material.Filled.Check"
+                                       OnClick="@(() => ApproveAsync(item))">
+                                Duyệt lại
+                            </MudButton>
+                        }
+                        else if (item.ReviewStatus == "Locked")
+                        {
+                            <MudButton Size="Size.Small" Variant="Variant.Filled" Color="Color.Success"
+                                       StartIcon="@Icons.Material.Filled.LockOpen"
+                                       OnClick="@(() => UnlockAsync(item))">
+                                Mở khoá
+                            </MudButton>
+                        }
+                    </div>
+
+                </MudPaper>
+            </MudItem>
+        }
+    </MudGrid>
+}
+
+@code {
+    private List<ApprovalItemDto> items = new();
+    private int pendingCount = 0;
+    private int currentTab = 0;
+    private bool loading = true;
+
+    private string CurrentStatus => currentTab switch
+    {
+        0 => "PendingReview",
+        1 => "Approved",
+        2 => "Rejected",
+        3 => "Locked",
+        _ => "PendingReview"
+    };
+
+    protected override async Task OnInitializedAsync() => await LoadAsync();
+
+    private async Task OnTabChanged(int index)
+    {
+        currentTab = index;
+        await LoadAsync();
+    }
+
+    private async Task LoadAsync()
+    {
+        loading = true;
+        StateHasChanged();
+        try
+        {
+            items = await ApprovalService.GetListAsync(CurrentStatus);
+            pendingCount = await ApprovalService.GetPendingCountAsync();
+        }
+        catch (Exception ex)
+        {
+            Snackbar.Add($"Lỗi tải: {ex.Message}", Severity.Error);
+        }
+        finally
+        {
+            loading = false;
+            StateHasChanged();
+        }
+    }
+
+    private async Task ApproveAsync(ApprovalItemDto item)
+    {
+        var audioInfo = item.Audios.Any() ? $" và {item.Audios.Count} audio" : "";
+        var confirm = await DialogService.ShowMessageBox(
+            "Duyệt POI?",
+            $"Duyệt POI \"{item.Name}\"{audioInfo} của saler {item.CreatedByUsername}?",
+            yesText: "Duyệt", cancelText: "Huỷ");
+        if (confirm != true) return;
+
+        var (ok, msg) = await ApprovalService.ApproveAsync(item.Id);
+        if (ok) { Snackbar.Add("✅ " + msg, Severity.Success); await LoadAsync(); }
+        else Snackbar.Add("❌ " + msg, Severity.Error);
+    }
+
+    private async Task RejectAsync(ApprovalItemDto item)
+    {
+        var reason = await PromptReasonAsync("Lý do từ chối POI",
+            $"Nhập lý do từ chối POI \"{item.Name}\" (saler sẽ thấy):");
+        if (string.IsNullOrWhiteSpace(reason)) return;
+
+        var (ok, msg) = await ApprovalService.RejectAsync(item.Id, reason);
+        if (ok) { Snackbar.Add("✅ " + msg, Severity.Success); await LoadAsync(); }
+        else Snackbar.Add("❌ " + msg, Severity.Error);
+    }
+
+    private async Task LockAsync(ApprovalItemDto item)
+    {
+        var reason = await PromptReasonAsync("Lý do khoá POI",
+            $"Nhập lý do khoá POI \"{item.Name}\" (saler sẽ thấy):");
+        if (string.IsNullOrWhiteSpace(reason)) return;
+
+        var (ok, msg) = await ApprovalService.LockAsync(item.Id, reason);
+        if (ok) { Snackbar.Add("✅ " + msg, Severity.Success); await LoadAsync(); }
+        else Snackbar.Add("❌ " + msg, Severity.Error);
+    }
+
+    private async Task UnlockAsync(ApprovalItemDto item)
+    {
+        var confirm = await DialogService.ShowMessageBox(
+            "Mở khoá?",
+            $"Mở khoá POI \"{item.Name}\"? POI sẽ hoạt động trở lại.",
+            yesText: "Mở khoá", cancelText: "Huỷ");
+        if (confirm != true) return;
+
+        var (ok, msg) = await ApprovalService.UnlockAsync(item.Id);
+        if (ok) { Snackbar.Add("✅ " + msg, Severity.Success); await LoadAsync(); }
+        else Snackbar.Add("❌ " + msg, Severity.Error);
+    }
+
+    private async Task<string?> PromptReasonAsync(string title, string prompt)
+    {
+        var parameters = new DialogParameters
+        {
+            ["Title"] = title,
+            ["Prompt"] = prompt
+        };
+        var dialog = await DialogService.ShowAsync<ReasonPromptDialog>(title, parameters);
+        var result = await dialog.Result;
+        return result.Canceled ? null : result.Data as string;
+    }
+
+    private string GetAbsoluteUrl(string relativeUrl)
+    {
+        var baseUrl = Http.BaseAddress?.ToString().TrimEnd('/') ?? "";
+        return $"{baseUrl}{relativeUrl}";
+    }
+
+    // Status helpers
+    private Color GetStatusColor(string s) => s switch
+    {
+        "Approved" => Color.Success,
+        "PendingReview" => Color.Warning,
+        "Rejected" => Color.Error,
+        "Locked" => Color.Dark,
+        _ => Color.Default
+    };
+    private string GetStatusIcon(string s) => s switch
+    {
+        "Approved" => Icons.Material.Filled.CheckCircle,
+        "PendingReview" => Icons.Material.Filled.HourglassEmpty,
+        "Rejected" => Icons.Material.Filled.Cancel,
+        "Locked" => Icons.Material.Filled.Lock,
+        _ => Icons.Material.Filled.Help
+    };
+    private string GetStatusLabel(string s) => s switch
+    {
+        "Approved" => "Đã duyệt",
+        "PendingReview" => "Chờ duyệt",
+        "Rejected" => "Bị từ chối",
+        "Locked" => "Đã khoá",
+        _ => s
+    };
+    private Color GetLangColor(string lang) => lang?.ToLower() switch
+    {
+        "vi" => Color.Error,
+        "en" => Color.Info,
+        "zh" => Color.Warning,
+        "ko" => Color.Success,
+        _ => Color.Default
+    };
+}

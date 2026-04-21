@@ -1,0 +1,190 @@
+﻿@page "/tts-queue"
+@using MudBlazor
+@using TourGuideHCM.Admin.Models
+@using TourGuideHCM.Admin.Services
+@inject TtsQueueService TtsService
+@inject ISnackbar Snackbar
+@inject IDialogService DialogService
+
+<MudText Typo="Typo.h4" Class="mb-6 font-weight-bold">🎙️ Quản lý Hàng đợi TTS</MudText>
+
+<!-- Toolbar -->
+<div class="d-flex justify-space-between align-center mb-4">
+    <div class="d-flex align-center" style="gap: 12px;">
+        <MudButton Variant="Variant.Filled" Color="Color.Primary"
+                   StartIcon="@Icons.Material.Filled.Refresh"
+                   OnClick="RefreshQueue" Disabled="@loading">
+            Làm mới
+        </MudButton>
+
+        <MudButton Variant="Variant.Outlined" Color="Color.Error"
+                   StartIcon="@Icons.Material.Filled.DeleteSweep"
+                   OnClick="ClearFailedJobs" Disabled="@loading">
+            Xóa job lỗi
+        </MudButton>
+    </div>
+
+    <MudChip Color="Color.Info" Icon="@Icons.Material.Filled.Queue">
+        @totalJobs job trong hàng đợi
+    </MudChip>
+</div>
+
+@if (loading)
+{
+    <MudProgressLinear Indeterminate="true" Color="Color.Primary" Class="mb-4" />
+}
+else
+{
+    <MudTable Items="@jobs" Hover="true" Dense="true" Bordered="true" Elevation="3"
+              Style="border-radius: 16px;" FixedHeader="true" Height="620px">
+        <HeaderContent>
+            <MudTh>ID</MudTh>
+            <MudTh>POI</MudTh>
+            <MudTh>Ngôn ngữ</MudTh>
+            <MudTh>Trạng thái</MudTh>
+            <MudTh>Thời gian tạo</MudTh>
+            <MudTh>Retry</MudTh>
+            <MudTh>Hành động</MudTh>
+        </HeaderContent>
+        <RowTemplate Context="job">
+            <MudTd>@job.Id</MudTd>
+            <MudTd>
+                <MudText Typo="Typo.body2">@job.PoiName</MudText>
+            </MudTd>
+            <MudTd>
+                <MudChip Color="Color.Primary" Size="Size.Small">@job.Language.ToUpper()</MudChip>
+            </MudTd>
+            <MudTd>
+                <MudChip Color="@GetStatusColor(job.Status)" Size="Size.Small">
+                    @job.Status
+                </MudChip>
+                @if (!string.IsNullOrEmpty(job.ErrorMessage))
+                {
+                    <MudTooltip Text="@job.ErrorMessage">
+                        <MudIcon Icon="@Icons.Material.Filled.Error" Color="Color.Error" Style="margin-left:8px;" />
+                    </MudTooltip>
+                }
+            </MudTd>
+            <MudTd>
+                <MudText Typo="Typo.caption">@job.CreatedAt.ToLocalTime().ToString("dd/MM HH:mm")</MudText>
+            </MudTd>
+            <MudTd>@job.RetryCount</MudTd>
+            <MudTd>
+                @if (job.Status == "Failed" || job.Status == "Pending")
+                {
+                    <MudButton Size="Size.Small" Color="Color.Warning"
+                               OnClick="() => RetryJob(job.Id)">Retry</MudButton>
+                }
+                <MudButton Size="Size.Small" Color="Color.Error"
+                           OnClick="() => CancelJob(job.Id)">Hủy</MudButton>
+            </MudTd>
+        </RowTemplate>
+        <NoRecordsContent>
+            <MudText Class="pa-8 text-center" Color="Color.Secondary">
+                Không có job nào trong hàng đợi TTS
+            </MudText>
+        </NoRecordsContent>
+    </MudTable>
+}
+
+@code {
+    private List<TtsJobDto> jobs = new();
+    private bool loading = false;
+    private int totalJobs => jobs.Count;
+
+    protected override async Task OnInitializedAsync()
+    {
+        await RefreshQueue();
+    }
+
+    private async Task RefreshQueue()
+    {
+        loading = true;
+        StateHasChanged();
+        try
+        {
+            jobs = await TtsService.GetQueueAsync();
+        }
+        catch (Exception ex)
+        {
+            Snackbar.Add($"Lỗi tải hàng đợi: {ex.Message}", Severity.Error);
+            jobs = new();
+        }
+        finally
+        {
+            loading = false;
+            StateHasChanged();
+        }
+    }
+
+    private async Task RetryJob(int jobId)
+    {
+        var confirm = await DialogService.ShowMessageBox(
+            "Xác nhận Retry",
+            "Bạn muốn thử lại job này?",
+            yesText: "Retry", cancelText: "Hủy");
+
+        if (confirm != true) return;
+
+        var success = await TtsService.RetryJobAsync(jobId);
+        if (success)
+        {
+            Snackbar.Add("✅ Đã gửi yêu cầu retry!", Severity.Success);
+            await RefreshQueue();
+        }
+        else
+        {
+            Snackbar.Add("❌ Retry thất bại!", Severity.Error);
+        }
+    }
+
+    private async Task CancelJob(int jobId)
+    {
+        var confirm = await DialogService.ShowMessageBox(
+            "Xác nhận hủy",
+            "Bạn có chắc muốn hủy job này?",
+            yesText: "Hủy job", cancelText: "Giữ lại");
+
+        if (confirm != true) return;
+
+        var success = await TtsService.CancelJobAsync(jobId);
+        if (success)
+        {
+            Snackbar.Add("✅ Đã hủy job!", Severity.Success);
+            await RefreshQueue();
+        }
+        else
+        {
+            Snackbar.Add("❌ Hủy thất bại!", Severity.Error);
+        }
+    }
+
+    private async Task ClearFailedJobs()
+    {
+        var confirm = await DialogService.ShowMessageBox(
+            "Xóa tất cả job lỗi",
+            "Bạn có chắc muốn xóa toàn bộ job bị lỗi?",
+            yesText: "Xóa", cancelText: "Hủy");
+
+        if (confirm != true) return;
+
+        var success = await TtsService.ClearFailedAsync();
+        if (success)
+        {
+            Snackbar.Add("✅ Đã xóa các job lỗi!", Severity.Success);
+            await RefreshQueue();
+        }
+        else
+        {
+            Snackbar.Add("❌ Xóa thất bại!", Severity.Error);
+        }
+    }
+
+    private Color GetStatusColor(string status) => status switch
+    {
+        "Completed" => Color.Success,
+        "Failed" => Color.Error,
+        "Processing" => Color.Warning,
+        _ => Color.Default
+    };
+}

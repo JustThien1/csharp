@@ -14,11 +14,12 @@ public class MapViewModel : INotifyPropertyChanged
     private readonly IDatabaseService _db;
     private readonly IGeofenceService _geofence;
     private readonly INarrationService _narration;
-    private readonly IAuthService _auth;
+    private readonly IDeviceInfoService _deviceInfo;
+    private readonly IAudioQueueService _audioQueue;
 
     public ObservableCollection<POI> Pois { get; } = new();
 
-    // ── Nearest POI ───────────────────────────────────────────────────────────
+    // Nearest POI
     private POI? _nearestPoi;
     public POI? NearestPoi
     {
@@ -27,7 +28,7 @@ public class MapViewModel : INotifyPropertyChanged
     }
     public bool NearestPoiVisible => NearestPoi is not null;
 
-    // ── Selected POI ──────────────────────────────────────────────────────────
+    // Selected POI
     private POI? _selectedPoi;
     public POI? SelectedPoi
     {
@@ -36,13 +37,22 @@ public class MapViewModel : INotifyPropertyChanged
     }
     public bool IsPoiDetailVisible => SelectedPoi is not null;
 
-    // ── Trạng thái ────────────────────────────────────────────────────────────
     private bool _isNarrating;
     public bool IsNarrating
     {
         get => _isNarrating;
         set { _isNarrating = value; OnPropertyChanged(); }
     }
+
+    // ====================== AUDIO QUEUE (MỚI) ======================
+    /// <summary>Queue các POI đang chờ phát — UI bind để hiển thị "Sắp tới"</summary>
+    public System.Collections.ObjectModel.ReadOnlyObservableCollection<QueuedPoi> AudioQueue => _audioQueue.Queue;
+
+    /// <summary>POI đang phát hiện tại (null nếu không có) — UI hiển thị "Đang phát"</summary>
+    public QueuedPoi? CurrentPlayingPoi => _audioQueue.Current;
+
+    /// <summary>True nếu có bất kỳ POI nào trong queue (đang phát hoặc chờ)</summary>
+    public bool HasQueue => _audioQueue.Current != null || _audioQueue.Queue.Count > 0;
 
     private bool _isLoading;
     public bool IsLoading
@@ -58,14 +68,12 @@ public class MapViewModel : INotifyPropertyChanged
         set { _statusMessage = value; OnPropertyChanged(); }
     }
 
-    // ── Vị trí user ──────────────────────────────────────────────────────────
     private double _userLat = 10.7769;
     public double UserLat { get => _userLat; set { _userLat = value; OnPropertyChanged(); } }
 
     private double _userLng = 106.7009;
     public double UserLng { get => _userLng; set { _userLng = value; OnPropertyChanged(); } }
 
-    // ── Ngôn ngữ thuyết minh (vi/en) ─────────────────────────────────────────
     private string _selectedLanguage = "vi";
     public string SelectedLanguage
     {
@@ -75,7 +83,6 @@ public class MapViewModel : INotifyPropertyChanged
 
     public bool PreferAudioFile { get; set; } = true;
 
-    // ── Bán kính kích hoạt TTS ────────────────────────────────────────────────
     private double _activationRadius = 100;
     public double ActivationRadius
     {
@@ -85,16 +92,14 @@ public class MapViewModel : INotifyPropertyChanged
             _activationRadius = value;
             OnPropertyChanged();
             OnPropertyChanged(nameof(ActivationRadiusLabel));
-            foreach (var poi in Pois)
-                poi.Radius = value;
+            foreach (var poi in Pois) poi.Radius = value;
         }
     }
     public string ActivationRadiusLabel => $"{_activationRadius:F0}m";
 
-    // ── Ngôn ngữ UI (từ LanguageService) ─────────────────────────────────────
     public string LangToggleLabel => LanguageService.Instance.ToggleLabel;
 
-    // ── Commands ──────────────────────────────────────────────────────────────
+    // Commands
     public ICommand LoadPoisCommand { get; }
     public ICommand SelectPoiCommand { get; }
     public ICommand ClosePoiDetailCommand { get; }
@@ -104,14 +109,31 @@ public class MapViewModel : INotifyPropertyChanged
     public ICommand ToggleAppLanguageCommand { get; }
     public ICommand ToggleFavoriteCommand { get; }
 
+    // ====================== AUDIO QUEUE COMMANDS ======================
+    public ICommand SkipCurrentCommand { get; }
+    public ICommand StopQueueCommand { get; }
+    public ICommand ToggleQueueExpandedCommand { get; }
+
+    private bool _isQueueExpanded = false;
+    /// <summary>True = hiện full card; False = chỉ hiện icon nhỏ để phát.</summary>
+    public bool IsQueueExpanded
+    {
+        get => _isQueueExpanded;
+        set { _isQueueExpanded = value; OnPropertyChanged(); OnPropertyChanged(nameof(IsQueueCollapsed)); }
+    }
+    public bool IsQueueCollapsed => !_isQueueExpanded;
+
     public MapViewModel(IApiService api, IDatabaseService db,
-        IGeofenceService geofence, INarrationService narration, IAuthService auth)
+        IGeofenceService geofence, INarrationService narration,
+        IDeviceInfoService deviceInfo,
+        IAudioQueueService audioQueue)
     {
         _api = api;
         _db = db;
         _geofence = geofence;
         _narration = narration;
-        _auth = auth;
+        _deviceInfo = deviceInfo;
+        _audioQueue = audioQueue;
 
         LoadPoisCommand = new Command(async () => await LoadPoisAsync());
         SelectPoiCommand = new Command<POI>(p => SelectedPoi = p);
@@ -121,21 +143,23 @@ public class MapViewModel : INotifyPropertyChanged
         {
             if (p is not null) await PlayNarrationAsync(p);
         });
+
         StopNarrationCommand = new Command(async () => await _narration.StopAsync());
 
-        // Toggle ngôn ngữ thuyết minh (vi/en)
+        // ====================== AUDIO QUEUE COMMANDS ======================
+        SkipCurrentCommand = new Command(() => _audioQueue.Skip());
+        StopQueueCommand = new Command(() => _audioQueue.StopAll());
+        ToggleQueueExpandedCommand = new Command(() => IsQueueExpanded = !IsQueueExpanded);
+
         ToggleLanguageCommand = new Command(() =>
             SelectedLanguage = SelectedLanguage == "vi" ? "en" : "vi");
 
-        // Toggle ngôn ngữ UI toàn app
         ToggleAppLanguageCommand = new Command(() =>
         {
             LanguageService.Instance.Toggle();
-            // Đồng bộ ngôn ngữ thuyết minh theo ngôn ngữ UI
             SelectedLanguage = LanguageService.IsEnglish ? "en" : "vi";
         });
 
-        // Yêu thích
         ToggleFavoriteCommand = new Command<POI>(async p =>
         {
             if (p is null) return;
@@ -147,49 +171,66 @@ public class MapViewModel : INotifyPropertyChanged
 
         _geofence.GeofenceTriggered += OnGeofenceTriggered;
         _geofence.LocationUpdated += OnLocationUpdated;
+        _geofence.PoisInRangeChanged += OnPoisInRangeChanged;
 
-        _narration.NarrationStarted += (_, _) =>
-            MainThread.BeginInvokeOnMainThread(() => IsNarrating = true);
-        _narration.NarrationCompleted += (_, _) =>
-            MainThread.BeginInvokeOnMainThread(() => IsNarrating = false);
-
-        // Khi ngôn ngữ UI thay đổi → refresh text
-        LanguageService.LanguageChanged += (_, _) =>
-            MainThread.BeginInvokeOnMainThread(RefreshLanguage);
-
-        // Lắng nghe deep link tourguide://poi/{id}
-        DeepLinkService.PoiRequested += async (_, poiId) =>
+        // Khi queue thay đổi → raise property changed để UI binding cập nhật
+        _audioQueue.QueueChanged += (_, _) => MainThread.BeginInvokeOnMainThread(() =>
         {
-            // Đợi POI load xong nếu chưa có
-            var retry = 0;
-            while (!Pois.Any() && retry++ < 10)
-                await Task.Delay(500);
+            OnPropertyChanged(nameof(AudioQueue));
+            OnPropertyChanged(nameof(CurrentPlayingPoi));
+            OnPropertyChanged(nameof(HasQueue));
+        });
 
-            var poi = Pois.FirstOrDefault(p => p.Id == poiId);
-            if (poi != null)
-            {
-                MainThread.BeginInvokeOnMainThread(() => SelectedPoi = poi);
-                await PlayNarrationAsync(poi, "deeplink");
-            }
-        };
+        _narration.NarrationStarted += (_, _) => MainThread.BeginInvokeOnMainThread(() => IsNarrating = true);
+        _narration.NarrationCompleted += (_, _) => MainThread.BeginInvokeOnMainThread(() => IsNarrating = false);
+
+        LanguageService.LanguageChanged += (_, _) => MainThread.BeginInvokeOnMainThread(RefreshLanguage);
     }
 
-    // ── Language refresh ──────────────────────────────────────────────────────
-    private void RefreshLanguage()
-    {
-        // Đồng bộ ngôn ngữ thuyết minh
-        SelectedLanguage = LanguageService.IsEnglish ? "en" : "vi";
-        OnPropertyChanged(nameof(LangToggleLabel));
-        // Refresh status message theo ngôn ngữ mới
-        if (!IsLoading)
-            StatusMessage = string.Format(AppLanguage.Loaded, Pois.Count);
-    }
-
-    // ── Init ──────────────────────────────────────────────────────────────────
     public async Task InitializeAsync()
     {
         await _db.InitAsync();
         await LoadPoisAsync();
+    }
+
+    // ====================== LOG ONLINE KHI MỞ APP ======================
+    public async Task LogUserOnlineAsync()
+    {
+        try
+        {
+            // Gửi log để Monitoring biết user đang online (với DeviceId thật)
+            await _api.LogPlaybackAsync(
+                _deviceInfo.CurrentUserId, 0, "online",
+                deviceId: _deviceInfo.DeviceId,
+                deviceName: _deviceInfo.DeviceName,
+                platform: _deviceInfo.Platform);
+            Console.WriteLine($"📡 Logged online: {_deviceInfo.DeviceName} ({_deviceInfo.Platform})");
+        }
+        catch (Exception ex)
+        {
+            Console.WriteLine($"Log online error: {ex.Message}");
+        }
+    }
+
+    // ====================== PLAY NARRATION (KHÔNG CÒN SIGNALR) ======================
+    public async Task PlayNarrationAsync(POI poi, string triggerType = "manual")
+    {
+        if (IsNarrating) return;
+
+        await _narration.PlayAsync(new NarrationRequest
+        {
+            Poi = poi,
+            Language = SelectedLanguage,
+            TriggerType = triggerType,
+            PreferAudioFile = PreferAudioFile
+        });
+
+        // Log playback để Monitoring lấy dữ liệu (kèm DeviceId để phân biệt thiết bị)
+        await _api.LogPlaybackAsync(
+            _deviceInfo.CurrentUserId, poi.Id, triggerType,
+            deviceId: _deviceInfo.DeviceId,
+            deviceName: _deviceInfo.DeviceName,
+            platform: _deviceInfo.Platform);
     }
 
     private async Task LoadPoisAsync()
@@ -225,13 +266,14 @@ public class MapViewModel : INotifyPropertyChanged
             if (Pois.Count > 0)
             {
                 try { await _geofence.StartAsync(Pois); }
-                catch (UnauthorizedAccessException)
-                { StatusMessage = AppLanguage.NoPermission; }
-                catch (Exception ex)
-                { System.Diagnostics.Debug.WriteLine($"[Geofence] {ex.Message}"); }
+                catch (UnauthorizedAccessException) { StatusMessage = AppLanguage.NoPermission; }
+                catch (Exception ex) { System.Diagnostics.Debug.WriteLine($"[Geofence] {ex.Message}"); }
             }
         }
-        catch (Exception ex) { StatusMessage = $"Lỗi: {ex.Message}"; }
+        catch (Exception ex)
+        {
+            StatusMessage = $"Lỗi: {ex.Message}";
+        }
         finally { IsLoading = false; }
     }
 
@@ -245,12 +287,43 @@ public class MapViewModel : INotifyPropertyChanged
         });
     }
 
-    private async void OnGeofenceTriggered(object? sender, GeofenceTriggeredEventArgs e)
+    /// <summary>
+    /// Sự kiện cũ: giữ lại cho tương thích ngược. Giờ không tự phát nữa —
+    /// AudioQueue tự xử lý qua OnPoisInRangeChanged.
+    /// </summary>
+    private void OnGeofenceTriggered(object? sender, GeofenceTriggeredEventArgs e)
     {
         if (e.Poi.DistanceMeters > _activationRadius) return;
         NearestPoi = e.Poi;
         HighlightNearest(e.Poi.Id);
-        await PlayNarrationAsync(e.Poi, e.TriggerType);
+    }
+
+    /// <summary>
+    /// MỚI: GeofenceService phát sự kiện chứa TẤT CẢ POI trong vùng.
+    /// Filter theo activationRadius rồi feed vào AudioQueue.
+    /// Queue tự lo việc phát, xếp lịch, cooldown.
+    /// </summary>
+    private void OnPoisInRangeChanged(object? sender, PoisInRangeEventArgs e)
+    {
+        // Chỉ giữ các POI trong activationRadius của user (setting UI)
+        var filtered = e.PoisInRange
+            .Where(x => x.distance <= _activationRadius)
+            .ToList();
+
+        // Highlight POI gần nhất trên map
+        var nearest = filtered.OrderBy(x => x.distance).FirstOrDefault();
+        if (nearest.poi != null)
+        {
+            NearestPoi = nearest.poi;
+            HighlightNearest(nearest.poi.Id);
+        }
+        else
+        {
+            NearestPoi = null;
+        }
+
+        // Feed vào queue
+        _audioQueue.UpdateInRangePois(filtered, SelectedLanguage);
     }
 
     private void OnLocationUpdated(object? sender, LocationUpdate e)
@@ -276,7 +349,7 @@ public class MapViewModel : INotifyPropertyChanged
         {
             NearestPoi = nearest;
             HighlightNearest(nearest.Id);
-            _ = LogRouteLocation(e.Lat, e.Lng);  // Lưu tuyến đường
+            _ = LogRouteLocation(e.Lat, e.Lng);
         }
     }
 
@@ -284,11 +357,13 @@ public class MapViewModel : INotifyPropertyChanged
 
     private async Task LogRouteLocation(double lat, double lng)
     {
-        // Log mỗi 30 giây để tránh spam DB
         if ((DateTime.UtcNow - _lastRouteLog).TotalSeconds < 30) return;
         _lastRouteLog = DateTime.UtcNow;
-        var userId = _auth.CurrentUser?.Id ?? 0;
-        await _api.LogRouteAsync(userId, lat, lng);
+        // Gửi kèm DeviceId để Admin có thể tìm tuyến đường theo thiết bị (app không có login)
+        await _api.LogRouteAsync(
+            _deviceInfo.CurrentUserId,
+            lat, lng,
+            deviceId: _deviceInfo.DeviceId);
     }
 
     private void HighlightNearest(int poiId)
@@ -297,18 +372,12 @@ public class MapViewModel : INotifyPropertyChanged
             p.IsHighlighted = p.Id == poiId;
     }
 
-    public async Task PlayNarrationAsync(POI poi, string triggerType = "manual")
+    private void RefreshLanguage()
     {
-        if (IsNarrating) return;
-        await _narration.PlayAsync(new NarrationRequest
-        {
-            Poi = poi,
-            Language = SelectedLanguage,
-            TriggerType = triggerType,
-            PreferAudioFile = PreferAudioFile
-        });
-        var userId = _auth.CurrentUser?.Id ?? 0;
-        _ = _api.LogPlaybackAsync(userId, poi.Id, triggerType);
+        SelectedLanguage = LanguageService.IsEnglish ? "en" : "vi";
+        OnPropertyChanged(nameof(LangToggleLabel));
+        if (!IsLoading)
+            StatusMessage = string.Format(AppLanguage.Loaded, Pois.Count);
     }
 
     public event PropertyChangedEventHandler? PropertyChanged;

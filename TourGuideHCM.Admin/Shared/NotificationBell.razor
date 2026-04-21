@@ -1,0 +1,207 @@
+﻿@using TourGuideHCM.Admin.Models
+@using TourGuideHCM.Admin.Services
+@inject NotificationService NotifService
+@inject NavigationManager Nav
+@implements IDisposable
+
+<MudMenu Icon="@Icons.Material.Filled.Notifications"
+         Color="Color.Inherit"
+         Dense="true"
+         ActivationEvent="@MouseEvent.LeftClick"
+         AnchorOrigin="Origin.BottomRight"
+         TransformOrigin="Origin.TopRight">
+    <ActivatorContent>
+        <MudBadge Content="@unreadCount"
+                  Color="Color.Error"
+                  Overlap="true"
+                  Visible="@(unreadCount > 0)"
+                  Max="99">
+            <MudIconButton Icon="@Icons.Material.Filled.Notifications"
+                           Color="Color.Inherit" />
+        </MudBadge>
+    </ActivatorContent>
+    <ChildContent>
+        <div style="min-width:360px;max-width:400px;max-height:480px;overflow-y:auto;">
+
+            <!-- Header -->
+            <div class="d-flex align-center pa-3" style="border-bottom:1px solid #eee;">
+                <MudText Typo="Typo.subtitle1" Style="font-weight:600;">
+                    🔔 Thông báo
+                </MudText>
+                <MudSpacer />
+                @if (unreadCount > 0)
+                {
+                    <MudButton Size="Size.Small" Variant="Variant.Text"
+                               Color="Color.Primary"
+                               OnClick="MarkAllRead">
+                        Đánh dấu đã đọc
+                    </MudButton>
+                }
+            </div>
+
+            <!-- List -->
+            @if (loading)
+            {
+                <div class="pa-4 text-center">
+                    <MudProgressCircular Size="Size.Small" Indeterminate="true" />
+                </div>
+            }
+            else if (!notifications.Any())
+            {
+                <div class="pa-6 text-center">
+                    <MudIcon Icon="@Icons.Material.Filled.NotificationsOff"
+                             Size="Size.Large" Color="Color.Default" />
+                    <MudText Color="Color.Secondary" Class="mt-2">
+                        Chưa có thông báo nào
+                    </MudText>
+                </div>
+            }
+            else
+            {
+                @foreach (var n in notifications)
+                {
+                    <div class="pa-3 notif-item"
+                         style="@GetItemStyle(n)"
+                         @onclick="@(() => OnItemClick(n))">
+                        <div class="d-flex align-start" style="gap:10px;">
+                            <MudIcon Icon="@GetIcon(n.Type)" Color="@GetIconColor(n.Type)" Size="Size.Small" Class="mt-1" />
+                            <div style="flex:1;min-width:0;">
+                                <MudText Typo="Typo.body2" Style="@(n.IsRead ? "" : "font-weight:600;")">
+                                    @n.Title
+                                </MudText>
+                                <MudText Typo="Typo.caption" Color="Color.Secondary"
+                                         Style="display:block;white-space:normal;">
+                                    @n.Message
+                                </MudText>
+                                <MudText Typo="Typo.caption" Color="Color.Default"
+                                         Style="display:block;margin-top:4px;">
+                                    @FormatTime(n.CreatedAt)
+                                </MudText>
+                            </div>
+                            @if (!n.IsRead)
+                            {
+                                <div style="width:8px;height:8px;border-radius:50%;background:#FF7043;margin-top:8px;"></div>
+                            }
+                        </div>
+                    </div>
+                }
+            }
+
+        </div>
+    </ChildContent>
+</MudMenu>
+
+<style>
+    .notif-item {
+        cursor: pointer;
+        border-bottom: 1px solid #f0f0f0;
+        transition: background 0.15s;
+    }
+
+        .notif-item:hover {
+            background: #FFF8F4;
+        }
+</style>
+
+@code {
+    private List<NotificationDto> notifications = new();
+    private int unreadCount = 0;
+    private bool loading = true;
+    private System.Timers.Timer? refreshTimer;
+
+    protected override async Task OnInitializedAsync()
+    {
+        await LoadAsync();
+
+        // Auto-refresh mỗi 20s
+        refreshTimer = new System.Timers.Timer(20_000);
+        refreshTimer.Elapsed += async (_, _) => await InvokeAsync(LoadAsync);
+        refreshTimer.Start();
+    }
+
+    private async Task LoadAsync()
+    {
+        try
+        {
+            var tList = NotifService.GetMineAsync(20);
+            var tCount = NotifService.GetUnreadCountAsync();
+            await Task.WhenAll(tList, tCount);
+
+            notifications = tList.Result;
+            unreadCount = tCount.Result;
+            loading = false;
+            StateHasChanged();
+        }
+        catch { /* bỏ qua */ }
+    }
+
+    private async Task OnItemClick(NotificationDto n)
+    {
+        if (!n.IsRead)
+        {
+            await NotifService.MarkReadAsync(n.Id);
+            n.IsRead = true;
+            unreadCount = Math.Max(0, unreadCount - 1);
+        }
+
+        // Navigate tới POI liên quan nếu có
+        if (n.RelatedPoiId.HasValue)
+        {
+            // Admin: mở trang duyệt POI
+            Nav.NavigateTo($"/poi-approval");
+        }
+    }
+
+    private async Task MarkAllRead()
+    {
+        var ok = await NotifService.MarkAllReadAsync();
+        if (ok)
+        {
+            foreach (var n in notifications) n.IsRead = true;
+            unreadCount = 0;
+            StateHasChanged();
+        }
+    }
+
+    private static string GetItemStyle(NotificationDto n) =>
+        n.IsRead ? "" : "background:#FFFAF6;";
+
+    private static string GetIcon(string type) => type switch
+    {
+        "PoiCreated" => Icons.Material.Filled.AddLocationAlt,
+        "PoiApproved" => Icons.Material.Filled.CheckCircle,
+        "PoiRejected" => Icons.Material.Filled.Cancel,
+        "PoiLocked" => Icons.Material.Filled.Lock,
+        "PoiDeleted" => Icons.Material.Filled.DeleteForever,
+        "PoiEdited" => Icons.Material.Filled.Edit,
+        "AccountLocked" => Icons.Material.Filled.PersonOff,
+        _ => Icons.Material.Filled.Info
+    };
+
+    private static Color GetIconColor(string type) => type switch
+    {
+        "PoiCreated" => Color.Info,
+        "PoiApproved" => Color.Success,
+        "PoiRejected" => Color.Error,
+        "PoiLocked" => Color.Dark,
+        "PoiDeleted" => Color.Error,
+        "PoiEdited" => Color.Warning,
+        _ => Color.Default
+    };
+
+    private static string FormatTime(DateTime utcTime)
+    {
+        var diff = DateTime.UtcNow - utcTime;
+        if (diff.TotalMinutes < 1) return "Vừa xong";
+        if (diff.TotalMinutes < 60) return $"{(int)diff.TotalMinutes} phút trước";
+        if (diff.TotalHours < 24) return $"{(int)diff.TotalHours} giờ trước";
+        if (diff.TotalDays < 7) return $"{(int)diff.TotalDays} ngày trước";
+        return utcTime.ToLocalTime().ToString("dd/MM/yyyy HH:mm");
+    }
+
+    public void Dispose()
+    {
+        refreshTimer?.Stop();
+        refreshTimer?.Dispose();
+    }
+}

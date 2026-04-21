@@ -32,9 +32,7 @@ public partial class MapPage : ContentPage
             ListenBtn.Text = AppLanguage.ListenBtn;
             ListenDetailBtn.Text = AppLanguage.ListenNarration;
             StopBtn.Text = AppLanguage.StopBtn;
-            // Radius label dùng binding nên chỉ cần prefix
-            RadiusLabel.Text = string.Format(AppLanguage.Radius,
-                                    _vm.ActivationRadiusLabel);
+            RadiusLabel.Text = string.Format(AppLanguage.Radius, _vm.ActivationRadiusLabel);
         });
     }
 
@@ -46,6 +44,7 @@ public partial class MapPage : ContentPage
         {
             _initialized = true;
             await _vm.InitializeAsync();
+
             _vm.Pois.CollectionChanged += (_, _) => RefreshPins();
             _vm.PropertyChanged += (_, e) =>
             {
@@ -61,6 +60,9 @@ public partial class MapPage : ContentPage
         }
 
         _vm.PropertyChanged += OnViewModelPropertyChanged;
+
+        // ====================== LOG ONLINE KHI MỞ APP ======================
+        await _vm.LogUserOnlineAsync();
     }
 
     protected override void OnDisappearing()
@@ -75,11 +77,9 @@ public partial class MapPage : ContentPage
             RadiusLabel.Text = string.Format(AppLanguage.Radius, _vm.ActivationRadiusLabel));
     }
 
-    private void OnViewModelPropertyChanged(object? sender,
-        System.ComponentModel.PropertyChangedEventArgs e)
+    private void OnViewModelPropertyChanged(object? sender, System.ComponentModel.PropertyChangedEventArgs e)
     {
-        if (e.PropertyName is nameof(MapViewModel.UserLat)
-                           or nameof(MapViewModel.UserLng))
+        if (e.PropertyName is nameof(MapViewModel.UserLat) or nameof(MapViewModel.UserLng))
             UpdateUserLocation();
 
         if (e.PropertyName == nameof(MapViewModel.NearestPoi))
@@ -138,12 +138,8 @@ public partial class MapPage : ContentPage
                     Center = new Location(poi.Lat, poi.Lng),
                     Radius = Distance.FromMeters(radius),
                     StrokeWidth = isNearest ? 3 : 1,
-                    StrokeColor = isNearest
-                        ? Color.FromArgb("#FF1976D2")
-                        : Color.FromArgb("#88888888"),
-                    FillColor = isNearest
-                        ? Color.FromArgb("#221976D2")
-                        : Color.FromArgb("#11888888"),
+                    StrokeColor = isNearest ? Color.FromArgb("#FF1976D2") : Color.FromArgb("#88888888"),
+                    FillColor = isNearest ? Color.FromArgb("#221976D2") : Color.FromArgb("#11888888"),
                 };
 
                 _circles[poi.Id] = circle;
@@ -177,5 +173,12 @@ public partial class MapPage : ContentPage
     private void OnMapClicked(object sender, MapClickedEventArgs e)
     {
         _vm.SelectedPoi = null;
+    }
+
+    private async void OnScanQrClicked(object sender, EventArgs e)
+    {
+        await DisplayAlert("Quét QR",
+            "Chức năng quét QR đang được phát triển.\n\nHiện tại bạn có thể dùng 1 mã QR duy nhất để mở app.",
+            "OK");
     }
 }

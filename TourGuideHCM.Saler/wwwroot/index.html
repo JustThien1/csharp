@@ -1,0 +1,58 @@
+<!DOCTYPE html>
+<html lang="vi">
+
+<head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
+    <title>TourGuide HCM - Saler</title>
+    <base href="/" />
+
+    <!-- MudBlazor + Material Icons + Roboto -->
+    <link href="https://fonts.googleapis.com/css?family=Roboto:300,400,500,700&display=swap" rel="stylesheet" />
+    <link href="https://fonts.googleapis.com/icon?family=Material+Icons" rel="stylesheet" />
+    <link href="_content/MudBlazor/MudBlazor.min.css" rel="stylesheet" />
+
+    <link href="TourGuideHCM.Saler.styles.css" rel="stylesheet" />
+
+    <style>
+        html, body {
+            font-family: 'Roboto', sans-serif;
+            margin: 0;
+            padding: 0;
+            background: #F8FAFE;
+        }
+        #loading-screen {
+            position: fixed;
+            inset: 0;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            background: linear-gradient(135deg, #FF7043, #FFA040);
+            color: white;
+            font-size: 18px;
+            z-index: 9999;
+        }
+    </style>
+</head>
+
+<body>
+    <div id="app">
+        <div id="loading-screen">
+            <div style="text-align:center;">
+                <div style="font-size:48px; margin-bottom:12px;">📍</div>
+                <div>Đang tải TourGuide Saler…</div>
+            </div>
+        </div>
+    </div>
+
+    <div id="blazor-error-ui">
+        Đã xảy ra lỗi không mong đợi.
+        <a href="" class="reload">Tải lại</a>
+        <a class="dismiss">🗙</a>
+    </div>
+
+    <script src="_content/MudBlazor/MudBlazor.min.js"></script>
+    <script src="_framework/blazor.webassembly.js"></script>
+</body>
+
+</html>

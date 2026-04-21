@@ -18,16 +18,18 @@ namespace TourGuideHCM.API.Data
         public DbSet<PlaybackLog> PlaybackLogs { get; set; }
         public DbSet<RouteLog> RouteLogs { get; set; }
         public DbSet<Tour> Tours { get; set; }
-
-        // ====================== THÊM DbSet cho Audio ======================
         public DbSet<Audio> Audios { get; set; }
-
         public DbSet<PlaybackHistory> PlaybackHistories { get; set; } = null!;
+
+        // ====================== MỚI ======================
+        public DbSet<DuplicateReport> DuplicateReports { get; set; } = null!;
+        public DbSet<TtsJob> TtsJobs { get; set; } = null!;
+        public DbSet<Notification> Notifications { get; set; } = null!;
+
         protected override void OnModelCreating(ModelBuilder modelBuilder)
         {
             base.OnModelCreating(modelBuilder);
 
-            // Configure relationships
             modelBuilder.Entity<POI>()
                 .HasOne(p => p.Category)
                 .WithMany(c => c.POIs)
@@ -58,15 +60,13 @@ namespace TourGuideHCM.API.Data
                 .HasForeignKey(f => f.POIId)
                 .OnDelete(DeleteBehavior.Cascade);
 
-            // Unique index cho Favorite
             modelBuilder.Entity<Favorite>()
                 .HasIndex(f => new { f.UserId, f.POIId })
                 .IsUnique();
 
-            // ====================== RELATIONSHIP CHO AUDIO ======================
             modelBuilder.Entity<Audio>()
                 .HasOne(a => a.POI)
-                .WithMany(p => p.Audios)           // POI phải có ICollection<Audio> Audios
+                .WithMany(p => p.Audios)
                 .HasForeignKey(a => a.PoiId)
                 .OnDelete(DeleteBehavior.Cascade);
 
@@ -75,6 +75,61 @@ namespace TourGuideHCM.API.Data
                 .WithMany()
                 .HasForeignKey(p => p.POIId)
                 .OnDelete(DeleteBehavior.Cascade);
+
+            // ====================== DUPLICATE REPORT RELATIONSHIPS ======================
+            // PoiA và PoiB đều là navigation đến bảng POIs, cần Restrict để không cascade delete
+            modelBuilder.Entity<DuplicateReport>()
+                .HasOne(r => r.PoiA)
+                .WithMany()
+                .HasForeignKey(r => r.PoiAId)
+                .OnDelete(DeleteBehavior.Restrict);
+
+            modelBuilder.Entity<DuplicateReport>()
+                .HasOne(r => r.PoiB)
+                .WithMany()
+                .HasForeignKey(r => r.PoiBId)
+                .OnDelete(DeleteBehavior.Restrict);
+
+            modelBuilder.Entity<DuplicateReport>()
+                .HasIndex(r => r.Status);
+
+            // ====================== TTS JOB ======================
+            modelBuilder.Entity<TtsJob>()
+                .HasOne(j => j.POI)
+                .WithMany()
+                .HasForeignKey(j => j.PoiId)
+                .OnDelete(DeleteBehavior.Cascade);
+
+            modelBuilder.Entity<TtsJob>()
+                .HasIndex(j => j.Status);
+
+            // ====================== POI — Created By User ======================
+            modelBuilder.Entity<POI>()
+                .HasOne(p => p.CreatedBy)
+                .WithMany()
+                .HasForeignKey(p => p.CreatedByUserId)
+                .OnDelete(DeleteBehavior.SetNull);   // user bị xoá → POI vẫn còn, CreatedBy = null
+
+            modelBuilder.Entity<POI>()
+                .HasIndex(p => p.ReviewStatus);
+
+            modelBuilder.Entity<POI>()
+                .HasIndex(p => p.CreatedByUserId);
+
+            // ====================== NOTIFICATION ======================
+            modelBuilder.Entity<Notification>()
+                .HasOne(n => n.User)
+                .WithMany()
+                .HasForeignKey(n => n.UserId)
+                .OnDelete(DeleteBehavior.Cascade);
+
+            modelBuilder.Entity<Notification>()
+                .HasIndex(n => new { n.UserId, n.IsRead });
+
+            // User unique index
+            modelBuilder.Entity<User>()
+                .HasIndex(u => u.Username)
+                .IsUnique();
 
             // ====================== Seed Data ======================
             modelBuilder.Entity<Category>().HasData(

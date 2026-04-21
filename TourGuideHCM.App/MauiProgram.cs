@@ -24,39 +24,38 @@ public static class MauiProgram
                 fonts.AddFont("OpenSans-Semibold.ttf", "OpenSansSemibold");
             });
 
-        // IAudioManager – chỉ định rõ namespace tránh nhầm Android.Media
-        builder.Services.AddSingleton<IAudioManager>(
-            Plugin.Maui.Audio.AudioManager.Current);
+        builder.Services.AddSingleton<IAudioManager>(Plugin.Maui.Audio.AudioManager.Current);
 
-        // ── HTTP ──────────────────────────────────────────────────────────────
-        // DeviceHelper.GetBaseUrl() tự phát hiện emulator / thiết bị thật / simulator
-        builder.Services.AddHttpClient("AuthClient", client =>
+        builder.Services.AddHttpClient("DefaultClient", client =>
         {
             client.BaseAddress = new Uri(DeviceHelper.GetBaseUrl());
             client.Timeout = TimeSpan.FromSeconds(30);
         });
 
-        // ── Services ──────────────────────────────────────────────────────────
+        // ====================== Services ======================
         builder.Services.AddSingleton<IDatabaseService, DatabaseService>();
         builder.Services.AddSingleton<IApiService, ApiService>();
-        builder.Services.AddSingleton<IAuthService, AuthService>();
         builder.Services.AddSingleton<IGeofenceService, GeofenceService>();
         builder.Services.AddSingleton<INarrationService, NarrationService>();
 
-        // ── ViewModels ────────────────────────────────────────────────────────
+        // ====================== MỚI: Cho Monitoring thật ======================
+        builder.Services.AddSingleton<IDeviceInfoService, DeviceInfoService>();
+        builder.Services.AddSingleton<IHeartbeatService, HeartbeatService>();
+
+        // ====================== MỚI: Audio Queue (nhiều POI chồng nhau) ======================
+        builder.Services.AddSingleton<IAudioQueueService, AudioQueueService>();
+
+        // ====================== ViewModels ======================
         builder.Services.AddSingleton<MapViewModel>();
         builder.Services.AddTransient<PoiViewModel>();
-        builder.Services.AddTransient<AuthViewModel>();
 
-        // ── Pages ─────────────────────────────────────────────────────────────
+        // ====================== Pages ======================
         builder.Services.AddSingleton<App>();
         builder.Services.AddSingleton<AppShell>();
         builder.Services.AddSingleton<MapPage>();
         builder.Services.AddTransient<PoiListPage>();
         builder.Services.AddTransient<PoiDetailPage>();
         builder.Services.AddTransient<PoiBottomSheet>();
-        builder.Services.AddTransient<LoginPage>();
-        builder.Services.AddTransient<RegisterPage>();
 
         return builder.Build();
     }

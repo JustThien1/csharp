@@ -2,6 +2,7 @@
 using Microsoft.EntityFrameworkCore;
 using TourGuideHCM.API.Data;
 using TourGuideHCM.API.Models;
+using TourGuideHCM.API.Services;
 
 namespace TourGuideHCM.API.Controllers
 {
@@ -12,15 +13,40 @@ namespace TourGuideHCM.API.Controllers
         private readonly AppDbContext _context;
         private readonly IWebHostEnvironment _env;
         private readonly IConfiguration _config;
+        private readonly CurrentUserService _currentUser;
 
-        public AudioController(AppDbContext context, IWebHostEnvironment env, IConfiguration config)
+        public AudioController(
+            AppDbContext context,
+            IWebHostEnvironment env,
+            IConfiguration config,
+            CurrentUserService currentUser)
         {
             _context = context;
             _env = env;
             _config = config;
+            _currentUser = currentUser;
         }
 
-        // ── CONVERT TEXT → AUDIO (TTS + lưu DB luôn) ──────────────────────────
+        /// <summary>
+        /// Kiểm tra user có quyền với POI không.
+        /// Admin: mọi POI. Saler: chỉ POI do mình tạo.
+        /// Returns null nếu OK, IActionResult error nếu không OK.
+        /// </summary>
+        private async Task<IActionResult?> EnsureUserCanModifyPoi(int poiId)
+        {
+            if (_currentUser.IsAdmin || !_currentUser.IsAuthenticated)
+                return null;   // Admin hoặc anonymous (admin panel cũ) → cho qua
+
+            var poi = await _context.POIs.FindAsync(poiId);
+            if (poi == null) return NotFound(new { message = "POI không tồn tại" });
+
+            if (_currentUser.IsSaler && poi.CreatedByUserId != _currentUser.UserId)
+                return StatusCode(403, new { message = "Bạn không có quyền tạo audio cho POI này" });
+
+            return null;
+        }
+
+        // ── CONVERT TEXT → AUDIO (TTS) ────────────────────────────────────────
         [HttpPost("convert")]
         public async Task<IActionResult> ConvertTts([FromBody] TtsConvertDto dto)
         {
@@ -29,12 +55,13 @@ namespace TourGuideHCM.API.Controllers
             if (dto.PoiId == 0)
                 return BadRequest("Vui lòng chọn POI");
 
-            // Lấy API key từ config
+            var authError = await EnsureUserCanModifyPoi(dto.PoiId);
+            if (authError != null) return authError;
+
             var apiKey = _config["GoogleTTS:ApiKey"];
             if (string.IsNullOrWhiteSpace(apiKey))
                 return StatusCode(500, "Chưa cấu hình Google TTS API Key trong appsettings.json");
 
-            // Map language + gender → Google voice
             var (languageCode, voiceName) = (dto.Language, dto.Gender) switch
             {
                 ("vi", "female") => ("vi-VN", "vi-VN-Wavenet-A"),
@@ -50,7 +77,6 @@ namespace TourGuideHCM.API.Controllers
 
             try
             {
-                // Gọi Google Cloud TTS
                 var requestBody = new
                 {
                     input = new { text = dto.Text },
@@ -72,7 +98,6 @@ namespace TourGuideHCM.API.Controllers
                 if (ttsResult?.AudioContent == null)
                     return StatusCode(500, "Google TTS không trả về audio");
 
-                // Lưu file MP3
                 var audioBytes = Convert.FromBase64String(ttsResult.AudioContent);
                 var webRoot = _env.WebRootPath ?? Path.Combine(_env.ContentRootPath, "wwwroot");
                 var uploadPath = Path.Combine(webRoot, "audio");
@@ -83,21 +108,18 @@ namespace TourGuideHCM.API.Controllers
                 var fullPath = Path.Combine(uploadPath, fileName);
                 await System.IO.File.WriteAllBytesAsync(fullPath, audioBytes);
 
-                // Lưu relative URL — App tự resolve qua BaseUrl
                 var audioUrl = $"/audio/{fileName}";
 
-                // Ước tính thời lượng
                 var wordCount = dto.Text.Split(' ', StringSplitOptions.RemoveEmptyEntries).Length;
                 var duration = (int)Math.Ceiling(wordCount / (dto.Speed * 2.5));
 
-                // Xóa audio cũ cùng POI + language nếu có
+                // Xóa audio cũ cùng POI + language
                 var existing = await _context.Audios
                     .Where(a => a.PoiId == dto.PoiId && a.Language == dto.Language)
                     .ToListAsync();
 
                 foreach (var old in existing)
                 {
-                    // Xóa file vật lý
                     try
                     {
                         var oldFile = Path.Combine(webRoot, "audio", Path.GetFileName(old.AudioUrl ?? ""));
@@ -107,7 +129,6 @@ namespace TourGuideHCM.API.Controllers
                 }
                 _context.Audios.RemoveRange(existing);
 
-                // Tạo Audio record mới
                 var audio = new Audio
                 {
                     PoiId = dto.PoiId,
@@ -160,7 +181,6 @@ namespace TourGuideHCM.API.Controllers
             using var stream = new FileStream(fullPath, FileMode.Create);
             await file.CopyToAsync(stream);
 
-            // Lưu relative URL — App tự resolve qua BaseUrl
             var audioUrl = $"/audio/{fileName}";
             return Ok(audioUrl);
         }
@@ -184,6 +204,34 @@ namespace TourGuideHCM.API.Controllers
                     IsActive = a.IsActive
                 })
                 .ToListAsync();
+            return Ok(audios);
+        }
+
+        // ====================== MỚI: Audio của saler hiện tại ======================
+        [HttpGet("mine")]
+        public async Task<IActionResult> GetMine()
+        {
+            if (!_currentUser.IsAuthenticated) return Unauthorized();
+            var userId = _currentUser.UserId;
+
+            // Lấy audio của các POI do user này tạo
+            var audios = await _context.Audios
+                .Include(a => a.POI)
+                .Where(a => a.POI != null && a.POI.CreatedByUserId == userId)
+                .OrderByDescending(a => a.Id)
+                .Select(a => new AudioDto
+                {
+                    Id = a.Id,
+                    PoiId = a.PoiId,
+                    PoiName = a.POI != null ? a.POI.Name : $"POI_{a.PoiId}",
+                    Language = a.Language ?? "vi",
+                    AudioUrl = a.AudioUrl ?? "",
+                    DurationSeconds = a.DurationSeconds,
+                    Description = a.Description ?? "",
+                    IsActive = a.IsActive
+                })
+                .ToListAsync();
+
             return Ok(audios);
         }
 
@@ -214,6 +262,10 @@ namespace TourGuideHCM.API.Controllers
         public async Task<IActionResult> Create([FromBody] AudioDto dto)
         {
             if (dto.PoiId == 0) return BadRequest("Vui lòng chọn POI");
+
+            var authError = await EnsureUserCanModifyPoi(dto.PoiId);
+            if (authError != null) return authError;
+
             var audio = new Audio
             {
                 PoiId = dto.PoiId,
@@ -235,6 +287,10 @@ namespace TourGuideHCM.API.Controllers
         {
             var audio = await _context.Audios.FindAsync(id);
             if (audio == null) return NotFound("Không tìm thấy audio");
+
+            var authError = await EnsureUserCanModifyPoi(audio.PoiId);
+            if (authError != null) return authError;
+
             audio.PoiId = dto.PoiId;
             audio.Language = dto.Language ?? audio.Language;
             audio.DurationSeconds = dto.DurationSeconds;
@@ -251,6 +307,10 @@ namespace TourGuideHCM.API.Controllers
         {
             var audio = await _context.Audios.FindAsync(id);
             if (audio == null) return NotFound();
+
+            var authError = await EnsureUserCanModifyPoi(audio.PoiId);
+            if (authError != null) return authError;
+
             try
             {
                 var webRoot = _env.WebRootPath ?? Path.Combine(_env.ContentRootPath, "wwwroot");

@@ -1,0 +1,32 @@
+﻿@using MudBlazor
+
+<MudDialog>
+    <DialogContent>
+        <MudText Typo="Typo.body2" Class="mb-3">@Prompt</MudText>
+        <MudTextField @bind-Value="reason"
+                      Label="Lý do *"
+                      Variant="Variant.Outlined"
+                      Lines="3"
+                      Immediate="true"
+                      AutoFocus="true" />
+    </DialogContent>
+    <DialogActions>
+        <MudButton OnClick="Cancel">Huỷ</MudButton>
+        <MudButton Variant="Variant.Filled" Color="Color.Primary"
+                   Disabled="@(string.IsNullOrWhiteSpace(reason))"
+                   OnClick="Confirm">
+            Xác nhận
+        </MudButton>
+    </DialogActions>
+</MudDialog>
+
+@code {
+    [CascadingParameter] MudDialogInstance MudDialog { get; set; } = null!;
+    [Parameter] public string Title { get; set; } = "";
+    [Parameter] public string Prompt { get; set; } = "";
+
+    private string reason = "";
+
+    private void Confirm() => MudDialog.Close(DialogResult.Ok(reason.Trim()));
+    private void Cancel() => MudDialog.Cancel();
+}

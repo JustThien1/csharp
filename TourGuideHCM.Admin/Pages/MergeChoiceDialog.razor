@@ -1,0 +1,108 @@
+﻿@using MudBlazor
+@using TourGuideHCM.Admin.Models
+
+<MudDialog>
+    <DialogContent>
+        <MudText Typo="Typo.body1" Class="mb-4">
+            Chọn POI bạn muốn <strong>giữ lại</strong>. POI còn lại sẽ bị xoá.
+            Mọi lượt nghe của POI bị xoá sẽ được chuyển sang POI được giữ.
+        </MudText>
+
+        @if (Report?.PoiA != null && Report?.PoiB != null)
+        {
+            <MudGrid Spacing="3">
+                <MudItem xs="12" md="6">
+                    <MudPaper Class="pa-4 cursor-pointer"
+                              Elevation="@(selectedId == Report.PoiA.Id ? 6 : 1)"
+                              Style="@GetCardStyle(Report.PoiA.Id, "#1976D2")"
+                              @onclick="@(() => selectedId = Report.PoiA.Id)">
+                        <div class="d-flex align-center mb-2" style="gap:8px;">
+                            @if (selectedId == Report.PoiA.Id)
+                            {
+                                <MudIcon Icon="@Icons.Material.Filled.CheckCircle" Color="Color.Primary" />
+                            }
+                            else
+                            {
+                                <MudIcon Icon="@Icons.Material.Filled.RadioButtonUnchecked" Color="Color.Default" />
+                            }
+                            <MudText Typo="Typo.subtitle1" Class="font-weight-bold" Style="color:#1976D2;">
+                                POI A (#@Report.PoiA.Id)
+                            </MudText>
+                        </div>
+                        <MudText Typo="Typo.h6" Class="mb-1">@Report.PoiA.Name</MudText>
+                        @if (!string.IsNullOrEmpty(Report.PoiA.Address))
+                        {
+                            <MudText Typo="Typo.caption" Color="Color.Secondary">
+                                📍 @Report.PoiA.Address
+                            </MudText>
+                        }
+                        <MudText Typo="Typo.caption" Color="Color.Secondary" Style="font-family:monospace;">
+                            @Report.PoiA.Lat.ToString("F5"), @Report.PoiA.Lng.ToString("F5")
+                        </MudText>
+                    </MudPaper>
+                </MudItem>
+                <MudItem xs="12" md="6">
+                    <MudPaper Class="pa-4 cursor-pointer"
+                              Elevation="@(selectedId == Report.PoiB.Id ? 6 : 1)"
+                              Style="@GetCardStyle(Report.PoiB.Id, "#FF7043")"
+                              @onclick="@(() => selectedId = Report.PoiB.Id)">
+                        <div class="d-flex align-center mb-2" style="gap:8px;">
+                            @if (selectedId == Report.PoiB.Id)
+                            {
+                                <MudIcon Icon="@Icons.Material.Filled.CheckCircle" Color="Color.Warning" />
+                            }
+                            else
+                            {
+                                <MudIcon Icon="@Icons.Material.Filled.RadioButtonUnchecked" Color="Color.Default" />
+                            }
+                            <MudText Typo="Typo.subtitle1" Class="font-weight-bold" Style="color:#FF7043;">
+                                POI B (#@Report.PoiB.Id)
+                            </MudText>
+                        </div>
+                        <MudText Typo="Typo.h6" Class="mb-1">@Report.PoiB.Name</MudText>
+                        @if (!string.IsNullOrEmpty(Report.PoiB.Address))
+                        {
+                            <MudText Typo="Typo.caption" Color="Color.Secondary">
+                                📍 @Report.PoiB.Address
+                            </MudText>
+                        }
+                        <MudText Typo="Typo.caption" Color="Color.Secondary" Style="font-family:monospace;">
+                            @Report.PoiB.Lat.ToString("F5"), @Report.PoiB.Lng.ToString("F5")
+                        </MudText>
+                    </MudPaper>
+                </MudItem>
+            </MudGrid>
+
+            <MudAlert Severity="Severity.Warning" Dense="true" Class="mt-4">
+                ⚠️ Hành động này không thể hoàn tác. POI không được chọn sẽ bị đánh dấu xoá (soft-delete).
+            </MudAlert>
+        }
+    </DialogContent>
+    <DialogActions>
+        <MudButton OnClick="Cancel">Huỷ</MudButton>
+        <MudButton Color="Color.Error" Variant="Variant.Filled"
+                   Disabled="@(selectedId == 0)"
+                   StartIcon="@Icons.Material.Filled.Merge"
+                   OnClick="Confirm">
+            Xác nhận gộp
+        </MudButton>
+    </DialogActions>
+</MudDialog>
+
+@code {
+    [CascadingParameter] MudDialogInstance MudDialog { get; set; } = null!;
+    [Parameter] public DuplicateReportDto? Report { get; set; }
+
+    private int selectedId = 0;
+
+    private string GetCardStyle(int poiId, string borderColor)
+    {
+        var selected = selectedId == poiId;
+        var border = selected ? $"3px solid {borderColor}" : "1px solid #e0e0e0";
+        var bg = selected ? $"{borderColor}15" : "#fff";   // 15 = alpha ~8%
+        return $"border-radius:12px; border:{border}; background:{bg}; transition: all 0.2s;";
+    }
+
+    private void Confirm() => MudDialog.Close(DialogResult.Ok(selectedId));
+    private void Cancel() => MudDialog.Cancel();
+}

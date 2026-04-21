@@ -10,7 +10,9 @@
 <div class="d-flex align-center mb-6">
     <MudText Typo="Typo.h4" Class="font-weight-bold">🔥 Heatmap địa điểm</MudText>
     <MudSpacer />
-    <MudChip Color="Color.Success" Icon="@Icons.Material.Filled.People">Tổng hợp tất cả người dùng</MudChip>
+    <MudChip T="string" Color="Color.Success" Icon="@Icons.Material.Filled.PhoneAndroid">
+        Tổng hợp từ tất cả thiết bị
+    </MudChip>
 </div>
 
 <!-- Filter thời gian -->
@@ -42,8 +44,8 @@
         </MudItem>
         <MudItem xs="6" sm="3">
             <MudPaper Class="pa-4 text-center" Elevation="2" Style="border-radius:12px;background:#e8f5e9;">
-                <MudText Typo="Typo.h5" Class="font-weight-bold">@totalUsers</MudText>
-                <MudText Typo="Typo.caption" Color="Color.Secondary">Người dùng</MudText>
+                <MudText Typo="Typo.h5" Class="font-weight-bold">@totalDevices</MudText>
+                <MudText Typo="Typo.caption" Color="Color.Secondary">Thiết bị khác nhau</MudText>
             </MudPaper>
         </MudItem>
         <MudItem xs="6" sm="3">
@@ -59,6 +61,21 @@
             </MudPaper>
         </MudItem>
     </MudGrid>
+
+    <!-- Phân bố platform -->
+    @if (platformBreakdown.Any())
+    {
+        <div class="d-flex align-center mt-4" style="gap:16px; flex-wrap:wrap;">
+            <MudText Typo="Typo.caption" Color="Color.Secondary">Thiết bị đã truy cập:</MudText>
+            @foreach (var p in platformBreakdown)
+            {
+                <MudChip T="string" Size="Size.Small" Color="@GetPlatformColor(p.Platform)"
+                         Icon="@GetPlatformIcon(p.Platform)" Variant="Variant.Outlined">
+                    @p.Platform: @p.Count
+                </MudChip>
+            }
+        </div>
+    }
 </MudPaper>
 
 <MudGrid Spacing="4">
@@ -69,7 +86,7 @@
                 <MudIcon Icon="@Icons.Material.Filled.Whatshot" Color="Color.Error" Class="mr-2" />
                 <MudText Typo="Typo.h6">Mật độ nghe tại các địa điểm</MudText>
                 <MudSpacer />
-                <MudChip Size="Size.Small" Color="Color.Error">@heatPoints.Count POI</MudChip>
+                <MudChip T="string" Size="Size.Small" Color="Color.Error">@heatPoints.Count POI</MudChip>
             </div>
 
             <div id="heatMap" style="height:480px; width:100%;"></div>
@@ -133,7 +150,7 @@
         <MudPaper Class="pa-5" Elevation="3" Style="border-radius:16px;">
             <MudText Typo="Typo.h6" Class="mb-1">📊 Lượt nghe theo giờ × địa điểm</MudText>
             <MudText Typo="Typo.caption" Color="Color.Secondary" Class="mb-4">
-                Tổng hợp từ tất cả người dùng trong @filterLabel
+                Tổng hợp từ tất cả thiết bị trong @filterLabel
             </MudText>
             <div style="overflow-x:auto;">
                 <table style="border-collapse:collapse; width:100%;">
@@ -196,7 +213,7 @@
 
     // Stats
     private int totalPlays = 0;
-    private int totalUsers = 0;
+    private int totalDevices = 0;     // ĐỔI: từ totalUsers → totalDevices
     private int activePois = 0;
     private string hotPoi = "-";
     private int maxCell = 1;
@@ -209,6 +226,7 @@
     private List<PeakHour> peakHours = new();
     private List<TopPoi> topPois = new();
     private List<HeatRow> heatmapGrid = new();
+    private List<PlatformCount> platformBreakdown = new();   // MỚI
 
     private bool mapReady = false;
 
@@ -259,8 +277,25 @@
     private void BuildStats()
     {
         totalPlays = history.Count;
-        totalUsers = history.Select(h => h.UserId).Where(id => id > 0).Distinct().Count();
+
+        // ĐỔI: đếm unique DeviceId thay vì UserId (app giờ không có User)
+        totalDevices = history
+            .Where(h => !string.IsNullOrEmpty(h.DeviceId))
+            .Select(h => h.DeviceId)
+            .Distinct()
+            .Count();
+
         activePois = history.Select(h => h.PoiName).Distinct().Count();
+
+        // Phân bố platform (MỚI)
+        platformBreakdown = history
+            .Where(h => !string.IsNullOrEmpty(h.DeviceId) && !string.IsNullOrEmpty(h.Platform))
+            .GroupBy(h => h.DeviceId)
+            .Select(g => g.First().Platform)
+            .GroupBy(p => p!)
+            .Select(g => new PlatformCount { Platform = g.Key, Count = g.Count() })
+            .OrderByDescending(x => x.Count)
+            .ToList();
 
         // Top POI
         var grouped = history.GroupBy(h => h.PoiName)
@@ -319,10 +354,36 @@
 
     private string GetRankColor(int i) => i switch { 0 => "#FF6B6B", 1 => "#FFA500", 2 => "#FFD700", _ => "#1976D2" };
 
-    public class HeatHistoryItem { public string PoiName { get; set; } = ""; public int UserId { get; set; } public DateTime TriggeredAt { get; set; } }
+    private string GetPlatformIcon(string platform) => platform?.ToLower() switch
+    {
+        "android" => Icons.Material.Filled.Android,
+        "ios" => Icons.Material.Filled.PhoneIphone,
+        "windows" => Icons.Material.Filled.Computer,
+        _ => Icons.Material.Filled.DeviceUnknown
+    };
+
+    private Color GetPlatformColor(string platform) => platform?.ToLower() switch
+    {
+        "android" => Color.Success,
+        "ios" => Color.Info,
+        "windows" => Color.Primary,
+        _ => Color.Default
+    };
+
+    // DTOs — thêm DeviceId/DeviceName/Platform để map khớp với API mới
+    public class HeatHistoryItem
+    {
+        public string PoiName { get; set; } = "";
+        public int UserId { get; set; }
+        public string DeviceId { get; set; } = "";
+        public string DeviceName { get; set; } = "";
+        public string Platform { get; set; } = "";
+        public DateTime TriggeredAt { get; set; }
+    }
     public class PoiPoint { public int Id { get; set; } public string Name { get; set; } = ""; public double Lat { get; set; } public double Lng { get; set; } public string Address { get; set; } = ""; }
     public class HeatPoint { public double Lat { get; set; } public double Lng { get; set; } public int Weight { get; set; } public string Name { get; set; } = ""; }
     public class PeakHour { public string Hour { get; set; } = ""; public int Count { get; set; } public double Percent { get; set; } }
     public class TopPoi { public string Name { get; set; } = ""; public int Count { get; set; } public double Percent { get; set; } }
     public class HeatRow { public string Label { get; set; } = ""; public List<int> Values { get; set; } = new(); }
+    public class PlatformCount { public string Platform { get; set; } = ""; public int Count { get; set; } }
 }

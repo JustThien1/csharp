@@ -1,0 +1,485 @@
+﻿@inject PoiService PoiService
+@inject AudioService AudioService
+@inject ISnackbar Snackbar
+
+<MudDialog>
+    <DialogContent>
+        <MudTabs Elevation="0" Rounded="false" @bind-ActivePanelIndex="activeTab">
+
+            <!-- ====================== TAB 1: THÔNG TIN POI ====================== -->
+            <MudTabPanel Text="1. Thông tin địa điểm" Icon="@Icons.Material.Filled.Place">
+                <div class="pa-2">
+                    <MudForm @ref="form" @bind-IsValid="isValid">
+
+                        <MudTextField @bind-Value="Poi.Name"
+                                      Label="Tên địa điểm *"
+                                      Variant="Variant.Outlined"
+                                      Required="true" RequiredError="Bắt buộc"
+                                      Margin="Margin.Dense"
+                                      Class="mb-3" />
+
+                        <MudTextField @bind-Value="Poi.Description"
+                                      Label="Mô tả"
+                                      Variant="Variant.Outlined"
+                                      Lines="3"
+                                      Margin="Margin.Dense"
+                                      Class="mb-3" />
+
+                        <MudTextField @bind-Value="Poi.Address"
+                                      Label="Địa chỉ"
+                                      Variant="Variant.Outlined"
+                                      Margin="Margin.Dense"
+                                      Class="mb-3" />
+
+                        <MudGrid Spacing="2">
+                            <MudItem xs="6">
+                                <MudNumericField @bind-Value="Poi.Lat"
+                                                 Label="Vĩ độ (Lat) *"
+                                                 Variant="Variant.Outlined"
+                                                 Format="F6"
+                                                 Required="true"
+                                                 Margin="Margin.Dense" />
+                            </MudItem>
+                            <MudItem xs="6">
+                                <MudNumericField @bind-Value="Poi.Lng"
+                                                 Label="Kinh độ (Lng) *"
+                                                 Variant="Variant.Outlined"
+                                                 Format="F6"
+                                                 Required="true"
+                                                 Margin="Margin.Dense" />
+                            </MudItem>
+                        </MudGrid>
+
+                        <MudAlert Severity="Severity.Info" Dense="true" Class="my-3">
+                            💡 Tìm toạ độ: mở Google Maps → click vào địa điểm → copy số toạ độ hiện ra.
+                        </MudAlert>
+
+                        <MudGrid Spacing="2">
+                            <MudItem xs="6">
+                                <MudNumericField @bind-Value="Poi.Radius"
+                                                 Label="Bán kính (m)"
+                                                 Variant="Variant.Outlined"
+                                                 Min="10" Max="500"
+                                                 Margin="Margin.Dense" />
+                            </MudItem>
+                            <MudItem xs="6">
+                                <MudSelect T="int" @bind-Value="Poi.CategoryId"
+                                           Label="Danh mục"
+                                           Variant="Variant.Outlined"
+                                           Margin="Margin.Dense">
+                                    @foreach (var cat in categories)
+                                    {
+                                        <MudSelectItem T="int" Value="@cat.Id">@cat.Name</MudSelectItem>
+                                    }
+                                </MudSelect>
+                            </MudItem>
+                        </MudGrid>
+
+                        <MudTextField @bind-Value="Poi.NarrationText"
+                                      Label="Nội dung thuyết minh"
+                                      Variant="Variant.Outlined"
+                                      Lines="4"
+                                      HelperText="Sẽ dùng làm text TTS ở tab Audio"
+                                      Margin="Margin.Dense"
+                                      Class="mt-3" />
+
+                        <MudTextField @bind-Value="Poi.ImageUrl"
+                                      Label="URL hình ảnh"
+                                      Variant="Variant.Outlined"
+                                      Placeholder="https://example.com/image.jpg"
+                                      Adornment="Adornment.Start"
+                                      AdornmentIcon="@Icons.Material.Filled.Image"
+                                      Margin="Margin.Dense"
+                                      Class="mt-3"
+                                      Immediate="true" />
+
+                        @if (!string.IsNullOrWhiteSpace(Poi.ImageUrl))
+                        {
+                            <div class="mt-2" style="text-align:center;">
+                                <img src="@Poi.ImageUrl"
+                                     alt="Preview"
+                                     style="max-width:100%;max-height:180px;border-radius:8px;
+                                            border:1px solid #e0e0e0;object-fit:cover;"
+                                     onerror="this.style.display='none';" />
+                            </div>
+                        }
+
+                        <MudGrid Spacing="2" Class="mt-1">
+                            <MudItem xs="6">
+                                <MudSelect T="string" @bind-Value="Poi.Language"
+                                           Label="Ngôn ngữ mặc định"
+                                           Variant="Variant.Outlined"
+                                           Margin="Margin.Dense">
+                                    <MudSelectItem Value="@("vi")">Tiếng Việt</MudSelectItem>
+                                    <MudSelectItem Value="@("en")">English</MudSelectItem>
+                                    <MudSelectItem Value="@("zh")">中文</MudSelectItem>
+                                    <MudSelectItem Value="@("ko")">한국어</MudSelectItem>
+                                </MudSelect>
+                            </MudItem>
+                            <MudItem xs="6">
+                                <MudTextField @bind-Value="Poi.OpeningHours"
+                                              Label="Giờ mở cửa"
+                                              Variant="Variant.Outlined"
+                                              Placeholder="07:00-17:00"
+                                              Margin="Margin.Dense" />
+                            </MudItem>
+                        </MudGrid>
+
+                        @if (Poi.Id > 0 && Poi.ReviewStatus == "Approved")
+                        {
+                            <MudAlert Severity="Severity.Warning" Dense="true" Class="mt-3">
+                                ⚠️ POI này đã được duyệt. Nếu bạn chỉnh sửa, nó sẽ chuyển về trạng thái
+                                <strong>"Chờ duyệt"</strong> và ẩn khỏi app người dùng đến khi admin duyệt lại.
+                            </MudAlert>
+                        }
+
+                        @if (Poi.Id > 0 && Poi.ReviewStatus == "Locked")
+                        {
+                            <MudAlert Severity="Severity.Error" Dense="true" Class="mt-3">
+                                🔒 POI này đã bị admin khoá. Liên hệ admin để mở khoá trước khi sửa.
+                            </MudAlert>
+                        }
+                    </MudForm>
+                </div>
+            </MudTabPanel>
+
+            <!-- ====================== TAB 2: AUDIO ====================== -->
+            <MudTabPanel Text="2. Audio thuyết minh"
+                         Icon="@Icons.Material.Filled.AudioFile"
+                         BadgeData="@(audioMode != "none" ? "✓" : null)"
+                         BadgeColor="Color.Success">
+                <div class="pa-2">
+
+                    @if (Poi.Id == 0)
+                    {
+                        <MudAlert Severity="Severity.Info" Dense="true" Class="mb-3">
+                            💡 Bạn có thể tạo audio kèm POI để admin duyệt 1 lần cho cả 2. Bỏ qua tab này nếu chưa cần audio.
+                        </MudAlert>
+                    }
+                    else
+                    {
+                        <MudAlert Severity="Severity.Info" Dense="true" Class="mb-3">
+                            💡 Thêm/cập nhật audio cho POI này. Audio cũ cùng ngôn ngữ sẽ bị thay thế.
+                        </MudAlert>
+                    }
+
+                    <!-- Chọn chế độ audio -->
+                    <MudRadioGroup T="string" @bind-Value="audioMode">
+                        <MudRadio Value="@("none")">🚫 Không thêm audio</MudRadio>
+                        <MudRadio Value="@("tts")">🎙️ Tạo từ text (TTS)</MudRadio>
+                        <MudRadio Value="@("upload")">📁 Upload file MP3</MudRadio>
+                    </MudRadioGroup>
+
+                    <!-- Mode TTS -->
+                    @if (audioMode == "tts")
+                    {
+                        <MudPaper Class="pa-3 mt-3" Elevation="0" Style="background:#F8F9FA;border-radius:8px;">
+                            <MudTextField @bind-Value="ttsText"
+                                          Label="Nội dung text cho TTS *"
+                                          Variant="Variant.Outlined"
+                                          Lines="5"
+                                          HelperText="Bỏ trống để dùng 'Nội dung thuyết minh' ở tab 1"
+                                          Margin="Margin.Dense"
+                                          Class="mb-3" />
+
+                            <MudGrid Spacing="2">
+                                <MudItem xs="4">
+                                    <MudSelect T="string" @bind-Value="audioLanguage"
+                                               Label="Ngôn ngữ"
+                                               Variant="Variant.Outlined"
+                                               Margin="Margin.Dense">
+                                        <MudSelectItem Value="@("vi")">Tiếng Việt</MudSelectItem>
+                                        <MudSelectItem Value="@("en")">English</MudSelectItem>
+                                        <MudSelectItem Value="@("zh")">中文</MudSelectItem>
+                                        <MudSelectItem Value="@("ko")">한국어</MudSelectItem>
+                                    </MudSelect>
+                                </MudItem>
+                                <MudItem xs="4">
+                                    <MudSelect T="string" @bind-Value="ttsGender"
+                                               Label="Giọng"
+                                               Variant="Variant.Outlined"
+                                               Margin="Margin.Dense">
+                                        <MudSelectItem Value="@("female")">Nữ</MudSelectItem>
+                                        <MudSelectItem Value="@("male")">Nam</MudSelectItem>
+                                    </MudSelect>
+                                </MudItem>
+                                <MudItem xs="4">
+                                    <MudNumericField T="double" @bind-Value="ttsSpeed"
+                                                     Label="Tốc độ"
+                                                     Variant="Variant.Outlined"
+                                                     Min="0.5" Max="2.0" Step="0.1" Format="F1"
+                                                     Margin="Margin.Dense" />
+                                </MudItem>
+                            </MudGrid>
+                        </MudPaper>
+                    }
+
+                    <!-- Mode Upload -->
+                    @if (audioMode == "upload")
+                    {
+                        <MudPaper Class="pa-3 mt-3" Elevation="0" Style="background:#F8F9FA;border-radius:8px;">
+
+                            <MudGrid Spacing="2" Class="mb-3">
+                                <MudItem xs="6">
+                                    <MudSelect T="string" @bind-Value="audioLanguage"
+                                               Label="Ngôn ngữ"
+                                               Variant="Variant.Outlined"
+                                               Margin="Margin.Dense">
+                                        <MudSelectItem Value="@("vi")">Tiếng Việt</MudSelectItem>
+                                        <MudSelectItem Value="@("en")">English</MudSelectItem>
+                                        <MudSelectItem Value="@("zh")">中文</MudSelectItem>
+                                        <MudSelectItem Value="@("ko")">한국어</MudSelectItem>
+                                    </MudSelect>
+                                </MudItem>
+                                <MudItem xs="6">
+                                    <MudTextField @bind-Value="audioDescription"
+                                                  Label="Mô tả audio (tuỳ chọn)"
+                                                  Variant="Variant.Outlined"
+                                                  Margin="Margin.Dense" />
+                                </MudItem>
+                            </MudGrid>
+
+                            <MudFileUpload T="IBrowserFile"
+                                           FilesChanged="OnFileChanged"
+                                           Accept=".mp3,.wav,.m4a">
+                                <ActivatorContent>
+                                    <MudButton HtmlTag="label"
+                                               Variant="Variant.Filled"
+                                               Color="Color.Primary"
+                                               StartIcon="@Icons.Material.Filled.CloudUpload"
+                                               FullWidth="true">
+                                        @(selectedFile?.Name ?? "Chọn file audio (.mp3/.wav/.m4a)")
+                                    </MudButton>
+                                </ActivatorContent>
+                            </MudFileUpload>
+
+                            @if (selectedFile != null)
+                            {
+                                <MudAlert Severity="Severity.Info" Dense="true" Class="mt-3">
+                                    📁 @selectedFile.Name · @((selectedFile.Size / 1024.0).ToString("F1")) KB
+                                </MudAlert>
+                            }
+                        </MudPaper>
+                    }
+                </div>
+            </MudTabPanel>
+        </MudTabs>
+    </DialogContent>
+
+    <DialogActions>
+        <MudButton OnClick="Cancel">Huỷ</MudButton>
+
+        @if (activeTab == 0)
+        {
+            <MudButton Variant="Variant.Text" Color="Color.Primary"
+                       EndIcon="@Icons.Material.Filled.ArrowForward"
+                       OnClick="@(() => activeTab = 1)">
+                Tiếp theo (Audio)
+            </MudButton>
+        }
+
+        <MudButton Variant="Variant.Filled"
+                   Color="Color.Primary"
+                   Disabled="@(loading || Poi.ReviewStatus == "Locked")"
+                   StartIcon="@Icons.Material.Filled.Save"
+                   OnClick="SaveAllAsync">
+            @if (loading)
+            {
+                <MudProgressCircular Size="Size.Small" Indeterminate="true" />
+                <span class="ml-2">@progressMessage</span>
+            }
+            else
+            {
+                <span>@(Poi.Id == 0 ? "Tạo & gửi duyệt" : "Cập nhật")</span>
+            }
+        </MudButton>
+    </DialogActions>
+</MudDialog>
+
+@code {
+    [CascadingParameter] MudDialogInstance MudDialog { get; set; } = null!;
+    [Parameter] public PoiDto Poi { get; set; } = new();
+
+    private MudForm form = null!;
+    private bool isValid;
+    private bool loading = false;
+    private string progressMessage = "Đang lưu…";
+    private int activeTab = 0;
+    private List<CategoryDto> categories = new();
+
+    // Audio mode
+    private string audioMode = "none";           // "none" | "tts" | "upload"
+    private string audioLanguage = "vi";
+    private string audioDescription = "";
+
+    // TTS
+    private string ttsText = "";
+    private string ttsGender = "female";
+    private double ttsSpeed = 1.0;
+
+    // Upload
+    private IBrowserFile? selectedFile;
+
+    protected override async Task OnInitializedAsync()
+    {
+        categories = await PoiService.GetCategoriesAsync();
+
+        if (Poi.CategoryId == 0 && categories.Any())
+            Poi.CategoryId = categories.First().Id;
+
+        // Default language audio theo POI language
+        audioLanguage = Poi.Language ?? "vi";
+    }
+
+    private async Task SaveAllAsync()
+    {
+        // Validate form POI
+        await form.Validate();
+        if (!isValid)
+        {
+            activeTab = 0;
+            Snackbar.Add("Vui lòng điền đầy đủ thông tin ở tab 1", Severity.Warning);
+            return;
+        }
+
+        if (Math.Abs(Poi.Lat) < 0.001 || Math.Abs(Poi.Lng) < 0.001)
+        {
+            activeTab = 0;
+            Snackbar.Add("Toạ độ chưa hợp lệ", Severity.Warning);
+            return;
+        }
+
+        // Validate audio nếu có
+        if (audioMode == "tts")
+        {
+            // TTS cho phép dùng NarrationText ở tab 1 nếu ttsText trống
+            if (string.IsNullOrWhiteSpace(ttsText) && string.IsNullOrWhiteSpace(Poi.NarrationText))
+            {
+                activeTab = 1;
+                Snackbar.Add("Vui lòng nhập text cho TTS (hoặc điền 'Nội dung thuyết minh' ở tab 1)", Severity.Warning);
+                return;
+            }
+        }
+        else if (audioMode == "upload")
+        {
+            if (selectedFile == null)
+            {
+                activeTab = 1;
+                Snackbar.Add("Vui lòng chọn file audio", Severity.Warning);
+                return;
+            }
+            if (selectedFile.Size > 20 * 1024 * 1024)
+            {
+                Snackbar.Add("File quá lớn (tối đa 20MB)", Severity.Warning);
+                return;
+            }
+        }
+
+        loading = true;
+        try
+        {
+            int poiId;
+
+            // STEP 1: tạo hoặc cập nhật POI
+            if (Poi.Id == 0)
+            {
+                progressMessage = "Đang tạo POI…";
+                StateHasChanged();
+
+                var (ok, msg, createdPoi) = await PoiService.CreateAsync(Poi);
+                if (!ok || createdPoi == null)
+                {
+                    Snackbar.Add("❌ " + msg, Severity.Error);
+                    return;
+                }
+                poiId = createdPoi.Id;
+            }
+            else
+            {
+                progressMessage = "Đang cập nhật POI…";
+                StateHasChanged();
+
+                var (ok, msg) = await PoiService.UpdateAsync(Poi);
+                if (!ok)
+                {
+                    Snackbar.Add("❌ " + msg, Severity.Error);
+                    return;
+                }
+                poiId = Poi.Id;
+            }
+
+            // STEP 2: tạo audio nếu có
+            if (audioMode == "tts")
+            {
+                progressMessage = "Đang tạo audio TTS…";
+                StateHasChanged();
+
+                var textToUse = string.IsNullOrWhiteSpace(ttsText) ? Poi.NarrationText ?? "" : ttsText;
+                var (ok, msg, _) = await AudioService.ConvertTtsAsync(new TtsConvertRequest
+                {
+                    PoiId = poiId,
+                    Text = textToUse,
+                    Language = audioLanguage,
+                    Gender = ttsGender,
+                    Speed = ttsSpeed
+                });
+
+                if (!ok)
+                {
+                    Snackbar.Add($"⚠️ POI đã tạo nhưng audio lỗi: {msg}", Severity.Warning);
+                    MudDialog.Close(DialogResult.Ok(true));
+                    return;
+                }
+            }
+            else if (audioMode == "upload" && selectedFile != null)
+            {
+                progressMessage = "Đang upload file audio…";
+                StateHasChanged();
+
+                using var stream = selectedFile.OpenReadStream(20 * 1024 * 1024);
+                var (upOk, upMsg, audioUrl) = await AudioService.UploadFileAsync(stream, selectedFile.Name);
+
+                if (!upOk || string.IsNullOrEmpty(audioUrl))
+                {
+                    Snackbar.Add($"⚠️ POI đã tạo nhưng upload audio lỗi: {upMsg}", Severity.Warning);
+                    MudDialog.Close(DialogResult.Ok(true));
+                    return;
+                }
+
+                progressMessage = "Đang lưu audio…";
+                StateHasChanged();
+
+                var (crOk, crMsg) = await AudioService.CreateAsync(new AudioDto
+                {
+                    PoiId = poiId,
+                    AudioUrl = audioUrl,
+                    Language = audioLanguage,
+                    Description = audioDescription,
+                    IsActive = true
+                });
+
+                if (!crOk)
+                {
+                    Snackbar.Add($"⚠️ Upload OK nhưng tạo record audio lỗi: {crMsg}", Severity.Warning);
+                    MudDialog.Close(DialogResult.Ok(true));
+                    return;
+                }
+            }
+
+            // Xong hết!
+            var finalMsg = Poi.Id == 0
+                ? (audioMode != "none" ? "✅ Đã tạo POI và audio. Chờ admin duyệt!" : "✅ Đã tạo POI. Chờ admin duyệt!")
+                : "✅ Cập nhật thành công";
+            Snackbar.Add(finalMsg, Severity.Success);
+            MudDialog.Close(DialogResult.Ok(true));
+        }
+        finally
+        {
+            loading = false;
+        }
+    }
+
+    private void OnFileChanged(IBrowserFile file) => selectedFile = file;
+
+    private void Cancel() => MudDialog.Cancel();
+}

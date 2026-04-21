@@ -1,0 +1,65 @@
+﻿@inherits LayoutComponentBase
+@inject AuthService Auth
+@inject NavigationManager Nav
+
+<MudLayout>
+    <MudAppBar Elevation="2" Dense="true" Style="background:linear-gradient(90deg,#FF7043,#FFA040);">
+        <MudText Typo="Typo.h6" Class="ml-2" Style="color:white;font-weight:700;">
+            📍 TourGuide Saler
+        </MudText>
+        <MudSpacer />
+
+        @if (currentUser != null)
+        {
+            <MudMenu Icon="@Icons.Material.Filled.AccountCircle"
+                     Color="Color.Inherit" Dense="true">
+                <ActivatorContent>
+                    <MudButton StartIcon="@Icons.Material.Filled.AccountCircle"
+                               Variant="Variant.Text"
+                               Style="color:white;text-transform:none;">
+                        @(currentUser.FullName ?? currentUser.Username)
+                    </MudButton>
+                </ActivatorContent>
+                <ChildContent>
+                    <MudMenuItem>
+                        <div style="min-width:220px;padding:8px;">
+                            <MudText Typo="Typo.body2" Style="font-weight:600;">@currentUser.Username</MudText>
+                            <MudText Typo="Typo.caption" Color="Color.Secondary">@currentUser.Email</MudText>
+                            <MudChip T="string" Size="Size.Small" Color="Color.Primary" Class="mt-1">@currentUser.Role</MudChip>
+                        </div>
+                    </MudMenuItem>
+                    <MudDivider />
+                    <MudMenuItem OnClick="Logout" Icon="@Icons.Material.Filled.Logout">
+                        Đăng xuất
+                    </MudMenuItem>
+                </ChildContent>
+            </MudMenu>
+        }
+    </MudAppBar>
+
+    <MudDrawer Open="true" ClipMode="DrawerClipMode.Always" Elevation="1" Variant="@DrawerVariant.Mini"
+               OpenMiniOnHover="true">
+        <NavMenu />
+    </MudDrawer>
+
+    <MudMainContent>
+        <MudContainer MaxWidth="MaxWidth.ExtraLarge" Class="pa-5">
+            @Body
+        </MudContainer>
+    </MudMainContent>
+</MudLayout>
+
+@code {
+    private UserInfo? currentUser;
+
+    protected override async Task OnInitializedAsync()
+    {
+        currentUser = await Auth.GetCurrentUserAsync();
+    }
+
+    private async Task Logout()
+    {
+        await Auth.LogoutAsync();
+        Nav.NavigateTo("/login", forceLoad: true);
+    }
+}

@@ -20,6 +20,29 @@
         public decimal? TicketPrice { get; set; }
         public bool IsActive { get; set; } = true;
 
+        /// <summary>
+        /// Trạng thái duyệt POI:
+        /// - "Approved": đã duyệt, hiển thị cho user app bình thường (mặc định khi admin tạo)
+        /// - "PendingReview": chờ admin duyệt (saler tạo mới hoặc sửa)
+        /// - "Rejected": admin từ chối (lý do ở RejectionReason)
+        /// - "Locked": đã approved rồi nhưng admin khoá lại (ẩn khỏi user app)
+        /// </summary>
+        public string ReviewStatus { get; set; } = "Approved";
+
+        /// <summary>Lý do admin reject/lock POI — hiển thị cho saler trong notification.</summary>
+        public string? RejectionReason { get; set; }
+
+        /// <summary>
+        /// ID của user (saler hoặc admin) đã tạo POI này.
+        /// NULL nghĩa là POI cũ có từ trước khi có hệ thống saler.
+        /// </summary>
+        public int? CreatedByUserId { get; set; }
+        public User? CreatedBy { get; set; }
+
+        public DateTime CreatedAt { get; set; } = DateTime.UtcNow;
+        public DateTime? ReviewedAt { get; set; }
+        public int? ReviewedByUserId { get; set; }
+
         public int CategoryId { get; set; }
         public Category? Category { get; set; }
         public ICollection<Audio> Audios { get; set; } = new List<Audio>();

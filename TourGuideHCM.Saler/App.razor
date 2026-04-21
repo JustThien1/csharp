@@ -1,0 +1,32 @@
+﻿<CascadingAuthenticationState>
+    <Router AppAssembly="@typeof(App).Assembly">
+        <Found Context="routeData">
+            <AuthorizeRouteView RouteData="@routeData" DefaultLayout="@typeof(MainLayout)">
+                <NotAuthorized>
+                    @{
+                        var returnUrl = NavManager.Uri.Replace(NavManager.BaseUri.TrimEnd('/'), "");
+                        NavManager.NavigateTo($"/login?returnUrl={Uri.EscapeDataString(returnUrl)}", forceLoad: false);
+                    }
+                </NotAuthorized>
+                <Authorizing>
+                    <div style="display:flex;align-items:center;justify-content:center;height:100vh;">
+                        <MudProgressCircular Indeterminate="true" Color="Color.Primary" />
+                    </div>
+                </Authorizing>
+            </AuthorizeRouteView>
+            <FocusOnNavigate RouteData="@routeData" Selector="h1" />
+        </Found>
+        <NotFound>
+            <LayoutView Layout="@typeof(MainLayout)">
+                <MudText Typo="Typo.h4">404 — Không tìm thấy trang</MudText>
+            </LayoutView>
+        </NotFound>
+    </Router>
+    <MudThemeProvider />
+    <MudDialogProvider />
+    <MudSnackbarProvider />
+</CascadingAuthenticationState>
+
+@code {
+    [Inject] private NavigationManager NavManager { get; set; } = default!;
+}

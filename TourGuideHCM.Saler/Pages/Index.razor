@@ -1,0 +1,12 @@
+﻿@page "/"
+@attribute [Microsoft.AspNetCore.Authorization.Authorize]
+@inject NavigationManager Nav
+
+<MudProgressCircular Indeterminate="true" Color="Color.Primary" />
+
+@code {
+    protected override void OnInitialized()
+    {
+        Nav.NavigateTo("/my-pois");
+    }
+}

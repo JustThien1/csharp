@@ -10,30 +10,22 @@ public class ApiService : IApiService
 {
     private readonly HttpClient _http;
 
-    // BaseUrl được tính tự động theo thiết bị (emulator / thật / simulator)
-    public static string BaseUrl => DeviceHelper.GetBaseUrl();
-
     private static readonly JsonSerializerOptions _json = new()
     {
         PropertyNameCaseInsensitive = true
     };
 
-    public ApiService()
+    public ApiService(IHttpClientFactory factory)
     {
         var handler = new HttpClientHandler
         {
-            ServerCertificateCustomValidationCallback = (m, c, ch, e) => true
+            ServerCertificateCustomValidationCallback = (_, _, _, _) => true
         };
-        _http = new HttpClient(handler)
-        {
-            BaseAddress = new Uri(BaseUrl),
-            Timeout = TimeSpan.FromSeconds(30)
-        };
+
+        _http = factory.CreateClient("DefaultClient");
     }
 
     // ── POI ──────────────────────────────────────────────────────────────────
-
-    /// <summary>GET /api/poi</summary>
     public async Task<List<POI>> GetPoisAsync()
     {
         try
@@ -47,14 +39,15 @@ public class ApiService : IApiService
         }
     }
 
-    /// <summary>GET /api/poi/{id}</summary>
     public async Task<POI?> GetPoiByIdAsync(int id)
     {
-        try { return await _http.GetFromJsonAsync<POI>($"/api/poi/{id}", _json); }
+        try
+        {
+            return await _http.GetFromJsonAsync<POI>($"/api/poi/{id}", _json);
+        }
         catch { return null; }
     }
 
-    /// <summary>GET /api/poi/nearby?lat=...&lng=...</summary>
     public async Task<POI?> GetNearbyPoiAsync(double lat, double lng)
     {
         try
@@ -65,77 +58,7 @@ public class ApiService : IApiService
         catch { return null; }
     }
 
-    // ── Auth ──────────────────────────────────────────────────────────────────
-
-    /// <summary>
-    /// POST /api/auth/login
-    /// Body: { "username":"...", "passwordHash":"..." }
-    /// API so sánh plain text – KHÔNG hash
-    /// Response: { "message":"...", "userId":1, "username":"..." }
-    /// </summary>
-    public async Task<LoginResponse?> LoginAsync(string username, string password)
-    {
-        try
-        {
-            var resp = await _http.PostAsJsonAsync("/api/auth/login",
-                new LoginRequest { Username = username, PasswordHash = password });
-
-            if (!resp.IsSuccessStatusCode)
-            {
-                var err = await resp.Content.ReadAsStringAsync();
-                System.Diagnostics.Debug.WriteLine($"[API] Login failed: {err}");
-                return null;
-            }
-            return await resp.Content.ReadFromJsonAsync<LoginResponse>(_json);
-        }
-        catch (Exception ex)
-        {
-            System.Diagnostics.Debug.WriteLine($"[API] Login: {ex.Message}");
-            return null;
-        }
-    }
-
-    /// <summary>
-    /// POST /api/auth/register
-    /// Body: { "username":"...", "passwordHash":"...", "fullName":"...", "email":"..." }
-    /// Response: { "message":"...", "userId":1 }
-    /// </summary>
-    public async Task<RegisterResponse?> RegisterAsync(
-        string username, string password, string fullName, string email)
-    {
-        try
-        {
-            var resp = await _http.PostAsJsonAsync("/api/auth/register",
-                new RegisterRequest
-                {
-                    Username = username,
-                    PasswordHash = password,  // API lưu plain text
-                    FullName = fullName,
-                    Email = email
-                });
-
-            if (!resp.IsSuccessStatusCode)
-            {
-                var err = await resp.Content.ReadAsStringAsync();
-                System.Diagnostics.Debug.WriteLine($"[API] Register failed: {err}");
-                return null;
-            }
-            return await resp.Content.ReadFromJsonAsync<RegisterResponse>(_json);
-        }
-        catch (Exception ex)
-        {
-            System.Diagnostics.Debug.WriteLine($"[API] Register: {ex.Message}\n{ex}");
-            return null;
-        }
-    }
-
-    // ── Geofence ──────────────────────────────────────────────────────────────
-
-    /// <summary>
-    /// POST /api/poi/trigger
-    /// Body: { "lat":..., "lng":... }
-    /// Response: { "triggered":true, "poiId":1, "poiName":"...", "audioUrl":"...", "narrationText":"..." }
-    /// </summary>
+    // ── Geofence Trigger ─────────────────────────────────────────────────────
     public async Task<GeofenceTriggerResponse?> TriggerGeofenceAsync(double lat, double lng)
     {
         try
@@ -149,47 +72,81 @@ public class ApiService : IApiService
         catch { return null; }
     }
 
-    // ── Playback Log ──────────────────────────────────────────────────────────
-
-    /// <summary>
-    /// POST /api/playback
-    /// Body: { "userId":1, "poiId":1, "durationSeconds":null, "triggerType":"manual" }
-    /// </summary>
-    public async Task LogPlaybackAsync(int userId, int poiId, string triggerType,
-        int? durationSeconds = null)
+    // ── Playback Log ─────────────────────────────────────────────────────────
+    // ĐÃ MỞ RỘNG: nhận thêm deviceId/deviceName/platform để backend phân biệt thiết bị
+    public async Task LogPlaybackAsync(int userId, int poiId, string triggerType, int? durationSeconds = null,
+                                       string? deviceId = null, string? deviceName = null, string? platform = null)
     {
         try
         {
-            await _http.PostAsJsonAsync("/api/playback",
-                new PlaybackLogRequest
-                {
-                    UserId = userId,
-                    POIId = poiId,
-                    TriggerType = triggerType,
-                    DurationSeconds = durationSeconds
-                });
+            var payload = new
+            {
+                UserId = userId,
+                POIId = poiId,
+                TriggerType = triggerType,
+                DurationSeconds = durationSeconds,
+                DeviceId = deviceId,
+                DeviceName = deviceName,
+                Platform = platform
+            };
+
+            var response = await _http.PostAsJsonAsync("/api/analytics/playback", payload);
+            Console.WriteLine($"📤 LogPlayback → POI={poiId}, Device={deviceId?[..8]}, Status={(int)response.StatusCode}");
         }
-        catch { /* fire-and-forget */ }
+        catch (Exception ex)
+        {
+            Console.WriteLine($"❌ LogPlayback Error: {ex.Message}");
+        }
     }
 
-    // ── Audio URL ─────────────────────────────────────────────────────────────
+    // ── Heartbeat (MỚI - cho Monitoring) ─────────────────────────────────────
+    public async Task SendHeartbeatAsync(int userId, string deviceId, string deviceName, string platform)
+    {
+        try
+        {
+            var payload = new
+            {
+                UserId = userId,
+                DeviceId = deviceId,
+                DeviceName = deviceName,
+                Platform = platform
+            };
 
-    /// <summary>
-    /// Chuyển relative path → URL đầy đủ để stream từ API
-    /// "audio/nhatho.mp3" → "http://10.0.2.2:8080/audio/nhatho.mp3"
-    /// </summary>
+            var response = await _http.PostAsJsonAsync("/api/analytics/heartbeat", payload);
+            if (!response.IsSuccessStatusCode)
+                Console.WriteLine($"💔 Heartbeat status: {(int)response.StatusCode}");
+        }
+        catch (Exception ex)
+        {
+            Console.WriteLine($"❌ Heartbeat Error: {ex.Message}");
+        }
+    }
+
+    public async Task LogRouteAsync(int userId, double lat, double lng, string? deviceId = null)
+    {
+        try
+        {
+            await _http.PostAsJsonAsync("/api/route/log", new
+            {
+                userId = userId > 0 ? (int?)userId : null,
+                lat,
+                lng,
+                deviceId
+            });
+        }
+        catch { }
+    }
+
+    // ── Audio ────────────────────────────────────────────────────────────────
     public string ResolveAudioUrl(string? audioUrl)
     {
         if (string.IsNullOrEmpty(audioUrl)) return string.Empty;
-        if (audioUrl.StartsWith("http")) return audioUrl;
-        return $"{BaseUrl}/{audioUrl.TrimStart('/')}";
+        if (audioUrl.StartsWith("http", StringComparison.OrdinalIgnoreCase))
+            return audioUrl;
+
+        return $"{DeviceHelper.GetBaseUrl().TrimEnd('/')}/{audioUrl.TrimStart('/')}";
     }
 
-    // ── Audio URL từ bảng Audios ──────────────────────────────────────────────
-
-    /// <summary>
-    /// GET /api/audio/poi/{poiId} → lấy AudioUrl đúng ngôn ngữ từ bảng Audios
-    /// </summary>
     public async Task<string> GetAudioUrlAsync(int poiId, string language = "vi")
     {
         try
@@ -197,21 +154,10 @@ public class ApiService : IApiService
             var list = await _http.GetFromJsonAsync<List<AudioItem>>(
                 $"/api/audio/poi/{poiId}", _json) ?? new();
 
-            var match = list.FirstOrDefault(a =>
-                a.IsActive && a.Language == language)
-                ?? list.FirstOrDefault(a => a.IsActive);
+            var match = list.FirstOrDefault(a => a.IsActive && a.Language == language)
+                     ?? list.FirstOrDefault(a => a.IsActive);
 
-            if (match == null) return string.Empty;
-
-            var url = match.AudioUrl ?? string.Empty;
-
-            // Thay localhost/127.0.0.1 bằng IP thực (cho cả emulator lẫn thiết bị thật)
-            url = url.Replace("localhost", DeviceHelper.GetBaseUrl()
-                         .Replace("http://", "").Split(':')[0])
-                     .Replace("127.0.0.1", DeviceHelper.GetBaseUrl()
-                         .Replace("http://", "").Split(':')[0]);
-
-            return ResolveAudioUrl(url);
+            return match?.AudioUrl != null ? ResolveAudioUrl(match.AudioUrl) : string.Empty;
         }
         catch (Exception ex)
         {
@@ -226,18 +172,5 @@ public class ApiService : IApiService
         public string Language { get; set; } = "";
         public string? AudioUrl { get; set; }
         public bool IsActive { get; set; }
-    }
-
-    // ── Route Log ─────────────────────────────────────────────────────────────
-
-    /// <summary>POST /api/route/log — Lưu vị trí để tạo tuyến di chuyển</summary>
-    public async Task LogRouteAsync(int userId, double lat, double lng)
-    {
-        try
-        {
-            if (userId <= 0) return;
-            await _http.PostAsJsonAsync("/api/route/log", new { userId, lat, lng });
-        }
-        catch { /* fire-and-forget */ }
     }
 }

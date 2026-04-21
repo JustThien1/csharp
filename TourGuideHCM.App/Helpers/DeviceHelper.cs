@@ -4,7 +4,7 @@ public static class DeviceHelper
 {
     // IP LAN của máy tính chạy backend
     // ⚠️ Đổi thành IP thực của máy bạn (chạy `ipconfig` trên Windows)
-    public const string LanIp = "192.168.0.6";
+    public const string LanIp = "192.168.1.12";
     public const int Port = 8080;
 
     public static string GetBaseUrl()

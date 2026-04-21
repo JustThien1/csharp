@@ -9,41 +9,111 @@
 @inject IJSRuntime JS
 
 <div class="d-flex align-center mb-6">
-    <MudText Typo="Typo.h4" Class="font-weight-bold">🚶 Tuyến di chuyển người dùng</MudText>
+    <MudText Typo="Typo.h4" Class="font-weight-bold">🚶 Tuyến di chuyển theo thiết bị</MudText>
     <MudSpacer />
-    <MudChip Color="Color.Success" Icon="@Icons.Material.Filled.Shield">Dữ liệu ẩn danh</MudChip>
+    <MudChip T="string" Color="Color.Success" Icon="@Icons.Material.Filled.Shield">Dữ liệu ẩn danh</MudChip>
 </div>
 
-<!-- Search theo SĐT -->
+<!-- Chọn thiết bị -->
 <MudPaper Class="pa-5 mb-5" Elevation="3" Style="border-radius:16px;">
-    <MudText Typo="Typo.h6" Class="mb-4">🔍 Tìm tuyến đường theo số điện thoại</MudText>
-    <div class="d-flex align-center" style="gap:16px;">
-        <MudTextField @bind-Value="searchPhone"
-                      Label="Số điện thoại người dùng"
-                      Placeholder="VD: 0901234567"
-                      Adornment="Adornment.Start"
-                      AdornmentIcon="@Icons.Material.Filled.Phone"
-                      Variant="Variant.Outlined"
-                      Style="max-width:360px;"
-                      OnKeyUp="@OnPhoneKeyUp" />
-        <MudButton Variant="Variant.Filled" Color="Color.Primary"
-                   StartIcon="@Icons.Material.Filled.Search"
-                   OnClick="SearchUser" Disabled="@searching">
-            @(searching ? "Đang tìm..." : "Tìm kiếm")
-        </MudButton>
-        @if (routeData != null)
-        {
-            <MudButton Variant="Variant.Outlined" Color="Color.Default"
-                       StartIcon="@Icons.Material.Filled.Clear"
-                       OnClick="ClearSearch">Xóa</MudButton>
-        }
+    <div class="d-flex align-center justify-space-between mb-4">
+        <MudText Typo="Typo.h6">📱 Chọn thiết bị để xem tuyến đường</MudText>
+        <div class="d-flex align-center" style="gap:8px;">
+            <MudTooltip Text="Tạo dữ liệu route giả cho 5 thiết bị để test UI">
+                <MudButton Variant="Variant.Outlined" Color="Color.Warning"
+                           StartIcon="@Icons.Material.Filled.DataObject"
+                           OnClick="SeedDemoAsync" Disabled="@seeding">
+                    @(seeding ? "Đang tạo..." : "Tạo dữ liệu demo")
+                </MudButton>
+            </MudTooltip>
+            <MudButton Variant="Variant.Outlined" Color="Color.Primary"
+                       StartIcon="@Icons.Material.Filled.Refresh"
+                       OnClick="LoadDevicesAsync" Disabled="@loadingDevices">
+                Làm mới danh sách
+            </MudButton>
+        </div>
     </div>
 
-    @if (notFound)
+    <!-- Filter theo ngày + search -->
+    <div class="d-flex align-center mb-3" style="gap:12px; flex-wrap:wrap;">
+        <MudTextField @bind-Value="searchText"
+                      Placeholder="Tìm theo tên thiết bị hoặc DeviceId..."
+                      Adornment="Adornment.Start"
+                      AdornmentIcon="@Icons.Material.Filled.Search"
+                      Variant="Variant.Outlined"
+                      Margin="Margin.Dense"
+                      Style="flex:1; min-width:280px;" />
+
+        <MudSelect T="int" @bind-Value="filterDays" Label="Thời gian" Variant="Variant.Outlined" Margin="Margin.Dense" Style="min-width:160px;">
+            <MudSelectItem Value="1">Hôm nay</MudSelectItem>
+            <MudSelectItem Value="7">7 ngày qua</MudSelectItem>
+            <MudSelectItem Value="30">30 ngày qua</MudSelectItem>
+            <MudSelectItem Value="0">Tất cả</MudSelectItem>
+        </MudSelect>
+
+        <MudButton Variant="Variant.Filled" Color="Color.Primary"
+                   StartIcon="@Icons.Material.Filled.FilterAlt"
+                   OnClick="LoadDevicesAsync">
+            Áp dụng
+        </MudButton>
+    </div>
+
+    @if (loadingDevices)
     {
-        <MudAlert Severity="Severity.Warning" Class="mt-3" Dense="true">
-            Không tìm thấy người dùng với số ĐT "@searchPhone"
+        <MudProgressLinear Indeterminate="true" Color="Color.Primary" Class="my-3" />
+    }
+    else if (!devices.Any())
+    {
+        <MudAlert Severity="Severity.Info" Class="my-3">
+            <strong>Chưa có thiết bị nào có dữ liệu tuyến đường.</strong><br />
+            Nhấn <strong>"Tạo dữ liệu demo"</strong> ở trên để test UI, hoặc cho app MAUI chạy một thời gian
+            để thu thập vị trí thật.
         </MudAlert>
+    }
+    else
+    {
+        <div style="max-height:280px; overflow-y:auto; border:1px solid #eee; border-radius:8px;">
+            <MudTable T="DeviceRouteItem" Items="@filteredDevices" Hover="true" Dense="true"
+                      OnRowClick="@(EventCallback.Factory.Create<TableRowClickEventArgs<DeviceRouteItem>>(this, OnDeviceRowClick))"
+                      Breakpoint="Breakpoint.Sm">
+                <HeaderContent>
+                    <MudTh>Thiết bị</MudTh>
+                    <MudTh>Nền tảng</MudTh>
+                    <MudTh Style="text-align:center;">Số điểm</MudTh>
+                    <MudTh>Lần cuối hoạt động</MudTh>
+                    <MudTh Style="width:80px;"></MudTh>
+                </HeaderContent>
+                <RowTemplate Context="dev">
+                    <MudTd>
+                        <MudText Typo="Typo.body2" Class="font-weight-medium">@dev.DeviceName</MudText>
+                        <MudText Typo="Typo.caption" Color="Color.Secondary" Style="font-family:monospace;">
+                            @dev.DeviceIdShort
+                        </MudText>
+                    </MudTd>
+                    <MudTd>
+                        <div class="d-flex align-center" style="gap:4px;">
+                            <MudIcon Icon="@GetPlatformIcon(dev.Platform)" Size="Size.Small" Color="@GetPlatformColor(dev.Platform)" />
+                            <MudText Typo="Typo.body2">@dev.Platform</MudText>
+                        </div>
+                    </MudTd>
+                    <MudTd Style="text-align:center;">
+                        <MudChip T="string" Size="Size.Small" Color="Color.Info">@dev.PointCount</MudChip>
+                    </MudTd>
+                    <MudTd>
+                        <MudText Typo="Typo.caption" Color="Color.Secondary">
+                            @dev.LastSeen.ToLocalTime().ToString("dd/MM/yyyy HH:mm")
+                        </MudText>
+                    </MudTd>
+                    <MudTd>
+                        <MudButton Size="Size.Small" Color="Color.Primary" Variant="Variant.Text"
+                                   EndIcon="@Icons.Material.Filled.ArrowForward"
+                                   OnClick="@(() => LoadRouteAsync(dev.DeviceId))">
+                            Xem
+                        </MudButton>
+                    </MudTd>
+                </RowTemplate>
+            </MudTable>
+        </div>
     }
 
     @if (routeData != null)
@@ -51,9 +121,9 @@
         <MudGrid Spacing="3" Class="mt-4">
             <MudItem xs="12" sm="3">
                 <MudPaper Class="pa-4 text-center" Elevation="2" Style="border-radius:12px; background:#e3f2fd;">
-                    <MudIcon Icon="@Icons.Material.Filled.Person" Color="Color.Primary" Size="Size.Large" />
-                    <MudText Typo="Typo.subtitle1" Class="font-weight-bold mt-1">@routeData.FullName</MudText>
-                    <MudText Typo="Typo.caption" Color="Color.Secondary">@routeData.Phone</MudText>
+                    <MudIcon Icon="@Icons.Material.Filled.PhoneAndroid" Color="Color.Primary" Size="Size.Large" />
+                    <MudText Typo="Typo.subtitle1" Class="font-weight-bold mt-1">@routeData.DeviceName</MudText>
+                    <MudText Typo="Typo.caption" Color="Color.Secondary" Style="font-family:monospace;">@routeData.DeviceIdShort</MudText>
                 </MudPaper>
             </MudItem>
             <MudItem xs="12" sm="3">
@@ -90,17 +160,15 @@
             <div class="pa-4 d-flex align-center" style="border-bottom:1px solid #eee;">
                 <MudIcon Icon="@Icons.Material.Filled.Map" Color="Color.Primary" Class="mr-2" />
                 <MudText Typo="Typo.h6">
-                    @(routeData != null ? $"Tuyến đường: {routeData.FullName}" : "Bản đồ tuyến di chuyển")
+                    @(routeData != null ? $"Tuyến đường: {routeData.DeviceName}" : "Bản đồ tuyến di chuyển")
                 </MudText>
                 <MudSpacer />
-                <MudChip Size="Size.Small" Color="Color.Error" Class="mr-1">🔴 @allPois.Count POI</MudChip>
-                <MudChip Size="Size.Small" Color="Color.Primary">🔵 @(routeData?.Points.Count ?? 0) điểm</MudChip>
+                <MudChip T="string" Size="Size.Small" Color="Color.Error" Class="mr-1">🔴 @allPois.Count POI</MudChip>
+                <MudChip T="string" Size="Size.Small" Color="Color.Primary">🔵 @(routeData?.Points.Count ?? 0) điểm</MudChip>
             </div>
 
-            <!-- Leaflet map container -->
             <div id="routeMap" style="height:520px; width:100%;"></div>
 
-            <!-- Chú thích -->
             <div class="pa-3 d-flex align-center" style="gap:20px; border-top:1px solid #eee; flex-wrap:wrap;">
                 <div class="d-flex align-center" style="gap:6px;">
                     <div style="width:16px;height:4px;background:#1976D2;border-radius:2px;"></div>
@@ -136,7 +204,7 @@
                         @if (!points.Any())
                         {
                             <MudAlert Severity="Severity.Info" Dense="true">
-                                Tìm kiếm người dùng để xem tuyến đường
+                                Chọn thiết bị ở bảng trên để xem tuyến đường
                             </MudAlert>
                         }
                         else
@@ -214,17 +282,29 @@
 </MudGrid>
 
 @code {
-    private string searchPhone = "";
-    private bool searching = false;
-    private bool notFound = false;
-    private RouteUserDto? routeData;
+    private List<DeviceRouteItem> devices = new();
     private List<PoiDto> allPois = new();
+    private RouteDeviceDto? routeData;
+
+    private string searchText = "";
+    private int filterDays = 30;
+    private bool loadingDevices = false;
+    private bool seeding = false;
     private bool mapInitialized = false;
+
+    private IEnumerable<DeviceRouteItem> filteredDevices =>
+        string.IsNullOrWhiteSpace(searchText)
+            ? devices
+            : devices.Where(d =>
+                d.DeviceName.Contains(searchText, StringComparison.OrdinalIgnoreCase) ||
+                d.DeviceId.Contains(searchText, StringComparison.OrdinalIgnoreCase));
 
     protected override async Task OnInitializedAsync()
     {
         try { allPois = await Http.GetFromJsonAsync<List<PoiDto>>("api/poi") ?? new(); }
         catch { allPois = new(); }
+
+        await LoadDevicesAsync();
     }
 
     protected override async Task OnAfterRenderAsync(bool firstRender)
@@ -234,6 +314,87 @@
             await JS.InvokeVoidAsync("initRouteMap", 10.7769, 106.7009, 13);
             mapInitialized = true;
             await RefreshMap();
+        }
+    }
+
+    private async Task LoadDevicesAsync()
+    {
+        loadingDevices = true;
+        try
+        {
+            var url = filterDays > 0
+                ? $"api/route/devices?days={filterDays}"
+                : "api/route/devices";
+            devices = await Http.GetFromJsonAsync<List<DeviceRouteItem>>(url) ?? new();
+        }
+        catch (Exception ex)
+        {
+            Snackbar.Add($"Lỗi tải danh sách thiết bị: {ex.Message}", Severity.Warning);
+            devices = new();
+        }
+        finally
+        {
+            loadingDevices = false;
+            StateHasChanged();
+        }
+    }
+
+    private async Task LoadRouteAsync(string deviceId)
+    {
+        try
+        {
+            var url = filterDays > 0
+                ? $"api/route/by-device?deviceId={Uri.EscapeDataString(deviceId)}&days={filterDays}"
+                : $"api/route/by-device?deviceId={Uri.EscapeDataString(deviceId)}";
+
+            var response = await Http.GetAsync(url);
+            if (response.IsSuccessStatusCode)
+            {
+                routeData = await response.Content.ReadFromJsonAsync<RouteDeviceDto>();
+                await RefreshMap();
+                Snackbar.Add(routeData?.Points.Any() == true
+                    ? $"✅ Hiển thị {routeData.Points.Count} điểm của {routeData.DeviceName}"
+                    : "Thiết bị này chưa có tuyến đường", Severity.Success);
+            }
+            else if (response.StatusCode == System.Net.HttpStatusCode.NotFound)
+            {
+                routeData = null;
+                await RefreshMap();
+                Snackbar.Add("Thiết bị này chưa có dữ liệu tuyến đường", Severity.Warning);
+            }
+        }
+        catch (Exception ex)
+        {
+            Snackbar.Add($"Lỗi: {ex.Message}", Severity.Error);
+        }
+    }
+
+    private async Task OnDeviceRowClick(TableRowClickEventArgs<DeviceRouteItem> e)
+    {
+        if (e.Item != null) await LoadRouteAsync(e.Item.DeviceId);
+    }
+
+    private async Task SeedDemoAsync()
+    {
+        seeding = true;
+        StateHasChanged();
+        try
+        {
+            var res = await Http.PostAsync("api/route/seed-demo", null);
+            if (res.IsSuccessStatusCode)
+            {
+                Snackbar.Add("✅ Đã tạo dữ liệu demo cho 5 thiết bị", Severity.Success);
+                await LoadDevicesAsync();
+            }
+            else
+            {
+                Snackbar.Add("❌ Không tạo được dữ liệu demo", Severity.Error);
+            }
+        }
+        finally
+        {
+            seeding = false;
+            StateHasChanged();
         }
     }
 
@@ -250,39 +411,6 @@
         await JS.InvokeVoidAsync("zoomRouteMap", lat, lng, 17);
     }
 
-    private async Task OnPhoneKeyUp(KeyboardEventArgs e)
-    {
-        if (e.Key == "Enter") await SearchUser();
-    }
-
-    private async Task SearchUser()
-    {
-        if (string.IsNullOrWhiteSpace(searchPhone)) return;
-        searching = true; notFound = false; routeData = null;
-        try
-        {
-            var response = await Http.GetAsync($"api/route/user?phone={Uri.EscapeDataString(searchPhone.Trim())}");
-            if (response.IsSuccessStatusCode)
-            {
-                routeData = await response.Content.ReadFromJsonAsync<RouteUserDto>();
-                await RefreshMap();
-                Snackbar.Add(routeData?.Points.Any() == true
-                    ? $"✅ {routeData.Points.Count} điểm của {routeData.FullName}"
-                    : "Chưa có dữ liệu tuyến đường", Severity.Success);
-            }
-            else if (response.StatusCode == System.Net.HttpStatusCode.NotFound)
-                notFound = true;
-        }
-        catch (Exception ex) { Snackbar.Add($"Lỗi: {ex.Message}", Severity.Error); }
-        finally { searching = false; }
-    }
-
-    private async Task ClearSearch()
-    {
-        searchPhone = ""; routeData = null; notFound = false;
-        await RefreshMap();
-    }
-
     private static double Haversine(double lat1, double lng1, double lat2, double lng2)
     {
         const double R = 6371;
@@ -294,7 +422,52 @@
         return R * 2 * Math.Atan2(Math.Sqrt(a), Math.Sqrt(1 - a));
     }
 
-    public class RoutePointDto { public double Lat { get; set; } public double Lng { get; set; } public DateTime Timestamp { get; set; } }
-    public class RouteUserDto { public int UserId { get; set; } public string FullName { get; set; } = ""; public string Phone { get; set; } = ""; public List<RoutePointDto> Points { get; set; } = new(); public double TotalKm { get; set; } }
+    private string GetPlatformIcon(string platform) => platform?.ToLower() switch
+    {
+        "android" => Icons.Material.Filled.Android,
+        "ios" => Icons.Material.Filled.PhoneIphone,
+        "windows" => Icons.Material.Filled.Computer,
+        _ => Icons.Material.Filled.DeviceUnknown
+    };
+
+    private Color GetPlatformColor(string platform) => platform?.ToLower() switch
+    {
+        "android" => Color.Success,
+        "ios" => Color.Info,
+        "windows" => Color.Primary,
+        _ => Color.Default
+    };
+
+    // DTOs
+    public class DeviceRouteItem
+    {
+        public string DeviceId { get; set; } = "";
+        public string DeviceIdShort { get; set; } = "";
+        public string DeviceName { get; set; } = "";
+        public string Platform { get; set; } = "";
+        public string UserName { get; set; } = "";
+        public int PointCount { get; set; }
+        public DateTime FirstSeen { get; set; }
+        public DateTime LastSeen { get; set; }
+    }
+
+    public class RoutePointDto
+    {
+        public double Lat { get; set; }
+        public double Lng { get; set; }
+        public DateTime Timestamp { get; set; }
+    }
+
+    public class RouteDeviceDto
+    {
+        public string DeviceId { get; set; } = "";
+        public string DeviceIdShort { get; set; } = "";
+        public string DeviceName { get; set; } = "";
+        public string Platform { get; set; } = "";
+        public string UserName { get; set; } = "";
+        public List<RoutePointDto> Points { get; set; } = new();
+        public double TotalKm { get; set; }
+    }
+
     public class PoiDto { public int Id { get; set; } public string Name { get; set; } = ""; public string Address { get; set; } = ""; public double Lat { get; set; } public double Lng { get; set; } }
 }

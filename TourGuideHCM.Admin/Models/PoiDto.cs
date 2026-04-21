@@ -10,5 +10,10 @@
         public double Lng { get; set; }
         public string ImageUrl { get; set; } = "";
         public int CategoryId { get; set; } = 1;
+
+        // ====================== MỚI (dùng cho trạng thái khoá) ======================
+        public string ReviewStatus { get; set; } = "Approved";
+        public string? RejectionReason { get; set; }
+        public int? CreatedByUserId { get; set; }
     }
 }

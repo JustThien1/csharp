@@ -1,4 +1,5 @@
-﻿using TourGuideHCM.App.Views;
+﻿using TourGuideHCM.App.Services.Interfaces;
+using TourGuideHCM.App.Views;
 
 namespace TourGuideHCM.App;
 
@@ -8,24 +9,18 @@ public partial class AppShell : Shell
     {
         InitializeComponent();
 
-        // Chỉ đăng ký các route KHÔNG có trong XAML
+        // Đăng ký route cho các trang không nằm trong ShellContent
         Routing.RegisterRoute(nameof(PoiDetailPage), typeof(PoiDetailPage));
         Routing.RegisterRoute(nameof(PoiBottomSheet), typeof(PoiBottomSheet));
 
-        this.Loaded += OnShellLoaded;
-    }
-
-    private async void OnShellLoaded(object? sender, EventArgs e)
-    {
-        var username = Preferences.Get("username", "");
-
-        if (string.IsNullOrEmpty(username))
+        // Khi Shell load xong → mở thẳng MapPage
+        this.Loaded += async (s, e) =>
         {
-            // Dùng absolute route tới FlyoutItem đã khai báo trong XAML
-            await GoToAsync("//LoginPage");
-        }
+            await GoToAsync("//MapPage");
+        };
     }
 
+    // Xử lý khi chọn POI từ Flyout
     private async void OnPoiFlyoutSelected(object sender, SelectionChangedEventArgs e)
     {
         if (e.CurrentSelection?.FirstOrDefault() is not Models.POI selectedPoi)
@@ -34,8 +29,9 @@ public partial class AppShell : Shell
         ((CollectionView)sender).SelectedItem = null;
         FlyoutIsPresented = false;
 
-        var narration = App.Services.GetRequiredService<Services.Interfaces.INarrationService>();
-        var api = App.Services.GetRequiredService<Services.Interfaces.IApiService>();
+        var narration = App.Services.GetRequiredService<INarrationService>();
+        var api = App.Services.GetRequiredService<IApiService>();
+
         var sheet = new PoiBottomSheet(selectedPoi, narration, api);
         await Navigation.PushModalAsync(sheet, animated: true);
     }
@@ -50,12 +46,5 @@ public partial class AppShell : Shell
     {
         FlyoutIsPresented = false;
         await GoToAsync("//PoiListPage");
-    }
-
-    private async void OnLogoutClicked(object sender, EventArgs e)
-    {
-        Preferences.Remove("username");
-        Preferences.Remove("userId");
-        await GoToAsync("//LoginPage");
     }
 }

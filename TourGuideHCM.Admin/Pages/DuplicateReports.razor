@@ -1,0 +1,345 @@
+﻿@page "/duplicate-reports"
+@using MudBlazor
+@using TourGuideHCM.Admin.Models
+@using TourGuideHCM.Admin.Services
+@inject DuplicateReportService ReportService
+@inject ISnackbar Snackbar
+@inject IDialogService DialogService
+
+<div class="d-flex align-center mb-6">
+    <MudText Typo="Typo.h4" Class="font-weight-bold">🔍 Cảnh báo POI trùng lặp</MudText>
+    <MudSpacer />
+    <MudChip T="string" Color="Color.Warning" Icon="@Icons.Material.Filled.Warning" Class="mr-2">
+        @openCount cảnh báo chưa xử lý
+    </MudChip>
+    <MudButton Variant="Variant.Outlined" Color="Color.Primary"
+               StartIcon="@Icons.Material.Filled.TravelExplore"
+               OnClick="ScanAllAsync" Disabled="@scanning" Class="mr-2">
+        @(scanning ? "Đang quét..." : "Quét toàn bộ DB")
+    </MudButton>
+    <MudButton Variant="Variant.Filled" Color="Color.Primary"
+               StartIcon="@Icons.Material.Filled.Refresh"
+               OnClick="LoadAsync" Disabled="@loading">
+        Làm mới
+    </MudButton>
+</div>
+
+<!-- Tabs filter -->
+<MudPaper Class="mb-4" Elevation="2" Style="border-radius:12px;">
+    <MudTabs Elevation="0" Rounded="false" ActivePanelIndexChanged="OnTabChanged">
+        <MudTabPanel Text="🔴 Chưa xử lý" />
+        <MudTabPanel Text="✅ Đã xử lý" />
+        <MudTabPanel Text="➖ Đã bỏ qua" />
+    </MudTabs>
+</MudPaper>
+
+@if (loading)
+{
+    <MudProgressLinear Indeterminate="true" Color="Color.Primary" Class="my-4" />
+}
+else if (!reports.Any())
+{
+    <MudPaper Class="pa-8 text-center" Elevation="2" Style="border-radius:16px;">
+        <MudIcon Icon="@Icons.Material.Filled.CheckCircle" Size="Size.Large" Color="Color.Success" Class="mb-3" />
+        <MudText Typo="Typo.h6" Class="mb-2">Không có cảnh báo nào trong tab này</MudText>
+        <MudText Color="Color.Secondary">
+            @(currentTab == 0
+                ? "Chưa phát hiện POI nào bị trùng lặp. Bấm 'Quét toàn bộ DB' để kiểm tra lại."
+                : "Chưa có report nào ở trạng thái này.")
+        </MudText>
+    </MudPaper>
+}
+else
+{
+    <MudGrid Spacing="4">
+        @foreach (var report in reports)
+        {
+            <MudItem xs="12">
+                <MudPaper Class="pa-5" Elevation="3" Style="border-radius:16px;">
+                    <!-- Header -->
+                    <div class="d-flex align-center mb-4" style="gap:12px; flex-wrap:wrap;">
+                        <MudChip T="string" Size="Size.Medium" Color="@GetLevelColor(report.Level)"
+                                 Icon="@GetLevelIcon(report.Level)" Variant="Variant.Filled">
+                            @GetLevelLabel(report.Level)
+                        </MudChip>
+                        <MudChip T="string" Size="Size.Small" Color="Color.Info" Variant="Variant.Outlined">
+                            Tên giống @((report.NameSimilarity * 100).ToString("F0"))%
+                        </MudChip>
+                        <MudChip T="string" Size="Size.Small" Color="Color.Info" Variant="Variant.Outlined">
+                            Cách @report.DistanceMeters.ToString("F0")m
+                        </MudChip>
+                        <MudSpacer />
+                        <MudText Typo="Typo.caption" Color="Color.Secondary">
+                            Phát hiện: @report.CreatedAt.ToLocalTime().ToString("dd/MM HH:mm")
+                        </MudText>
+                    </div>
+
+                    <!-- Grid so sánh 2 POI -->
+                    <MudGrid Spacing="3">
+                        <MudItem xs="12" md="6">
+                            @RenderPoiCard(report.PoiA, "A")
+                        </MudItem>
+                        <MudItem xs="12" md="6">
+                            @RenderPoiCard(report.PoiB, "B")
+                        </MudItem>
+                    </MudGrid>
+
+                    <!-- Actions (chỉ hiển thị nếu Open) -->
+                    @if (report.Status == "Open" && !report.IsDismissed)
+                    {
+                        <MudDivider Class="my-4" />
+                        <div class="d-flex align-center" style="gap:8px; flex-wrap:wrap;">
+                            <MudText Typo="Typo.body2" Color="Color.Secondary" Class="mr-2">
+                                Chọn hành động:
+                            </MudText>
+                            <MudButton Variant="Variant.Filled" Color="Color.Error"
+                                       StartIcon="@Icons.Material.Filled.Merge" Size="Size.Small"
+                                       OnClick="@(() => ShowMergeDialog(report))">
+                                Gộp (giữ 1, xoá 1)
+                            </MudButton>
+                            <MudButton Variant="Variant.Outlined" Color="Color.Success"
+                                       StartIcon="@Icons.Material.Filled.CheckCircle" Size="Size.Small"
+                                       OnClick="@(() => KeepBothAsync(report.Id))">
+                                Giữ cả hai
+                            </MudButton>
+                            <MudButton Variant="Variant.Outlined" Color="Color.Default"
+                                       StartIcon="@Icons.Material.Filled.Block" Size="Size.Small"
+                                       OnClick="@(() => DismissAsync(report.Id))">
+                                Bỏ qua (không phải trùng)
+                            </MudButton>
+                        </div>
+                    }
+                    else
+                    {
+                        <MudDivider Class="my-4" />
+                        <div class="d-flex align-center" style="gap:8px;">
+                            @if (report.IsDismissed)
+                            {
+                                <MudChip T="string" Color="Color.Default" Icon="@Icons.Material.Filled.Block" Size="Size.Small">
+                                    Đã bỏ qua
+                                </MudChip>
+                            }
+                            else if (report.Status == "Resolved")
+                            {
+                                <MudChip T="string" Color="Color.Success" Icon="@Icons.Material.Filled.CheckCircle" Size="Size.Small">
+                                    Đã xử lý: @GetResolutionLabel(report.Resolution)
+                                </MudChip>
+                            }
+                            @if (report.ResolvedAt.HasValue)
+                            {
+                                <MudText Typo="Typo.caption" Color="Color.Secondary">
+                                    @report.ResolvedAt.Value.ToLocalTime().ToString("dd/MM/yyyy HH:mm")
+                                </MudText>
+                            }
+                        </div>
+                    }
+                </MudPaper>
+            </MudItem>
+        }
+    </MudGrid>
+}
+
+@code {
+    private List<DuplicateReportDto> reports = new();
+    private int openCount = 0;
+    private int currentTab = 0;
+    private bool loading = false;
+    private bool scanning = false;
+
+    private string CurrentFilter => currentTab switch
+    {
+        0 => "Open",
+        1 => "Resolved",
+        2 => "Dismissed",
+        _ => "Open"
+    };
+
+    protected override async Task OnInitializedAsync()
+    {
+        await LoadAsync();
+    }
+
+    private async Task OnTabChanged(int index)
+    {
+        currentTab = index;
+        await LoadAsync();
+    }
+
+    private async Task LoadAsync()
+    {
+        loading = true;
+        StateHasChanged();
+        try
+        {
+            reports = await ReportService.GetAllAsync(CurrentFilter);
+            openCount = await ReportService.GetOpenCountAsync();
+        }
+        catch (Exception ex)
+        {
+            Snackbar.Add($"Lỗi tải cảnh báo: {ex.Message}", Severity.Error);
+        }
+        finally
+        {
+            loading = false;
+            StateHasChanged();
+        }
+    }
+
+    private async Task ScanAllAsync()
+    {
+        scanning = true;
+        StateHasChanged();
+        try
+        {
+            var (ok, msg, newCount) = await ReportService.ScanAllAsync();
+            if (ok)
+            {
+                Snackbar.Add(newCount > 0
+                    ? $"✅ Phát hiện thêm {newCount} cặp trùng mới"
+                    : "✅ Không có cặp trùng mới nào", Severity.Success);
+                await LoadAsync();
+            }
+            else
+            {
+                Snackbar.Add($"❌ {msg}", Severity.Error);
+            }
+        }
+        finally
+        {
+            scanning = false;
+            StateHasChanged();
+        }
+    }
+
+    private async Task KeepBothAsync(int id)
+    {
+        var confirm = await DialogService.ShowMessageBox(
+            "Giữ cả hai POI?",
+            "Xác nhận rằng 2 POI này KHÔNG phải trùng lặp. Cảnh báo sẽ được đánh dấu 'đã xử lý'.",
+            yesText: "Giữ cả hai", cancelText: "Huỷ");
+        if (confirm != true) return;
+
+        var ok = await ReportService.KeepBothAsync(id);
+        if (ok)
+        {
+            Snackbar.Add("✅ Đã giữ cả hai POI", Severity.Success);
+            await LoadAsync();
+        }
+        else
+        {
+            Snackbar.Add("❌ Thao tác thất bại", Severity.Error);
+        }
+    }
+
+    private async Task DismissAsync(int id)
+    {
+        var confirm = await DialogService.ShowMessageBox(
+            "Bỏ qua cảnh báo?",
+            "Cảnh báo sẽ bị ẩn. Hệ thống sẽ không tạo lại cảnh báo cho cặp POI này.",
+            yesText: "Bỏ qua", cancelText: "Huỷ");
+        if (confirm != true) return;
+
+        var ok = await ReportService.DismissAsync(id);
+        if (ok)
+        {
+            Snackbar.Add("✅ Đã bỏ qua cảnh báo", Severity.Success);
+            await LoadAsync();
+        }
+        else
+        {
+            Snackbar.Add("❌ Thao tác thất bại", Severity.Error);
+        }
+    }
+
+    private async Task ShowMergeDialog(DuplicateReportDto report)
+    {
+        if (report.PoiA == null || report.PoiB == null) return;
+
+        var parameters = new DialogParameters { ["Report"] = report };
+        var dialog = await DialogService.ShowAsync<MergeChoiceDialog>(
+            "Gộp POI - chọn POI muốn giữ lại", parameters);
+        var result = await dialog.Result;
+
+        if (result.Canceled || result.Data is not int keepId) return;
+
+        var ok = await ReportService.MergeAsync(report.Id, keepId);
+        if (ok)
+        {
+            Snackbar.Add($"✅ Đã gộp: giữ POI #{keepId}, xoá POI kia", Severity.Success);
+            await LoadAsync();
+        }
+        else
+        {
+            Snackbar.Add("❌ Gộp thất bại", Severity.Error);
+        }
+    }
+
+    // ====================== RENDER HELPERS ======================
+    private RenderFragment RenderPoiCard(DuplicatePoiDto? poi, string label) => builder =>
+    {
+        if (poi == null)
+        {
+            builder.OpenElement(0, "div");
+            builder.AddAttribute(1, "style", "padding:16px; text-align:center; color:#999;");
+            builder.AddContent(2, $"POI {label} không còn tồn tại");
+            builder.CloseElement();
+            return;
+        }
+
+        builder.OpenComponent<MudPaper>(0);
+        builder.AddAttribute(1, "Class", "pa-4");
+        builder.AddAttribute(2, "Elevation", 1);
+        builder.AddAttribute(3, "Style", $"border-radius:12px; border-left:4px solid {(label == "A" ? "#1976D2" : "#FF7043")}; {(!poi.IsActive ? "opacity:.5;" : "")}");
+        builder.AddAttribute(4, "ChildContent", (RenderFragment)(b =>
+        {
+            b.AddMarkupContent(0,
+                $"<div class=\"d-flex align-center mb-2\" style=\"gap:8px;\">" +
+                $"<span style=\"font-size:14px;font-weight:700;color:{(label == "A" ? "#1976D2" : "#FF7043")};\">POI {label}</span>" +
+                $"<span style=\"font-size:12px;color:#999;\">#{poi.Id}</span>" +
+                (poi.IsActive ? "" : "<span style=\"font-size:11px;color:#999;\">(đã xoá)</span>") +
+                "</div>");
+
+            b.AddMarkupContent(1, $"<div style=\"font-size:16px;font-weight:600;margin-bottom:6px;\">{System.Net.WebUtility.HtmlEncode(poi.Name)}</div>");
+
+            if (!string.IsNullOrWhiteSpace(poi.Address))
+                b.AddMarkupContent(2, $"<div style=\"font-size:13px;color:#555;margin-bottom:6px;\">📍 {System.Net.WebUtility.HtmlEncode(poi.Address)}</div>");
+
+            b.AddMarkupContent(3, $"<div style=\"font-family:monospace;font-size:12px;color:#666;\">{poi.Lat:F5}, {poi.Lng:F5}</div>");
+        }));
+        builder.CloseComponent();
+    };
+
+    // ====================== LABELS & COLORS ======================
+    private Color GetLevelColor(string level) => level switch
+    {
+        "Exact" => Color.Error,
+        "High" => Color.Warning,
+        "Medium" => Color.Info,
+        _ => Color.Default
+    };
+
+    private string GetLevelIcon(string level) => level switch
+    {
+        "Exact" => Icons.Material.Filled.ErrorOutline,
+        "High" => Icons.Material.Filled.Warning,
+        "Medium" => Icons.Material.Filled.Info,
+        _ => Icons.Material.Filled.Help
+    };
+
+    private string GetLevelLabel(string level) => level switch
+    {
+        "Exact" => "Trùng chắc chắn",
+        "High" => "Khả năng trùng cao",
+        "Medium" => "Có thể trùng",
+        _ => level
+    };
+
+    private string GetResolutionLabel(string? resolution) => resolution switch
+    {
+        "KeepBoth" => "Giữ cả hai",
+        "DeletedA" => "Đã xoá POI A, giữ POI B",
+        "DeletedB" => "Đã xoá POI B, giữ POI A",
+        "Merged" => "Đã gộp",
+        _ => resolution ?? "—"
+    };
+}

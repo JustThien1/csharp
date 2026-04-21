@@ -3,6 +3,7 @@
 @using TourGuideHCM.Admin.Models
 @using TourGuideHCM.Admin.Services
 @inject PoiService Service
+@inject POIApprovalService ApprovalService
 @inject IDialogService DialogService
 @inject ISnackbar Snackbar
 @inject NavigationManager Nav
@@ -14,11 +15,18 @@
                StartIcon="@Icons.Material.Filled.Add">Thêm POI mới</MudButton>
 </div>
 
-<div class="d-flex align-center mb-4" style="gap:16px;">
+<div class="d-flex align-center mb-4" style="gap:16px;flex-wrap:wrap;">
     <MudTextField @bind-Value="search" Placeholder="Tìm kiếm theo tên POI..."
                   Adornment="Adornment.Start" AdornmentIcon="@Icons.Material.Filled.Search"
                   Style="min-width:400px;" />
-    <MudChip Color="Color.Primary" Icon="@Icons.Material.Filled.Place">@pois.Count địa điểm</MudChip>
+    <MudSelect T="string" @bind-Value="statusFilter" Label="Trạng thái" Style="min-width:180px;">
+        <MudSelectItem Value="@("all")">Tất cả</MudSelectItem>
+        <MudSelectItem Value="@("Approved")">🟢 Đã duyệt</MudSelectItem>
+        <MudSelectItem Value="@("PendingReview")">🟡 Chờ duyệt</MudSelectItem>
+        <MudSelectItem Value="@("Rejected")">🔴 Bị từ chối</MudSelectItem>
+        <MudSelectItem Value="@("Locked")">🔒 Đã khoá</MudSelectItem>
+    </MudSelect>
+    <MudChip Color="Color.Primary" Icon="@Icons.Material.Filled.Place">@filteredPois.Count() địa điểm</MudChip>
 </div>
 
 <MudTable Items="@filteredPois" Hover="true" Dense="true" Bordered="false"
@@ -26,8 +34,8 @@
     <HeaderContent>
         <MudTh>ID</MudTh>
         <MudTh>Tên địa điểm</MudTh>
+        <MudTh>Trạng thái</MudTh>
         <MudTh>Tọa độ</MudTh>
-        <MudTh>Bán kính KH</MudTh>
         <MudTh>Danh mục</MudTh>
         <MudTh>QR</MudTh>
         <MudTh>Hành động</MudTh>
@@ -39,9 +47,15 @@
             <MudText Typo="Typo.caption" Color="Color.Secondary">@poi.Address</MudText>
         </MudTd>
         <MudTd>
+            <MudChip Size="Size.Small"
+                     Color="@GetStatusColor(poi.ReviewStatus)"
+                     Icon="@GetStatusIcon(poi.ReviewStatus)">
+                @GetStatusLabel(poi.ReviewStatus)
+            </MudChip>
+        </MudTd>
+        <MudTd>
             <MudText Typo="Typo.caption" Style="font-family:monospace;">@poi.Lat.ToString("F4"), @poi.Lng.ToString("F4")</MudText>
         </MudTd>
-        <MudTd><MudChip Size="Size.Small" Color="Color.Info">100m</MudChip></MudTd>
         <MudTd><MudChip Size="Size.Small" Color="Color.Secondary">@GetCategoryName(poi.CategoryId)</MudChip></MudTd>
         <MudTd>
             <MudIconButton Icon="@Icons.Material.Filled.QrCode" Size="Size.Small" Color="Color.Primary"
@@ -51,7 +65,19 @@
         <MudTd>
             <MudButton Size="Size.Small" Color="Color.Warning" OnClick="() => Edit(poi)"
                        StartIcon="@Icons.Material.Filled.Edit">Sửa</MudButton>
-            <MudButton Size="Size.Small" Color="Color.Error" OnClick="() => Delete(poi.Id)"
+
+            @if (poi.ReviewStatus == "Approved")
+            {
+                <MudButton Size="Size.Small" Color="Color.Dark" OnClick="() => LockPoi(poi)"
+                           StartIcon="@Icons.Material.Filled.Lock">Khoá</MudButton>
+            }
+            else if (poi.ReviewStatus == "Locked")
+            {
+                <MudButton Size="Size.Small" Color="Color.Success" OnClick="() => UnlockPoi(poi)"
+                           StartIcon="@Icons.Material.Filled.LockOpen">Mở khoá</MudButton>
+            }
+
+            <MudButton Size="Size.Small" Color="Color.Error" OnClick="() => Delete(poi)"
                        StartIcon="@Icons.Material.Filled.Delete">Xóa</MudButton>
         </MudTd>
     </RowTemplate>
@@ -63,12 +89,15 @@
 @code {
     private List<PoiDto> pois = new();
     private string search = "";
+    private string statusFilter = "all";
     private bool loading = true;
 
     private IEnumerable<PoiDto> filteredPois => pois.Where(p =>
-        string.IsNullOrWhiteSpace(search) ||
-        p.Name.Contains(search, StringComparison.OrdinalIgnoreCase) ||
-        p.Address.Contains(search, StringComparison.OrdinalIgnoreCase));
+        (string.IsNullOrWhiteSpace(search) ||
+         p.Name.Contains(search, StringComparison.OrdinalIgnoreCase) ||
+         p.Address.Contains(search, StringComparison.OrdinalIgnoreCase))
+        &&
+        (statusFilter == "all" || p.ReviewStatus == statusFilter));
 
     protected override async Task OnInitializedAsync() => await Load();
 
@@ -92,26 +121,94 @@
         if (!(await dialog.Result).Canceled) { Snackbar.Add("✅ Cập nhật thành công!", Severity.Success); await Load(); }
     }
 
-    private async Task Delete(int id)
+    private async Task Delete(PoiDto poi)
     {
-        var ok = await DialogService.ShowMessageBox("Xác nhận xóa",
-            "Bạn có chắc muốn xóa POI này? Dữ liệu audio liên quan cũng bị ảnh hưởng.",
-            yesText: "Xóa", cancelText: "Hủy");
-        if (ok == true)
+        var msg = poi.CreatedByUserId.HasValue
+            ? $"Xoá POI '{poi.Name}'? Saler sẽ được thông báo. Audio liên quan cũng bị xoá."
+            : $"Xoá POI '{poi.Name}'? Dữ liệu audio liên quan cũng bị ảnh hưởng.";
+
+        var ok = await DialogService.ShowMessageBox("Xác nhận xoá", msg,
+            yesText: "Xoá", cancelText: "Huỷ");
+        if (ok != true) return;
+
+        if (await Service.Delete(poi.Id))
         {
-            if (await Service.Delete(id)) { Snackbar.Add("✅ Xóa thành công!", Severity.Success); await Load(); }
-            else Snackbar.Add("❌ Xóa thất bại!", Severity.Error);
+            Snackbar.Add("✅ Xoá POI thành công!", Severity.Success);
+            await Load();
         }
+        else Snackbar.Add("❌ Xoá thất bại!", Severity.Error);
+    }
+
+    private async Task LockPoi(PoiDto poi)
+    {
+        var reason = await PromptReasonAsync(
+            "Lý do khoá POI",
+            $"Nhập lý do khoá POI '{poi.Name}' (saler sẽ thấy):");
+        if (string.IsNullOrWhiteSpace(reason)) return;
+
+        var (ok, msg) = await ApprovalService.LockAsync(poi.Id, reason);
+        if (ok) { Snackbar.Add("✅ " + msg, Severity.Success); await Load(); }
+        else Snackbar.Add("❌ " + msg, Severity.Error);
+    }
+
+    private async Task UnlockPoi(PoiDto poi)
+    {
+        var confirm = await DialogService.ShowMessageBox("Mở khoá?",
+            $"Mở khoá POI '{poi.Name}'? POI sẽ hoạt động trở lại và hiển thị cho user.",
+            yesText: "Mở khoá", cancelText: "Huỷ");
+        if (confirm != true) return;
+
+        var (ok, msg) = await ApprovalService.UnlockAsync(poi.Id);
+        if (ok) { Snackbar.Add("✅ " + msg, Severity.Success); await Load(); }
+        else Snackbar.Add("❌ " + msg, Severity.Error);
+    }
+
+    private async Task<string?> PromptReasonAsync(string title, string prompt)
+    {
+        var parameters = new DialogParameters { ["Title"] = title, ["Prompt"] = prompt };
+        var dialog = await DialogService.ShowAsync<ReasonPromptDialog>(title, parameters);
+        var result = await dialog.Result;
+        return result.Canceled ? null : result.Data as string;
     }
 
     private void GoToQr() => Nav.NavigateTo("/qrcode");
 
+    // Status helpers
+    private Color GetStatusColor(string s) => s switch
+    {
+        "Approved" => Color.Success,
+        "PendingReview" => Color.Warning,
+        "Rejected" => Color.Error,
+        "Locked" => Color.Dark,
+        _ => Color.Default
+    };
+    private string GetStatusIcon(string s) => s switch
+    {
+        "Approved" => Icons.Material.Filled.CheckCircle,
+        "PendingReview" => Icons.Material.Filled.HourglassEmpty,
+        "Rejected" => Icons.Material.Filled.Cancel,
+        "Locked" => Icons.Material.Filled.Lock,
+        _ => Icons.Material.Filled.Help
+    };
+    private string GetStatusLabel(string s) => s switch
+    {
+        "Approved" => "Đã duyệt",
+        "PendingReview" => "Chờ duyệt",
+        "Rejected" => "Bị từ chối",
+        "Locked" => "Đã khoá",
+        _ => s
+    };
+
     private string GetCategoryName(int id) => id switch
     {
         1 => "Di tích",
-        2 => "Kiến trúc",
-        3 => "Ẩm thực",
-        4 => "Mua sắm",
+        2 => "Ẩm thực",
+        3 => "Mua sắm",
+        4 => "Cafe",
+        5 => "Quán ăn",
+        6 => "Nhà hàng",
+        7 => "Khách sạn",
+        8 => "Công viên",
         _ => "Khác"
     };
 }

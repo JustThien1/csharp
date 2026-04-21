@@ -1,0 +1,347 @@
+﻿@page "/monitoring"
+@using MudBlazor
+@using TourGuideHCM.Admin.Models
+@using TourGuideHCM.Admin.Services
+@implements IDisposable
+
+@inject AnalyticsService AnalyticsService
+@inject ISnackbar Snackbar
+
+<MudText Typo="Typo.h4" Class="mb-6 font-weight-bold">📡 Monitoring Realtime</MudText>
+
+<div class="d-flex justify-space-between align-center mb-4" style="flex-wrap:wrap; gap:8px;">
+    <div class="d-flex align-center" style="gap:16px;">
+        <MudSwitch @bind-Value="autoRefresh" Color="Color.Success" Label="Auto Refresh (5s)" />
+        @if (lastUpdated != null)
+        {
+            <MudText Typo="Typo.caption" Color="Color.Secondary">
+                <MudIcon Icon="@Icons.Material.Filled.AccessTime" Size="Size.Small" Class="mr-1" />
+                Cập nhật lần cuối: @lastUpdated.Value.ToString("HH:mm:ss")
+            </MudText>
+        }
+    </div>
+    <div class="d-flex align-center" style="gap:8px;">
+        <MudTooltip Text="Tạo 8 thiết bị giả để test UI (khi không có app thật chạy)">
+            <MudButton Variant="Variant.Outlined" Color="Color.Warning"
+                       StartIcon="@Icons.Material.Filled.DataObject"
+                       OnClick="SeedDemoAsync" Disabled="@seeding">
+                @(seeding ? "Đang tạo..." : "Tạo dữ liệu demo")
+            </MudButton>
+        </MudTooltip>
+        <MudButton Variant="Variant.Filled" Color="Color.Primary"
+                   StartIcon="@Icons.Material.Filled.Refresh"
+                   OnClick="ManualRefresh" Disabled="@loading">
+            Làm mới ngay
+        </MudButton>
+    </div>
+</div>
+
+@if (loading && data == null)
+{
+    <MudProgressLinear Indeterminate="true" Color="Color.Primary" Class="my-6" />
+}
+else
+{
+    <MudGrid Spacing="3">
+
+        <!-- ====================== CÁC CARD THỐNG KÊ ====================== -->
+        <MudItem xs="12" sm="6" md="3">
+            <MudPaper Class="pa-4" Elevation="4" Style="border-radius:16px; background: linear-gradient(135deg, #667eea, #764ba2); color: white;">
+                <div class="d-flex justify-space-between align-center">
+                    <div>
+                        <MudText Typo="Typo.caption" Style="opacity:.9;">Người đang online</MudText>
+                        <MudText Typo="Typo.h3" Class="font-weight-black">@onlineUsers</MudText>
+                        <MudText Typo="Typo.caption" Style="opacity:.9;">trong 2 phút qua</MudText>
+                    </div>
+                    <MudIcon Icon="@Icons.Material.Filled.People" Size="Size.Large" Style="opacity:.8;" />
+                </div>
+            </MudPaper>
+        </MudItem>
+
+        <MudItem xs="12" sm="6" md="3">
+            <MudPaper Class="pa-4" Elevation="4" Style="border-radius:16px; background: linear-gradient(135deg, #f093fb, #f5576c); color: white;">
+                <div class="d-flex justify-space-between align-center">
+                    <div>
+                        <MudText Typo="Typo.caption" Style="opacity:.9;">Thiết bị online</MudText>
+                        <MudText Typo="Typo.h3" Class="font-weight-black">@onlineDevices</MudText>
+                        <MudText Typo="Typo.caption" Style="opacity:.9;">unique DeviceId</MudText>
+                    </div>
+                    <MudIcon Icon="@Icons.Material.Filled.PhoneAndroid" Size="Size.Large" Style="opacity:.8;" />
+                </div>
+            </MudPaper>
+        </MudItem>
+
+        <MudItem xs="12" sm="6" md="3">
+            <MudPaper Class="pa-4" Elevation="4" Style="border-radius:16px; background: linear-gradient(135deg, #11998e, #38ef7d); color: white;">
+                <div class="d-flex justify-space-between align-center">
+                    <div>
+                        <MudText Typo="Typo.caption" Style="opacity:.9;">Đang nghe audio</MudText>
+                        <MudText Typo="Typo.h3" Class="font-weight-black">@listeningUsers</MudText>
+                        <MudText Typo="Typo.caption" Style="opacity:.9;">trong 1 phút qua</MudText>
+                    </div>
+                    <MudIcon Icon="@Icons.Material.Filled.Headphones" Size="Size.Large" Style="opacity:.8;" />
+                </div>
+            </MudPaper>
+        </MudItem>
+
+        <MudItem xs="12" sm="6" md="3">
+            <MudPaper Class="pa-4" Elevation="4" Style="border-radius:16px; background: linear-gradient(135deg, #4facfe, #00f2fe); color: white;">
+                <div class="d-flex justify-space-between align-center">
+                    <div>
+                        <MudText Typo="Typo.caption" Style="opacity:.9;">Lượt nghe hôm nay</MudText>
+                        <MudText Typo="Typo.h3" Class="font-weight-black">@totalToday</MudText>
+                        <MudText Typo="Typo.caption" Style="opacity:.9;">TB: @avgListenTime giây</MudText>
+                    </div>
+                    <MudIcon Icon="@Icons.Material.Filled.Timer" Size="Size.Large" Style="opacity:.8;" />
+                </div>
+            </MudPaper>
+        </MudItem>
+
+        <!-- ====================== POI HOT + DEVICE BREAKDOWN ====================== -->
+        <MudItem xs="12" md="6">
+            <MudPaper Class="pa-5" Elevation="3" Style="border-radius:16px; height:100%;">
+                <div class="d-flex align-center mb-2">
+                    <MudIcon Icon="@Icons.Material.Filled.Whatshot" Color="Color.Error" Class="mr-2" />
+                    <MudText Typo="Typo.h6">POI nóng nhất (24h qua)</MudText>
+                </div>
+                <MudText Typo="Typo.h5" Class="font-weight-bold mt-3" Style="color:#f5576c;">
+                    @hotPoi
+                </MudText>
+                <MudText Typo="Typo.caption" Color="Color.Secondary">
+                    Dựa trên số lượt nghe (không tính heartbeat/online)
+                </MudText>
+            </MudPaper>
+        </MudItem>
+
+        <MudItem xs="12" md="6">
+            <MudPaper Class="pa-5" Elevation="3" Style="border-radius:16px; height:100%;">
+                <div class="d-flex align-center mb-3">
+                    <MudIcon Icon="@Icons.Material.Filled.DevicesOther" Color="Color.Primary" Class="mr-2" />
+                    <MudText Typo="Typo.h6">Phân bố thiết bị</MudText>
+                </div>
+                @if (deviceBreakdown.Count == 0)
+                {
+                    <MudText Color="Color.Secondary">Chưa có thiết bị nào online</MudText>
+                }
+                else
+                {
+                    @foreach (var d in deviceBreakdown)
+                    {
+                        <div class="d-flex align-center justify-space-between mb-2">
+                            <div class="d-flex align-center" style="gap:8px;">
+                                <MudIcon Icon="@GetPlatformIcon(d.Platform)" Size="Size.Small" Color="@GetPlatformColor(d.Platform)" />
+                                <MudText Typo="Typo.body2">@d.Platform</MudText>
+                            </div>
+                            <div style="flex:1; margin: 0 16px;">
+                                <MudProgressLinear Value="@GetPercentage(d.Count)" Color="@GetPlatformColor(d.Platform)" Size="Size.Medium" Rounded="true" />
+                            </div>
+                            <MudText Typo="Typo.body2" Class="font-weight-bold">@d.Count</MudText>
+                        </div>
+                    }
+                }
+            </MudPaper>
+        </MudItem>
+
+        <!-- ====================== BẢNG SESSION CHI TIẾT ====================== -->
+        <MudItem xs="12">
+            <MudPaper Class="pa-5" Elevation="3" Style="border-radius:16px;">
+                <div class="d-flex align-center justify-space-between mb-3">
+                    <div class="d-flex align-center">
+                        <MudIcon Icon="@Icons.Material.Filled.People" Class="mr-2" />
+                        <MudText Typo="Typo.h6">Phiên hoạt động chi tiết</MudText>
+                        <MudChip T="string" Size="Size.Small" Color="Color.Primary" Class="ml-3">@activeSessions.Count thiết bị</MudChip>
+                    </div>
+                </div>
+
+                @if (!activeSessions.Any())
+                {
+                    <MudAlert Severity="Severity.Info" Class="my-3">
+                        <strong>Hiện không có người dùng nào đang hoạt động.</strong><br />
+                        Để test giao diện, bấm <strong>"Tạo dữ liệu demo"</strong> ở trên cùng.<br />
+                        Khi app MAUI chạy thật, heartbeat sẽ gửi mỗi 30 giây và hiển thị ở đây.
+                    </MudAlert>
+                }
+                else
+                {
+                    <MudTable T="ActiveSession" Items="@activeSessions" Hover="true" Dense="true" Breakpoint="Breakpoint.Sm">
+                        <HeaderContent>
+                            <MudTh>Trạng thái</MudTh>
+                            <MudTh>Người dùng</MudTh>
+                            <MudTh>Thiết bị</MudTh>
+                            <MudTh>Nền tảng</MudTh>
+                            <MudTh>IP</MudTh>
+                            <MudTh>Đang nghe</MudTh>
+                            <MudTh>Lần cuối</MudTh>
+                        </HeaderContent>
+                        <RowTemplate Context="session">
+                            <MudTd>
+                                <MudChip T="string" Size="Size.Small" Color="@GetStatusColor(session.Status)" Variant="Variant.Filled">
+                                    @GetStatusLabel(session.Status)
+                                </MudChip>
+                            </MudTd>
+                            <MudTd>
+                                <MudText Typo="Typo.body2" Class="font-weight-medium">@session.UserName</MudText>
+                            </MudTd>
+                            <MudTd>
+                                <MudText Typo="Typo.body2">@session.DeviceName</MudText>
+                                <MudText Typo="Typo.caption" Color="Color.Secondary" Style="font-family:monospace;">
+                                    @session.DeviceId
+                                </MudText>
+                            </MudTd>
+                            <MudTd>
+                                <div class="d-flex align-center" style="gap:4px;">
+                                    <MudIcon Icon="@GetPlatformIcon(session.Platform)" Size="Size.Small" Color="@GetPlatformColor(session.Platform)" />
+                                    <MudText Typo="Typo.body2">@session.Platform</MudText>
+                                </div>
+                            </MudTd>
+                            <MudTd>
+                                <MudText Typo="Typo.caption" Style="font-family:monospace;">@session.IpAddress</MudText>
+                            </MudTd>
+                            <MudTd>
+                                @if (session.CurrentPoi == "—" || string.IsNullOrEmpty(session.CurrentPoi))
+                                {
+                                    <MudText Color="Color.Secondary">—</MudText>
+                                }
+                                else
+                                {
+                                    <MudChip T="string" Size="Size.Small" Color="Color.Success" Variant="Variant.Outlined">
+                                        @session.CurrentPoi
+                                    </MudChip>
+                                }
+                            </MudTd>
+                            <MudTd>
+                                <MudText Typo="Typo.caption" Color="Color.Secondary">@session.ConnectedTime</MudText>
+                            </MudTd>
+                        </RowTemplate>
+                    </MudTable>
+                }
+            </MudPaper>
+        </MudItem>
+    </MudGrid>
+}
+
+@code {
+    private bool loading = false;
+    private bool seeding = false;
+    private bool autoRefresh = true;
+    private DateTime? lastUpdated;
+
+    private RealtimeDashboardDto? data;
+
+    private int onlineUsers => data?.OnlineUsers ?? 0;
+    private int onlineDevices => data?.OnlineDevices ?? 0;
+    private int listeningUsers => data?.ListeningUsers ?? 0;
+    private string hotPoi => data?.HotPoiName ?? "Chưa có dữ liệu";
+    private int avgListenTime => data?.AvgListenTime ?? 0;
+    private int totalToday => data?.TotalToday ?? 0;
+    private List<ActiveSession> activeSessions => data?.ActiveSessions ?? new();
+    private List<DeviceBreakdown> deviceBreakdown => data?.DeviceBreakdown ?? new();
+
+    private System.Timers.Timer? refreshTimer;
+
+    protected override async Task OnInitializedAsync()
+    {
+        await LoadDataAsync();
+
+        // Refresh 5s thay vì 8s để cảm giác "realtime" rõ hơn
+        refreshTimer = new System.Timers.Timer(5000);
+        refreshTimer.Elapsed += async (s, e) =>
+        {
+            if (autoRefresh && !loading)
+                await InvokeAsync(LoadDataAsync);
+        };
+        refreshTimer.Start();
+    }
+
+    private async Task LoadDataAsync()
+    {
+        if (loading) return;
+        loading = true;
+        StateHasChanged();
+
+        try
+        {
+            data = await AnalyticsService.GetRealtimeDashboardAsync();
+            lastUpdated = DateTime.Now;
+        }
+        catch (Exception ex)
+        {
+            Snackbar.Add($"Lỗi tải dữ liệu: {ex.Message}", Severity.Warning);
+        }
+        finally
+        {
+            loading = false;
+            StateHasChanged();
+        }
+    }
+
+    private async Task ManualRefresh() => await LoadDataAsync();
+
+    private async Task SeedDemoAsync()
+    {
+        seeding = true;
+        StateHasChanged();
+        try
+        {
+            var ok = await AnalyticsService.SeedDemoDataAsync();
+            if (ok)
+            {
+                Snackbar.Add("✅ Đã tạo 8 thiết bị giả. Đang refresh...", Severity.Success);
+                await Task.Delay(400);
+                await LoadDataAsync();
+            }
+            else
+            {
+                Snackbar.Add("❌ Không tạo được dữ liệu demo. Kiểm tra API còn chạy không.", Severity.Error);
+            }
+        }
+        finally
+        {
+            seeding = false;
+            StateHasChanged();
+        }
+    }
+
+    // ====================== HELPERS ======================
+    private int GetPercentage(int count)
+    {
+        var total = deviceBreakdown.Sum(d => d.Count);
+        return total == 0 ? 0 : (int)Math.Round(count * 100.0 / total);
+    }
+
+    private string GetPlatformIcon(string platform) => platform?.ToLower() switch
+    {
+        "android" => Icons.Material.Filled.Android,
+        "ios" => Icons.Material.Filled.PhoneIphone,
+        "windows" => Icons.Material.Filled.Computer,
+        _ => Icons.Material.Filled.DeviceUnknown
+    };
+
+    private Color GetPlatformColor(string platform) => platform?.ToLower() switch
+    {
+        "android" => Color.Success,
+        "ios" => Color.Info,
+        "windows" => Color.Primary,
+        _ => Color.Default
+    };
+
+    private Color GetStatusColor(string status) => status switch
+    {
+        "listening" => Color.Success,
+        "online" => Color.Info,
+        _ => Color.Default
+    };
+
+    private string GetStatusLabel(string status) => status switch
+    {
+        "listening" => "🎧 Đang nghe",
+        "online" => "🟢 Online",
+        _ => "⚪ Idle"
+    };
+
+    public void Dispose()
+    {
+        refreshTimer?.Stop();
+        refreshTimer?.Dispose();
+    }
+}

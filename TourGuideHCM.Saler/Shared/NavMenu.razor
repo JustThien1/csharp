@@ -1,0 +1,29 @@
+﻿<MudNavMenu Dense="true" Style="padding:12px 8px;">
+
+    <MudText Typo="Typo.overline"
+             Style="font-size:10px;letter-spacing:1.5px;color:#9AA5B4;padding:16px 14px 6px 14px;display:block;font-weight:700;">
+        QUẢN LÝ
+    </MudText>
+
+    <MudNavLink Href="/my-pois" Icon="@Icons.Material.Filled.Place" ActiveClass="nav-active">
+        Địa điểm của tôi
+    </MudNavLink>
+
+    <MudNavLink Href="/my-audios" Icon="@Icons.Material.Filled.AudioFile" ActiveClass="nav-active">
+        Audio của tôi
+    </MudNavLink>
+
+</MudNavMenu>
+
+<style>
+    .nav-active {
+        background: linear-gradient(90deg, #FFF0EB, #FFF8F4) !important;
+        color: #FF7043 !important;
+        font-weight: 600 !important;
+        border-left: 3px solid #FF7043 !important;
+    }
+    .mud-nav-link:hover {
+        background-color: #F0FBF9 !important;
+        color: #00D4AA !important;
+    }
+</style>

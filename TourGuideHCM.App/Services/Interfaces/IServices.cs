@@ -1,10 +1,5 @@
-﻿using TourGuideHCM.App.Models;
-
-// File này thay thế toàn bộ 4 file interface cũ:
-//   IApiService.cs     → XÓA (dùng Refit, GetAllPoisAsync - sai)
-//   IDatabaseService.cs → XÓA (GetAllPoisAsync, SyncPoisFromApiAsync - sai)
-//   IGeofenceService.cs → XÓA (dùng Shiny.Locations - sai)
-//   INarrationService.cs → XÓA (chỉ có Task Speak(string) - thiếu)
+﻿// IServices.cs - ĐÃ BỎ TOÀN BỘ AUTH
+using TourGuideHCM.App.Models;
 
 namespace TourGuideHCM.App.Services.Interfaces;
 
@@ -16,22 +11,20 @@ public interface IApiService
     Task<POI?> GetPoiByIdAsync(int id);
     Task<POI?> GetNearbyPoiAsync(double lat, double lng);
 
-    // Auth
-    Task<LoginResponse?> LoginAsync(string username, string password);
-    Task<RegisterResponse?> RegisterAsync(string username, string password, string fullName, string email);
-
-    // Geofence – POST /api/poi/trigger
+    // Geofence
     Task<GeofenceTriggerResponse?> TriggerGeofenceAsync(double lat, double lng);
 
-    // Playback – POST /api/playback
-    Task LogPlaybackAsync(int userId, int poiId, string triggerType, int? durationSeconds = null);
+    // Playback & Route Log — ĐÃ MỞ RỘNG cho monitoring
+    Task LogPlaybackAsync(int userId, int poiId, string triggerType, int? durationSeconds = null,
+                          string? deviceId = null, string? deviceName = null, string? platform = null);
+    Task LogRouteAsync(int userId, double lat, double lng, string? deviceId = null);
 
-    // Audio URL resolver
+    // Monitoring Heartbeat — MỚI
+    Task SendHeartbeatAsync(int userId, string deviceId, string deviceName, string platform);
+
+    // Audio
     string ResolveAudioUrl(string? audioUrl);
     Task<string> GetAudioUrlAsync(int poiId, string language = "vi");
-
-    // Route log
-    Task LogRouteAsync(int userId, double lat, double lng);
 }
 
 // ── IDatabaseService ──────────────────────────────────────────────────────────
@@ -41,7 +34,7 @@ public interface IDatabaseService
     Task<List<POI>> GetCachedPoisAsync();
     Task UpsertPoisAsync(IEnumerable<POI> pois);
     Task<POI?> GetPoiByIdAsync(int id);
-    Task SaveUserAsync(User user);
+    Task SaveUserAsync(User user);           // vẫn giữ tạm (dùng cho local cache)
     Task<User?> GetCurrentUserAsync();
     Task ClearUserAsync();
     Task AddPlaybackHistoryAsync(PlaybackHistory history);
@@ -55,6 +48,7 @@ public interface IGeofenceService
 {
     event EventHandler<GeofenceTriggeredEventArgs>? GeofenceTriggered;
     event EventHandler<LocationUpdate>? LocationUpdated;
+    event EventHandler<TourGuideHCM.App.Services.PoisInRangeEventArgs>? PoisInRangeChanged;
 
     bool IsRunning { get; }
     Task StartAsync(IEnumerable<POI> pois);
@@ -79,15 +73,4 @@ public interface INarrationService
     event EventHandler? NarrationCompleted;
     Task PlayAsync(NarrationRequest request);
     Task StopAsync();
-}
-
-// ── IAuthService ──────────────────────────────────────────────────────────────
-public interface IAuthService
-{
-    User? CurrentUser { get; }
-    bool IsAuthenticated { get; }
-    Task<bool> LoginAsync(string username, string password);
-    Task<bool> RegisterAsync(string username, string password, string fullName, string email);
-    Task LogoutAsync();
-    Task<bool> TryAutoLoginAsync();
 }

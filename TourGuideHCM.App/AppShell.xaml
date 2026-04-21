@@ -4,23 +4,20 @@
     xmlns="http://schemas.microsoft.com/dotnet/2021/maui"
     xmlns:x="http://schemas.microsoft.com/winfx/2009/xaml"
     xmlns:views="clr-namespace:TourGuideHCM.App.Views"
-    Title="TourGuideHCM"
+    Title="TourGuide HCM"
     FlyoutBehavior="Flyout">
 
-    <FlyoutItem FlyoutItemIsVisible="False" Route="LoginPage">
-        <ShellContent Route="LoginPage" ContentTemplate="{DataTemplate views:LoginPage}"/>
+    <!-- MapPage là trang mặc định -->
+    <FlyoutItem Route="MapPage" FlyoutItemIsVisible="False">
+        <ShellContent 
+            ContentTemplate="{DataTemplate views:MapPage}"
+            Route="MapPage" />
     </FlyoutItem>
 
-    <FlyoutItem FlyoutItemIsVisible="False" Route="RegisterPage">
-        <ShellContent Route="RegisterPage" ContentTemplate="{DataTemplate views:RegisterPage}"/>
-    </FlyoutItem>
-
-    <FlyoutItem FlyoutItemIsVisible="False" Route="MapPage">
-        <ShellContent Route="MapPage" ContentTemplate="{DataTemplate views:MapPage}"/>
-    </FlyoutItem>
-
-    <FlyoutItem FlyoutItemIsVisible="False" Route="PoiListPage">
-        <ShellContent Route="PoiListPage" ContentTemplate="{DataTemplate views:PoiListPage}"/>
+    <FlyoutItem Route="PoiListPage" FlyoutItemIsVisible="False">
+        <ShellContent 
+            ContentTemplate="{DataTemplate views:PoiListPage}"
+            Route="PoiListPage" />
     </FlyoutItem>
 
     <!-- Flyout Header -->
@@ -32,14 +29,6 @@
                     <GradientStop Color="#FFA040" Offset="1"/>
                 </LinearGradientBrush>
             </Grid.Background>
-            <!-- Vòng trang trí -->
-            <Ellipse WidthRequest="120" HeightRequest="120"
-                     HorizontalOptions="End" VerticalOptions="Start"
-                     Margin="0,-30,-20,0" Opacity="0.15">
-                <Ellipse.Fill>
-                    <SolidColorBrush Color="White"/>
-                </Ellipse.Fill>
-            </Ellipse>
             <HorizontalStackLayout VerticalOptions="Center" Spacing="12">
                 <Border WidthRequest="44" HeightRequest="44" StrokeThickness="0">
                     <Border.StrokeShape>
@@ -64,7 +53,7 @@
     <Shell.FlyoutContent>
         <Grid RowDefinitions="*,Auto" BackgroundColor="#FAFBFF">
 
-            <!-- Danh sách POI -->
+            <!-- Danh sách POI nổi bật -->
             <CollectionView Grid.Row="0"
                             x:Name="PoiFlyoutList"
                             SelectionMode="Single"
@@ -114,7 +103,7 @@
                 </CollectionView.ItemTemplate>
             </CollectionView>
 
-            <!-- Menu bottom -->
+            <!-- Menu dưới -->
             <VerticalStackLayout Grid.Row="1" Spacing="0"
                                  Padding="0,8,0,16" BackgroundColor="White">
                 <BoxView HeightRequest="1" Color="#EEF0F6"/>
@@ -129,11 +118,6 @@
                         TextColor="#1A1A2E" FontSize="15" HorizontalOptions="Fill"
                         ContentLayout="Left,14" Padding="20,14" Clicked="OnPoiListClicked"/>
 
-                <BoxView HeightRequest="1" Color="#EEF0F6"/>
-
-                <Button Text="🚪   Đăng xuất" BackgroundColor="Transparent"
-                        TextColor="#FF5252" FontSize="15" HorizontalOptions="Fill"
-                        ContentLayout="Left,14" Padding="20,14" Clicked="OnLogoutClicked"/>
             </VerticalStackLayout>
 
         </Grid>

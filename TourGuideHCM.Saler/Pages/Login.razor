@@ -1,0 +1,124 @@
+﻿@page "/login"
+@layout LoginLayout
+@inject AuthService Auth
+@inject NavigationManager Nav
+@inject ISnackbar Snackbar
+
+<MudPaper Class="pa-8" Elevation="10" Style="border-radius:20px;">
+
+    <div class="text-center mb-6">
+        <div style="font-size:48px;">📍</div>
+        <MudText Typo="Typo.h4" Class="mt-2" Style="font-weight:700;color:#1A1A2E;">
+            TourGuide Saler
+        </MudText>
+        <MudText Typo="Typo.body2" Color="Color.Secondary">
+            Đăng nhập để quản lý địa điểm của bạn
+        </MudText>
+    </div>
+
+    <MudForm @ref="form" @bind-IsValid="isValid">
+        <MudTextField @bind-Value="username"
+                      Label="Tên đăng nhập"
+                      Variant="Variant.Outlined"
+                      Required="true" RequiredError="Vui lòng nhập username"
+                      Adornment="Adornment.Start"
+                      AdornmentIcon="@Icons.Material.Filled.Person"
+                      Margin="Margin.Normal" />
+
+        <MudTextField @bind-Value="password"
+                      Label="Mật khẩu"
+                      Variant="Variant.Outlined"
+                      InputType="@passwordInputType"
+                      Adornment="Adornment.End"
+                      AdornmentIcon="@passwordIcon"
+                      OnAdornmentClick="TogglePasswordVisibility"
+                      Required="true" RequiredError="Vui lòng nhập mật khẩu"
+                      Margin="Margin.Normal"
+                      OnKeyUp="@(e => { if (e.Key == "Enter") LoginAsync(); })" />
+
+        <MudButton OnClick="LoginAsync"
+                   Variant="Variant.Filled"
+                   Color="Color.Primary"
+                   FullWidth="true"
+                   Size="Size.Large"
+                   Disabled="@loading"
+                   StartIcon="@(loading ? null : Icons.Material.Filled.Login)"
+                   Class="mt-4"
+                   Style="height:48px;border-radius:12px;background:linear-gradient(135deg,#FF7043,#FFA040);">
+            @if (loading)
+            {
+                <MudProgressCircular Size="Size.Small" Indeterminate="true" />
+                <span class="ml-2">Đang đăng nhập…</span>
+            }
+            else
+            {
+                <span>Đăng nhập</span>
+            }
+        </MudButton>
+    </MudForm>
+
+    <MudDivider Class="my-4" />
+
+    <div class="text-center">
+        <MudText Typo="Typo.body2" Color="Color.Secondary">
+            Chưa có tài khoản?
+        </MudText>
+        <MudButton Variant="Variant.Text" Color="Color.Primary"
+                   Href="/register"
+                   StartIcon="@Icons.Material.Filled.PersonAdd">
+            Đăng ký ngay
+        </MudButton>
+    </div>
+
+</MudPaper>
+
+@code {
+    private MudForm form = null!;
+    private bool isValid;
+    private string username = "";
+    private string password = "";
+    private bool loading = false;
+
+    private bool showPassword = false;
+    private InputType passwordInputType => showPassword ? InputType.Text : InputType.Password;
+    private string passwordIcon => showPassword
+        ? Icons.Material.Filled.VisibilityOff
+        : Icons.Material.Filled.Visibility;
+
+    private void TogglePasswordVisibility() => showPassword = !showPassword;
+
+    [SupplyParameterFromQuery] public string? ReturnUrl { get; set; }
+
+    protected override async Task OnInitializedAsync()
+    {
+        // Nếu đã login → redirect sang trang chính
+        var token = await Auth.GetTokenAsync();
+        if (!string.IsNullOrEmpty(token))
+            Nav.NavigateTo(ReturnUrl ?? "/my-pois");
+    }
+
+    private async Task LoginAsync()
+    {
+        await form.Validate();
+        if (!isValid) return;
+
+        loading = true;
+        try
+        {
+            var (ok, msg) = await Auth.LoginAsync(username, password);
+            if (ok)
+            {
+                Snackbar.Add("✅ " + msg, Severity.Success);
+                Nav.NavigateTo(ReturnUrl ?? "/my-pois");
+            }
+            else
+            {
+                Snackbar.Add("❌ " + msg, Severity.Error);
+            }
+        }
+        finally
+        {
+            loading = false;
+        }
+    }
+}

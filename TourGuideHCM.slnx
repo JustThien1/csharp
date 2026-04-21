@@ -13,5 +13,6 @@
   <Project Path="TourGuideHCM.Mobile/TourGuideHCM.Mobile.csproj" Id="8a3facc7-be33-4dbe-8bbe-ef2044e1097f">
     <Deploy Solution="Debug|*" />
   </Project>
+  <Project Path="TourGuideHCM.Saler/TourGuideHCM.Saler.csproj" Id="3fdfb6b8-20da-406f-8161-0946d630e615" />
   <Project Path="TourGuideHCM.Web/TourGuideHCM.Web.csproj" Id="6eecb4fe-3875-4bce-bc3e-09edae4ca4d1" />
 </Solution>

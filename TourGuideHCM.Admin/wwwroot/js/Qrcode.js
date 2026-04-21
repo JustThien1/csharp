@@ -8,7 +8,7 @@ el.innerHTML = ''; // Xóa QR cũ nếu có
 
 if (typeof QRCode === 'undefined') {
 console.error('QRCode library not loaded');
-return;
+return; 
 }
 
 new QRCode(el, {

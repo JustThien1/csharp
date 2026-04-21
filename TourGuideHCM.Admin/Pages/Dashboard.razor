@@ -3,22 +3,34 @@
 @using MudBlazor
 @using TourGuideHCM.Admin.Services
 @using TourGuideHCM.Admin.Models
+
 @inject AnalyticsService AnalyticsService
 @inject PlaybackService PlaybackService
+@inject ISnackbar Snackbar
 
-<div class="d-flex align-center mb-6">
+<div class="d-flex align-center mb-6" style="flex-wrap:wrap; gap:12px;">
     <MudText Typo="Typo.h4" Class="font-weight-bold">📊 Dashboard Analytics</MudText>
     <MudSpacer />
-    <MudButton OnClick="Refresh" Variant="Variant.Outlined" Color="Color.Primary"
-               StartIcon="@Icons.Material.Filled.Refresh">Làm mới</MudButton>
+    <MudTooltip Text="Tạo 150 lượt nghe giả trải đều 7 ngày qua (từ 12 thiết bị) để test UI">
+        <MudButton OnClick="SeedDemoAsync" Variant="Variant.Outlined" Color="Color.Warning"
+                   StartIcon="@Icons.Material.Filled.DataObject" Disabled="@seeding">
+            @(seeding ? "Đang tạo..." : "Tạo dữ liệu demo")
+        </MudButton>
+    </MudTooltip>
+    <MudButton OnClick="Refresh" Variant="Variant.Filled" Color="Color.Primary"
+               StartIcon="@Icons.Material.Filled.Refresh" Disabled="@loading">
+        Làm mới
+    </MudButton>
 </div>
 
-@if (loading)
+@if (loading && data.TotalPoi == 0 && data.TotalDevices == 0)
 {
     <MudGrid Spacing="4">
         @for (int i = 0; i < 4; i++)
         {
-            <MudItem xs="12" md="3"><MudSkeleton Height="120px" /></MudItem>
+            <MudItem xs="12" md="3">
+                <MudSkeleton Height="120px" />
+            </MudItem>
         }
     </MudGrid>
 }
@@ -31,41 +43,46 @@ else
                 <div class="d-flex align-center">
                     <MudIcon Icon="@Icons.Material.Filled.Place" Size="Size.Large" />
                     <div class="ml-4">
-                        <MudText Typo="Typo.body2" Style="opacity:.8">Tổng POI</MudText>
+                        <MudText Typo="Typo.body2" Style="opacity:.8">Tổng POI đang hoạt động</MudText>
                         <MudText Typo="Typo.h3" Class="font-weight-black">@data.TotalPoi</MudText>
                     </div>
                 </div>
             </MudPaper>
         </MudItem>
+
         <MudItem xs="12" sm="6" md="3">
             <MudPaper Class="pa-5" Elevation="3" Style="background:linear-gradient(135deg,#11998e,#38ef7d);color:white;border-radius:16px;">
                 <div class="d-flex align-center">
-                    <MudIcon Icon="@Icons.Material.Filled.Group" Size="Size.Large" />
+                    <MudIcon Icon="@Icons.Material.Filled.PhoneAndroid" Size="Size.Large" />
                     <div class="ml-4">
-                        <MudText Typo="Typo.body2" Style="opacity:.8">Người dùng</MudText>
-                        <MudText Typo="Typo.h3" Class="font-weight-black">@data.TotalUsers</MudText>
+                        <MudText Typo="Typo.body2" Style="opacity:.8">Thiết bị đã truy cập</MudText>
+                        <MudText Typo="Typo.h3" Class="font-weight-black">@data.TotalDevices</MudText>
                     </div>
                 </div>
             </MudPaper>
         </MudItem>
+
         <MudItem xs="12" sm="6" md="3">
             <MudPaper Class="pa-5" Elevation="3" Style="background:linear-gradient(135deg,#f093fb,#f5576c);color:white;border-radius:16px;">
                 <div class="d-flex align-center">
                     <MudIcon Icon="@Icons.Material.Filled.TrendingUp" Size="Size.Large" />
                     <div class="ml-4">
-                        <MudText Typo="Typo.body2" Style="opacity:.8">Top POI</MudText>
-                        <MudText Typo="Typo.subtitle1" Class="font-weight-bold">@data.TopPoi</MudText>
+                        <MudText Typo="Typo.body2" Style="opacity:.8">POI nóng nhất</MudText>
+                        <MudText Typo="Typo.subtitle1" Class="font-weight-bold" Style="word-break:break-word;">@data.TopPoi</MudText>
                     </div>
                 </div>
             </MudPaper>
         </MudItem>
+
         <MudItem xs="12" sm="6" md="3">
             <MudPaper Class="pa-5" Elevation="3" Style="background:linear-gradient(135deg,#4facfe,#00f2fe);color:white;border-radius:16px;">
                 <div class="d-flex align-center">
                     <MudIcon Icon="@Icons.Material.Filled.Timer" Size="Size.Large" />
                     <div class="ml-4">
                         <MudText Typo="Typo.body2" Style="opacity:.8">TB thời gian nghe</MudText>
-                        <MudText Typo="Typo.h4" Class="font-weight-black">@data.AvgTime<span style="font-size:16px">s</span></MudText>
+                        <MudText Typo="Typo.h4" Class="font-weight-black">
+                            @data.AvgTime<span style="font-size:16px"> phút</span>
+                        </MudText>
                     </div>
                 </div>
             </MudPaper>
@@ -73,64 +90,145 @@ else
     </MudGrid>
 
     <MudGrid Spacing="4" Class="mt-4">
-        <!-- Biểu đồ lượt nghe -->
+        <!-- Biểu đồ lượt nghe theo ngày -->
         <MudItem xs="12" md="8">
             <MudPaper Class="pa-6" Elevation="3" Style="border-radius:16px;">
-                <MudText Typo="Typo.h6" Class="mb-4">📈 Lượt nghe theo ngày trong tuần</MudText>
+                <div class="d-flex align-center mb-4">
+                    <MudIcon Icon="@Icons.Material.Filled.BarChart" Color="Color.Primary" Class="mr-2" />
+                    <MudText Typo="Typo.h6">Lượt nghe theo ngày trong tuần (7 ngày qua)</MudText>
+                </div>
+                @if (data.DailyViews.Sum() == 0)
+                {
+                    <MudAlert Severity="Severity.Info" Class="mb-2">
+                        Chưa có dữ liệu. Bấm <strong>"Tạo dữ liệu demo"</strong> để xem biểu đồ mẫu.
+                    </MudAlert>
+                }
                 <MudChart ChartType="ChartType.Bar"
                           Labels="@labels"
-                          Datasets="@datasets"
+                          ChartSeries="@chartSeries"
                           Width="100%" Height="300px" />
             </MudPaper>
         </MudItem>
 
-        <!-- Top POI -->
+        <!-- Phân bố platform -->
         <MudItem xs="12" md="4">
             <MudPaper Class="pa-6" Elevation="3" Style="border-radius:16px; height:100%;">
-                <MudText Typo="Typo.h6" Class="mb-4">🔥 Top địa điểm</MudText>
-                <MudList Dense="true">
+                <div class="d-flex align-center mb-4">
+                    <MudIcon Icon="@Icons.Material.Filled.DevicesOther" Color="Color.Primary" Class="mr-2" />
+                    <MudText Typo="Typo.h6">Phân bố thiết bị</MudText>
+                </div>
+
+                @if (!data.PlatformBreakdown.Any())
+                {
+                    <MudText Color="Color.Secondary" Typo="Typo.body2" Class="pa-3">
+                        Chưa có thiết bị nào truy cập
+                    </MudText>
+                }
+                else
+                {
+                    @foreach (var p in data.PlatformBreakdown)
+                    {
+                        <div class="d-flex align-center mb-3">
+                            <MudIcon Icon="@GetPlatformIcon(p.Platform)" Size="Size.Small"
+                                     Color="@GetPlatformColor(p.Platform)" Class="mr-2" />
+                            <MudText Typo="Typo.body2" Style="min-width:80px;">@p.Platform</MudText>
+                            <div style="flex:1; margin: 0 8px;">
+                                <MudProgressLinear Value="@GetPlatformPercent(p.Count)"
+                                                   Color="@GetPlatformColor(p.Platform)"
+                                                   Size="Size.Medium" Rounded="true" />
+                            </div>
+                            <MudText Typo="Typo.body2" Class="font-weight-bold" Style="min-width:36px; text-align:right;">
+                                @p.Count
+                            </MudText>
+                        </div>
+                    }
+
+                    <MudDivider Class="my-3" />
+                    <MudText Typo="Typo.caption" Color="Color.Secondary">
+                        Tổng cộng <strong>@data.PlatformBreakdown.Sum(x => x.Count)</strong> thiết bị đã truy cập ứng dụng
+                    </MudText>
+                }
+            </MudPaper>
+        </MudItem>
+
+        <!-- Top POI -->
+        <MudItem xs="12" md="6">
+            <MudPaper Class="pa-6" Elevation="3" Style="border-radius:16px; height:100%;">
+                <div class="d-flex align-center mb-4">
+                    <MudIcon Icon="@Icons.Material.Filled.Whatshot" Color="Color.Error" Class="mr-2" />
+                    <MudText Typo="Typo.h6">Top 5 địa điểm được nghe nhiều nhất</MudText>
+                </div>
+                @if (!data.TopPois.Any())
+                {
+                    <MudText Color="Color.Secondary" Typo="Typo.body2" Class="pa-3">
+                        Chưa có dữ liệu — khi người dùng nghe audio trong app sẽ xuất hiện
+                    </MudText>
+                }
+                else
+                {
                     @foreach (var (item, i) in data.TopPois.OrderByDescending(x => x.Count).Take(5).Select((p, i) => (p, i)))
                     {
-                        <MudListItem Class="px-0">
-                            <div class="d-flex align-center justify-space-between">
+                        <div class="mb-3">
+                            <div class="d-flex align-center justify-space-between mb-1">
                                 <div class="d-flex align-center">
-                                    <MudAvatar Size="Size.Small" Style="@($"background:{GetRankColor(i)};color:white;margin-right:12px;font-size:12px;")">
+                                    <MudAvatar Size="Size.Small"
+                                               Style="@($"background:{GetRankColor(i)};color:white;margin-right:12px;font-size:12px;min-width:32px;")">
                                         @(i + 1)
                                     </MudAvatar>
                                     <MudText Typo="Typo.body2">@item.Name</MudText>
                                 </div>
-                                <MudChip Size="Size.Small" Color="Color.Primary">@item.Count lượt</MudChip>
+                                <MudChip T="string" Size="Size.Small" Color="Color.Primary">@item.Count lượt</MudChip>
                             </div>
-                        </MudListItem>
-                        <MudProgressLinear Value="@GetPercent(item.Count)" Color="Color.Primary" Rounded="true" Class="mb-2" Size="Size.Small" />
+                            <MudProgressLinear Value="@GetPoiPercent(item.Count)" Color="Color.Primary"
+                                               Rounded="true" Size="Size.Small" />
+                        </div>
                     }
-                    @if (!data.TopPois.Any())
-                    {
-                        <MudText Color="Color.Secondary" Typo="Typo.body2">Chưa có dữ liệu — người dùng app sẽ tạo dữ liệu khi nghe POI</MudText>
-                    }
-                </MudList>
+                }
             </MudPaper>
         </MudItem>
 
-        <!-- Lịch sử gần nhất -->
-        <MudItem xs="12">
-            <MudPaper Class="pa-6" Elevation="3" Style="border-radius:16px;">
-                <MudText Typo="Typo.h6" Class="mb-4">📜 Lịch sử nghe gần nhất (từ app)</MudText>
-                <MudTable Items="@recentHistory" Dense="true" Hover="true" Bordered="false" Elevation="0">
+        <!-- Lịch sử nghe gần nhất -->
+        <MudItem xs="12" md="6">
+            <MudPaper Class="pa-6" Elevation="3" Style="border-radius:16px; height:100%;">
+                <div class="d-flex align-center mb-4">
+                    <MudIcon Icon="@Icons.Material.Filled.History" Color="Color.Primary" Class="mr-2" />
+                    <MudText Typo="Typo.h6">Lịch sử nghe gần nhất</MudText>
+                </div>
+                <MudTable T="PlaybackHistoryDto" Items="@recentHistory" Dense="true" Hover="true" Bordered="false" Elevation="0">
                     <HeaderContent>
-                        <MudTh>Người dùng</MudTh>
-                        <MudTh>Địa điểm</MudTh>
+                        <MudTh>Thiết bị</MudTh>
+                        <MudTh>POI</MudTh>
                         <MudTh>Thời gian</MudTh>
-                        <MudTh>Thời lượng</MudTh>
                     </HeaderContent>
-                    <RowTemplate>
-                        <MudTd><MudChip Size="Size.Small" Icon="@Icons.Material.Filled.Person">@context.User</MudChip></MudTd>
-                        <MudTd>@context.Poi</MudTd>
-                        <MudTd>@context.Time.ToLocalTime().ToString("dd/MM HH:mm")</MudTd>
-                        <MudTd>@(context.Duration.HasValue ? $"{context.Duration:F0}s" : "-")</MudTd>
+                    <RowTemplate Context="h">
+                        <MudTd>
+                            <div class="d-flex align-center" style="gap:6px;">
+                                <MudIcon Icon="@GetPlatformIcon(h.Platform ?? "")" Size="Size.Small"
+                                         Color="@GetPlatformColor(h.Platform ?? "")" />
+                                <MudText Typo="Typo.caption">@(h.DeviceName ?? h.User)</MudText>
+                            </div>
+                        </MudTd>
+                        <MudTd>
+                            <MudText Typo="Typo.caption">@h.Poi</MudText>
+                            @if (!string.IsNullOrEmpty(h.TriggerType))
+                            {
+                                <MudChip T="string" Size="Size.Small" Color="@GetTriggerColor(h.TriggerType)" Variant="Variant.Outlined">
+                                    @h.TriggerType
+                                </MudChip>
+                            }
+                        </MudTd>
+                        <MudTd>
+                            <MudText Typo="Typo.caption">@h.Time.ToLocalTime().ToString("dd/MM HH:mm")</MudText>
+                            @if (h.Duration.HasValue)
+                            {
+                                <MudText Typo="Typo.caption" Color="Color.Secondary">@($"{h.Duration:F0}s")</MudText>
+                            }
+                        </MudTd>
                     </RowTemplate>
                     <NoRecordsContent>
-                        <MudText Class="pa-4" Color="Color.Secondary">Chưa có lịch sử — dữ liệu được tạo khi người dùng nghe POI trong app</MudText>
+                        <MudText Class="pa-4" Color="Color.Secondary">
+                            Chưa có lịch sử nghe — dữ liệu sẽ xuất hiện khi người dùng sử dụng app
+                        </MudText>
                     </NoRecordsContent>
                 </MudTable>
             </MudPaper>
@@ -139,37 +237,79 @@ else
 }
 
 @code {
-    bool loading = true;
-    DashboardDto data = new();
-    List<PlaybackHistoryDto> recentHistory = new();
-    string[] labels = { "T2", "T3", "T4", "T5", "T6", "T7", "CN" };
-    List<ChartSeries> datasets = new();
+    private bool loading = true;
+    private bool seeding = false;
+    private DashboardDto data = new();
+    private List<PlaybackHistoryDto> recentHistory = new();
 
-    protected override async Task OnInitializedAsync() => await LoadDashboard();
+    private string[] labels = { "T2", "T3", "T4", "T5", "T6", "T7", "CN" };
+    private List<ChartSeries> chartSeries = new();
+
+    protected override async Task OnInitializedAsync()
+    {
+        await LoadDashboard();
+    }
 
     private async Task LoadDashboard()
     {
         loading = true;
+        StateHasChanged();
+
         try
         {
-            data = await AnalyticsService.GetDashboard() ?? new();
-            recentHistory = (await PlaybackService.GetHistoryAsync()).Take(5).ToList();
+            data = await AnalyticsService.GetDashboardAsync() ?? new();
+            recentHistory = (await PlaybackService.GetHistoryAsync(limit: 8)).Take(8).ToList();
 
+            // Dữ liệu biểu đồ — đảm bảo luôn có 7 điểm
             var views = data.DailyViews?.Length == 7
                 ? data.DailyViews.Select(x => (double)x).ToArray()
-                : new double[] { 12, 19, 25, 18, 30, 22, 15 };
+                : new double[] { 0, 0, 0, 0, 0, 0, 0 };
 
-            datasets = new List<ChartSeries>
+            chartSeries = new List<ChartSeries>
             {
-                new() { Name = "Lượt nghe", Data = views }
+                new ChartSeries { Name = "Lượt nghe", Data = views }
             };
         }
-        catch { data = new(); }
-        finally { loading = false; }
+        catch (Exception ex)
+        {
+            Snackbar.Add($"Lỗi tải dashboard: {ex.Message}", Severity.Error);
+            data = new DashboardDto();
+        }
+        finally
+        {
+            loading = false;
+            StateHasChanged();
+        }
     }
 
     private async Task Refresh() => await LoadDashboard();
 
+    private async Task SeedDemoAsync()
+    {
+        seeding = true;
+        StateHasChanged();
+        try
+        {
+            var ok = await AnalyticsService.SeedDashboardDemoAsync();
+            if (ok)
+            {
+                Snackbar.Add("✅ Đã tạo 150 lượt nghe giả từ 12 thiết bị", Severity.Success);
+                await Task.Delay(400);
+                await LoadDashboard();
+            }
+            else
+            {
+                Snackbar.Add("❌ Không tạo được dữ liệu demo. Kiểm tra API còn chạy & đã có POI chưa", Severity.Error);
+            }
+        }
+        finally
+        {
+            seeding = false;
+            StateHasChanged();
+        }
+    }
+
+    // ====================== HELPERS ======================
     private string GetRankColor(int i) => i switch
     {
         0 => "#FFD700",
@@ -178,9 +318,41 @@ else
         _ => "#1976D2"
     };
 
-    private double GetPercent(int count)
+    private double GetPoiPercent(int count)
     {
-        var max = data.TopPois.Any() ? data.TopPois.Max(x => x.Count) : 1;
+        if (!data.TopPois.Any()) return 0;
+        var max = data.TopPois.Max(x => x.Count);
         return max == 0 ? 0 : (double)count / max * 100;
     }
+
+    private double GetPlatformPercent(int count)
+    {
+        if (!data.PlatformBreakdown.Any()) return 0;
+        var total = data.PlatformBreakdown.Sum(x => x.Count);
+        return total == 0 ? 0 : (double)count / total * 100;
+    }
+
+    private string GetPlatformIcon(string platform) => platform?.ToLower() switch
+    {
+        "android" => Icons.Material.Filled.Android,
+        "ios" => Icons.Material.Filled.PhoneIphone,
+        "windows" => Icons.Material.Filled.Computer,
+        _ => Icons.Material.Filled.DeviceUnknown
+    };
+
+    private Color GetPlatformColor(string platform) => platform?.ToLower() switch
+    {
+        "android" => Color.Success,
+        "ios" => Color.Info,
+        "windows" => Color.Primary,
+        _ => Color.Default
+    };
+
+    private Color GetTriggerColor(string trigger) => trigger switch
+    {
+        "geofence" => Color.Success,
+        "qr" => Color.Warning,
+        "manual" => Color.Info,
+        _ => Color.Default
+    };
 }

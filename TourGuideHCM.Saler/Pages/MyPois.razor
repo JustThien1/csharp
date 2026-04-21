@@ -1,0 +1,226 @@
+﻿@page "/my-pois"
+@attribute [Microsoft.AspNetCore.Authorization.Authorize]
+@inject PoiService PoiService
+@inject IDialogService DialogService
+@inject ISnackbar Snackbar
+
+<div class="d-flex align-center mb-6">
+    <MudText Typo="Typo.h4" Class="font-weight-bold">📍 Địa điểm của tôi</MudText>
+    <MudSpacer />
+    <MudButton Variant="Variant.Filled" Color="Color.Primary"
+               StartIcon="@Icons.Material.Filled.Add"
+               OnClick="@(() => OpenEditDialog(null))">
+        Thêm địa điểm
+    </MudButton>
+</div>
+
+@if (loading)
+{
+    <MudProgressLinear Indeterminate="true" Color="Color.Primary" Class="my-4" />
+}
+else if (!pois.Any())
+{
+    <MudPaper Class="pa-8 text-center" Elevation="2" Style="border-radius:16px;">
+        <MudIcon Icon="@Icons.Material.Filled.AddLocation" Size="Size.Large" Color="Color.Primary" Class="mb-3" />
+        <MudText Typo="Typo.h6" Class="mb-2">Bạn chưa có địa điểm nào</MudText>
+        <MudText Color="Color.Secondary" Class="mb-4">
+            Nhấn "Thêm địa điểm" để tạo POI đầu tiên. POI của bạn sẽ chờ admin duyệt trước khi hiển thị cho người dùng.
+        </MudText>
+        <MudButton Variant="Variant.Filled" Color="Color.Primary"
+                   StartIcon="@Icons.Material.Filled.Add"
+                   OnClick="@(() => OpenEditDialog(null))">
+            Tạo POI đầu tiên
+        </MudButton>
+    </MudPaper>
+}
+else
+{
+    <MudGrid Spacing="3">
+        @foreach (var poi in pois)
+        {
+            <MudItem xs="12" md="6" lg="4">
+                <MudPaper Class="pa-4" Elevation="3" Style="border-radius:14px;height:100%;">
+                    <div class="d-flex align-center mb-3" style="gap:8px;">
+                        <MudChip T="string" Size="Size.Small"
+                                 Color="@GetStatusColor(poi.ReviewStatus)"
+                                 Icon="@GetStatusIcon(poi.ReviewStatus)">
+                            @GetStatusLabel(poi.ReviewStatus)
+                        </MudChip>
+                        <MudSpacer />
+                        <MudMenu Icon="@Icons.Material.Filled.MoreVert" Dense="true">
+                            <MudMenuItem Icon="@Icons.Material.Filled.Edit"
+                                         OnClick="@(() => OpenEditDialog(poi))">
+                                Chỉnh sửa
+                            </MudMenuItem>
+                            <MudMenuItem Icon="@Icons.Material.Filled.Delete"
+                                         OnClick="@(() => DeleteAsync(poi))">
+                                Xoá
+                            </MudMenuItem>
+                        </MudMenu>
+                    </div>
+
+                    <MudText Typo="Typo.h6" Class="mb-1">@poi.Name</MudText>
+
+                    @if (!string.IsNullOrWhiteSpace(poi.ImageUrl))
+                    {
+                        <img src="@poi.ImageUrl"
+                             alt="@poi.Name"
+                             style="width:100%;max-height:150px;border-radius:8px;
+                        object-fit:cover;margin-bottom:8px;"
+                             onerror="this.style.display='none';" />
+                    }
+
+                    @if (!string.IsNullOrEmpty(poi.Address))
+                    {
+                        <MudText Typo="Typo.body2" Color="Color.Secondary" Class="mb-2">
+                            📍 @poi.Address
+                        </MudText>
+                    }
+
+                    @if (!string.IsNullOrEmpty(poi.Description))
+                    {
+                        <MudText Typo="Typo.body2" Class="mb-2" Style="color:#555;"
+                                 MaxLines="3">
+                            @poi.Description
+                        </MudText>
+                    }
+
+                    <MudText Typo="Typo.caption" Color="Color.Secondary"
+                             Style="font-family:monospace;">
+                        @poi.Lat.ToString("F5"), @poi.Lng.ToString("F5") · bán kính @poi.Radius m
+                    </MudText>
+
+                    @if (poi.ReviewStatus == "Rejected" && !string.IsNullOrEmpty(poi.RejectionReason))
+                    {
+                        <MudAlert Severity="Severity.Error" Dense="true" Class="mt-3">
+                            <strong>Lý do từ chối:</strong> @poi.RejectionReason
+                        </MudAlert>
+                    }
+
+                    @if (poi.ReviewStatus == "Locked" && !string.IsNullOrEmpty(poi.RejectionReason))
+                    {
+                        <MudAlert Severity="Severity.Warning" Dense="true" Class="mt-3">
+                            <strong>Đã khoá:</strong> @poi.RejectionReason
+                        </MudAlert>
+                    }
+                </MudPaper>
+            </MudItem>
+        }
+    </MudGrid>
+}
+
+@code {
+    private List<PoiDto> pois = new();
+    private bool loading = true;
+
+    protected override async Task OnInitializedAsync()
+    {
+        await LoadAsync();
+    }
+
+    private async Task LoadAsync()
+    {
+        loading = true;
+        try
+        {
+            pois = await PoiService.GetMyPoisAsync();
+        }
+        catch (Exception ex)
+        {
+            Snackbar.Add($"Lỗi tải dữ liệu: {ex.Message}", Severity.Error);
+        }
+        finally
+        {
+            loading = false;
+        }
+    }
+
+    private async Task OpenEditDialog(PoiDto? existing)
+    {
+        var parameters = new DialogParameters
+        {
+            ["Poi"] = existing != null ? Clone(existing) : new PoiDto { Radius = 100, Priority = 1, Language = "vi" }
+        };
+
+        var dialog = await DialogService.ShowAsync<PoiEditDialog>(
+            existing == null ? "Thêm địa điểm mới" : "Chỉnh sửa địa điểm",
+            parameters,
+            new DialogOptions { MaxWidth = MaxWidth.Small, FullWidth = true });
+
+        var result = await dialog.Result;
+        if (!result.Canceled)
+        {
+            await LoadAsync();
+        }
+    }
+
+    private async Task DeleteAsync(PoiDto poi)
+    {
+        var confirm = await DialogService.ShowMessageBox(
+            "Xoá địa điểm?",
+            $"Bạn có chắc muốn xoá \"{poi.Name}\"? Audio liên quan cũng sẽ bị xoá.",
+            yesText: "Xoá", cancelText: "Huỷ");
+        if (confirm != true) return;
+
+        var (ok, msg) = await PoiService.DeleteAsync(poi.Id);
+        if (ok)
+        {
+            Snackbar.Add("✅ " + msg, Severity.Success);
+            await LoadAsync();
+        }
+        else
+        {
+            Snackbar.Add("❌ " + msg, Severity.Error);
+        }
+    }
+
+    private static PoiDto Clone(PoiDto src) => new()
+    {
+        Id = src.Id,
+        Name = src.Name,
+        Description = src.Description,
+        Address = src.Address,
+        Lat = src.Lat,
+        Lng = src.Lng,
+        Radius = src.Radius,
+        Priority = src.Priority,
+        ImageUrl = src.ImageUrl,
+        AudioUrl = src.AudioUrl,
+        NarrationText = src.NarrationText,
+        Language = src.Language,
+        OpeningHours = src.OpeningHours,
+        TicketPrice = src.TicketPrice,
+        IsActive = src.IsActive,
+        CategoryId = src.CategoryId,
+        ReviewStatus = src.ReviewStatus,
+        RejectionReason = src.RejectionReason
+    };
+
+    // ====================== Status formatters ======================
+    private Color GetStatusColor(string s) => s switch
+    {
+        "Approved" => Color.Success,
+        "PendingReview" => Color.Warning,
+        "Rejected" => Color.Error,
+        "Locked" => Color.Dark,
+        _ => Color.Default
+    };
+
+    private string GetStatusIcon(string s) => s switch
+    {
+        "Approved" => Icons.Material.Filled.CheckCircle,
+        "PendingReview" => Icons.Material.Filled.HourglassEmpty,
+        "Rejected" => Icons.Material.Filled.Cancel,
+        "Locked" => Icons.Material.Filled.Lock,
+        _ => Icons.Material.Filled.Help
+    };
+
+    private string GetStatusLabel(string s) => s switch
+    {
+        "Approved" => "Đã duyệt",
+        "PendingReview" => "Chờ duyệt",
+        "Rejected" => "Bị từ chối",
+        "Locked" => "Đã khoá",
+        _ => s
+    };
+}

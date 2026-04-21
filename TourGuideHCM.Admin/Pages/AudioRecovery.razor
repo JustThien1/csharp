@@ -1,0 +1,278 @@
+﻿@page "/audio-recovery"
+@using MudBlazor
+@using TourGuideHCM.Admin.Models
+@using TourGuideHCM.Admin.Services
+@inject AudioRecoveryService RecoveryService
+@inject PoiService PoiService
+@inject ISnackbar Snackbar
+@inject IDialogService DialogService
+@inject HttpClient Http
+
+<div class="d-flex align-center mb-6">
+    <MudText Typo="Typo.h4" Class="font-weight-bold">🔊 Khôi phục Audio</MudText>
+    <MudSpacer />
+    <MudChip T="string" Color="@(orphans.Any() ? Color.Warning : Color.Success)"
+             Icon="@Icons.Material.Filled.AudioFile">
+        @orphans.Count file chưa gán
+    </MudChip>
+    <MudButton Variant="Variant.Filled" Color="Color.Primary" Class="ml-2"
+               StartIcon="@Icons.Material.Filled.Refresh"
+               OnClick="LoadAsync" Disabled="@loading">
+        Làm mới
+    </MudButton>
+</div>
+
+<MudAlert Severity="Severity.Info" Class="mb-4">
+    <strong>Hướng dẫn:</strong> Mỗi file audio orphan (không có record trong DB) sẽ xuất hiện dưới đây.
+    Nhấn ▶️ để nghe thử nhận dạng POI, chọn POI tương ứng + ngôn ngữ, rồi bấm <strong>"Gán"</strong>.
+    Khi gán xong, file sẽ biến mất khỏi danh sách.
+</MudAlert>
+
+@if (loading)
+{
+    <MudProgressLinear Indeterminate="true" Color="Color.Primary" Class="my-4" />
+}
+else if (!orphans.Any())
+{
+    <MudPaper Class="pa-8 text-center" Elevation="2" Style="border-radius:16px;">
+        <MudIcon Icon="@Icons.Material.Filled.CheckCircle" Size="Size.Large" Color="Color.Success" Class="mb-3" />
+        <MudText Typo="Typo.h6" Class="mb-2">Không còn file orphan nào</MudText>
+        <MudText Color="Color.Secondary">
+            Tất cả file audio trong <code>wwwroot/audio/</code> đã có record trong database.
+        </MudText>
+    </MudPaper>
+}
+else
+{
+    <MudGrid Spacing="3">
+        @foreach (var file in orphans)
+        {
+            <MudItem xs="12" md="6">
+                <MudPaper Class="pa-4" Elevation="3" Style="border-radius:16px;">
+                    <!-- File header -->
+                    <div class="d-flex align-center mb-3" style="gap:8px;">
+                        <MudIcon Icon="@Icons.Material.Filled.AudioFile" Color="Color.Primary" />
+                        <div style="flex:1;">
+                            <MudText Typo="Typo.subtitle1" Class="font-weight-bold"
+                                     Style="font-family:monospace; word-break:break-all;">
+                                @file.FileName
+                            </MudText>
+                            <MudText Typo="Typo.caption" Color="Color.Secondary">
+                                @file.SizeKB KB · @file.ModifiedAt.ToLocalTime().ToString("dd/MM/yyyy HH:mm")
+                            </MudText>
+                        </div>
+                        <MudChip T="string" Size="Size.Small" Color="@GetLangColor(file.GuessedLanguage)">
+                            @file.GuessedLanguage.ToUpper()
+                        </MudChip>
+                    </div>
+
+                    <!-- Audio player -->
+                    <audio controls preload="none"
+                           src="@GetAbsoluteUrl(file.Url)"
+                           style="width:100%; height:40px; margin-bottom:12px;">
+                    </audio>
+
+                    <!-- Form gán -->
+                    <MudGrid Spacing="2">
+                        <MudItem xs="12" sm="7">
+                            <MudAutocomplete T="PoiDto"
+                                             Label="Chọn POI"
+                                             Value="@GetSelection(file.FileName).Poi"
+                                             ValueChanged="@((PoiDto p) => SetPoi(file.FileName, p))"
+                                             SearchFunc="@SearchPois"
+                                             ToStringFunc="@(p => p == null ? "" : p.Name)"
+                                             Variant="Variant.Outlined"
+                                             Margin="Margin.Dense"
+                                             Dense="true"
+                                             ShowProgressIndicator="true"
+                                             CoerceText="true" />
+                        </MudItem>
+                        <MudItem xs="6" sm="3">
+                            <MudSelect T="string"
+                                       Label="Ngôn ngữ"
+                                       Value="@GetSelection(file.FileName).Language"
+                                       ValueChanged="@((string l) => SetLanguage(file.FileName, l))"
+                                       Variant="Variant.Outlined"
+                                       Margin="Margin.Dense"
+                                       Dense="true">
+                                <MudSelectItem Value="@("vi")">VI</MudSelectItem>
+                                <MudSelectItem Value="@("en")">EN</MudSelectItem>
+                                <MudSelectItem Value="@("zh")">ZH</MudSelectItem>
+                                <MudSelectItem Value="@("ko")">KO</MudSelectItem>
+                            </MudSelect>
+                        </MudItem>
+                        <MudItem xs="6" sm="2">
+                            <MudButton Variant="Variant.Filled" Color="Color.Success"
+                                       FullWidth="true" Size="Size.Medium"
+                                       StartIcon="@Icons.Material.Filled.Save"
+                                       Disabled="@(GetSelection(file.FileName).Poi == null || restoring.Contains(file.FileName))"
+                                       OnClick="@(() => RestoreAsync(file))">
+                                Gán
+                            </MudButton>
+                        </MudItem>
+                    </MudGrid>
+
+                    <div class="d-flex justify-end mt-2">
+                        <MudButton Size="Size.Small" Color="Color.Error" Variant="Variant.Text"
+                                   StartIcon="@Icons.Material.Filled.DeleteForever"
+                                   OnClick="@(() => DeleteFile(file))">
+                            Xoá file
+                        </MudButton>
+                    </div>
+                </MudPaper>
+            </MudItem>
+        }
+    </MudGrid>
+}
+
+@code {
+    private List<OrphanFileDto> orphans = new();
+    private List<PoiDto> allPois = new();
+    private Dictionary<string, Selection> selections = new();
+    private HashSet<string> restoring = new();
+    private bool loading = true;
+
+    protected override async Task OnInitializedAsync()
+    {
+        await LoadAsync();
+    }
+
+    private async Task LoadAsync()
+    {
+        loading = true;
+        StateHasChanged();
+
+        try
+        {
+            // Load song song POIs và orphans
+            var tPois = PoiService.GetAll();
+            var tOrphans = RecoveryService.GetOrphansAsync();
+            await Task.WhenAll(tPois, tOrphans);
+
+            allPois = tPois.Result;
+            orphans = tOrphans.Result;
+
+            // Pre-fill language cho mỗi file dựa trên GuessedLanguage
+            foreach (var f in orphans)
+            {
+                if (!selections.ContainsKey(f.FileName))
+                    selections[f.FileName] = new Selection { Language = f.GuessedLanguage };
+            }
+        }
+        catch (Exception ex)
+        {
+            Snackbar.Add($"Lỗi: {ex.Message}", Severity.Error);
+        }
+        finally
+        {
+            loading = false;
+            StateHasChanged();
+        }
+    }
+
+    private Selection GetSelection(string fileName)
+    {
+        if (!selections.ContainsKey(fileName))
+            selections[fileName] = new Selection();
+        return selections[fileName];
+    }
+
+    private void SetPoi(string fileName, PoiDto? poi)
+    {
+        GetSelection(fileName).Poi = poi;
+        StateHasChanged();
+    }
+
+    private void SetLanguage(string fileName, string lang)
+    {
+        GetSelection(fileName).Language = lang;
+        StateHasChanged();
+    }
+
+    private Task<IEnumerable<PoiDto>> SearchPois(string value)
+    {
+        if (string.IsNullOrWhiteSpace(value))
+            return Task.FromResult<IEnumerable<PoiDto>>(allPois.Take(10));
+
+        var filtered = allPois.Where(p =>
+            p.Name.Contains(value, StringComparison.OrdinalIgnoreCase) ||
+            (p.Address ?? "").Contains(value, StringComparison.OrdinalIgnoreCase));
+        return Task.FromResult(filtered.Take(15));
+    }
+
+    private async Task RestoreAsync(OrphanFileDto file)
+    {
+        var sel = GetSelection(file.FileName);
+        if (sel.Poi == null) return;
+
+        restoring.Add(file.FileName);
+        StateHasChanged();
+
+        try
+        {
+            var (ok, msg) = await RecoveryService.RestoreAsync(
+                file.FileName, sel.Poi.Id, sel.Language);
+
+            if (ok)
+            {
+                Snackbar.Add(msg, Severity.Success);
+                // Remove khỏi UI ngay, không cần reload tất cả
+                orphans.Remove(file);
+                selections.Remove(file.FileName);
+            }
+            else
+            {
+                Snackbar.Add($"❌ {msg}", Severity.Error);
+            }
+        }
+        finally
+        {
+            restoring.Remove(file.FileName);
+            StateHasChanged();
+        }
+    }
+
+    private async Task DeleteFile(OrphanFileDto file)
+    {
+        var confirm = await DialogService.ShowMessageBox(
+            "Xoá file vĩnh viễn?",
+            $"File {file.FileName} sẽ bị xoá khỏi ổ đĩa và không thể khôi phục. Bạn có chắc?",
+            yesText: "Xoá", cancelText: "Huỷ");
+        if (confirm != true) return;
+
+        var ok = await RecoveryService.DeleteOrphanAsync(file.FileName);
+        if (ok)
+        {
+            Snackbar.Add($"Đã xoá {file.FileName}", Severity.Success);
+            orphans.Remove(file);
+            selections.Remove(file.FileName);
+            StateHasChanged();
+        }
+        else
+        {
+            Snackbar.Add("❌ Xoá thất bại", Severity.Error);
+        }
+    }
+
+    private string GetAbsoluteUrl(string relativeUrl)
+    {
+        // Admin chạy WebAssembly → cần URL tuyệt đối
+        var baseUrl = Http.BaseAddress?.ToString().TrimEnd('/') ?? "";
+        return $"{baseUrl}{relativeUrl}";
+    }
+
+    private Color GetLangColor(string lang) => lang?.ToLower() switch
+    {
+        "vi" => Color.Error,
+        "en" => Color.Info,
+        "zh" => Color.Warning,
+        "ko" => Color.Success,
+        _ => Color.Default
+    };
+
+    private class Selection
+    {
+        public PoiDto? Poi { get; set; }
+        public string Language { get; set; } = "vi";
+    }
+}

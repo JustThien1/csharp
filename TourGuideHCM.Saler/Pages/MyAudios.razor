@@ -1,0 +1,136 @@
+﻿@page "/my-audios"
+@attribute [Microsoft.AspNetCore.Authorization.Authorize]
+@inject AudioService AudioService
+@inject HttpClient Http
+@inject ISnackbar Snackbar
+@inject IDialogService DialogService
+@inject NavigationManager Nav
+
+<div class="d-flex align-center mb-6">
+    <MudText Typo="Typo.h4" Class="font-weight-bold">🎙️ Audio của tôi</MudText>
+    <MudSpacer />
+    <MudButton Variant="Variant.Filled" Color="Color.Primary"
+               StartIcon="@Icons.Material.Filled.Place"
+               Href="/my-pois">
+        Quản lý địa điểm
+    </MudButton>
+</div>
+
+<MudAlert Severity="Severity.Info" Dense="true" Class="mb-4">
+    💡 Audio được tạo kèm POI khi bạn thêm/sửa địa điểm. Để thêm audio mới, hãy
+    <MudLink Href="/my-pois" Color="Color.Primary">vào trang Địa điểm</MudLink>
+    và chỉnh sửa POI tương ứng.
+</MudAlert>
+
+@if (loading)
+{
+    <MudProgressLinear Indeterminate="true" Color="Color.Primary" Class="my-4" />
+}
+else if (!audios.Any())
+{
+    <MudPaper Class="pa-8 text-center" Elevation="2" Style="border-radius:16px;">
+        <MudIcon Icon="@Icons.Material.Filled.MusicOff" Size="Size.Large" Color="Color.Default" Class="mb-3" />
+        <MudText Typo="Typo.h6" Class="mb-2">Bạn chưa có audio nào</MudText>
+        <MudText Color="Color.Secondary" Class="mb-4">
+            Audio sẽ được tạo cùng với POI. Hãy tạo 1 POI để thêm audio.
+        </MudText>
+        <MudButton Variant="Variant.Filled" Color="Color.Primary"
+                   StartIcon="@Icons.Material.Filled.AddLocation"
+                   Href="/my-pois">
+            Tạo địa điểm đầu tiên
+        </MudButton>
+    </MudPaper>
+}
+else
+{
+    <MudGrid Spacing="3">
+        @foreach (var audio in audios)
+        {
+            <MudItem xs="12" md="6">
+                <MudPaper Class="pa-4" Elevation="3" Style="border-radius:14px;">
+                    <div class="d-flex align-center mb-2" style="gap:8px;">
+                        <MudIcon Icon="@Icons.Material.Filled.AudioFile" Color="Color.Primary" />
+                        <MudText Typo="Typo.subtitle1" Class="font-weight-bold">
+                            @audio.PoiName
+                        </MudText>
+                        <MudSpacer />
+                        <MudChip T="string" Size="Size.Small" Color="@GetLangColor(audio.Language)">
+                            @audio.Language.ToUpper()
+                        </MudChip>
+                        <MudIconButton Icon="@Icons.Material.Filled.Delete"
+                                       Color="Color.Error" Size="Size.Small"
+                                       OnClick="@(() => DeleteAsync(audio))" />
+                    </div>
+
+                    @if (!string.IsNullOrEmpty(audio.Description))
+                    {
+                        <MudText Typo="Typo.body2" Color="Color.Secondary" Class="mb-2">
+                            @audio.Description
+                        </MudText>
+                    }
+
+                    <audio controls preload="none"
+                           src="@GetAbsoluteUrl(audio.AudioUrl)"
+                           style="width:100%;height:40px;">
+                    </audio>
+
+                    <MudText Typo="Typo.caption" Color="Color.Secondary" Class="mt-2">
+                        Thời lượng: @audio.DurationSeconds giây
+                    </MudText>
+                </MudPaper>
+            </MudItem>
+        }
+    </MudGrid>
+}
+
+@code {
+    private List<AudioDto> audios = new();
+    private bool loading = true;
+
+    protected override async Task OnInitializedAsync() => await LoadAsync();
+
+    private async Task LoadAsync()
+    {
+        loading = true;
+        try
+        {
+            audios = await AudioService.GetMineAsync();
+        }
+        catch (Exception ex)
+        {
+            Snackbar.Add($"Lỗi tải dữ liệu: {ex.Message}", Severity.Error);
+        }
+        finally
+        {
+            loading = false;
+        }
+    }
+
+    private async Task DeleteAsync(AudioDto audio)
+    {
+        var confirm = await DialogService.ShowMessageBox(
+            "Xoá audio?",
+            $"Xoá audio cho POI \"{audio.PoiName}\" ({audio.Language.ToUpper()})?",
+            yesText: "Xoá", cancelText: "Huỷ");
+        if (confirm != true) return;
+
+        var (ok, msg) = await AudioService.DeleteAsync(audio.Id);
+        if (ok) { Snackbar.Add("✅ " + msg, Severity.Success); await LoadAsync(); }
+        else Snackbar.Add("❌ " + msg, Severity.Error);
+    }
+
+    private string GetAbsoluteUrl(string relativeUrl)
+    {
+        var baseUrl = Http.BaseAddress?.ToString().TrimEnd('/') ?? "";
+        return $"{baseUrl}{relativeUrl}";
+    }
+
+    private Color GetLangColor(string lang) => lang?.ToLower() switch
+    {
+        "vi" => Color.Error,
+        "en" => Color.Info,
+        "zh" => Color.Warning,
+        "ko" => Color.Success,
+        _ => Color.Default
+    };
+}

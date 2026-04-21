@@ -9,11 +9,9 @@ public class GeofenceService : IGeofenceService, IDisposable
     private readonly IApiService _api;
 
     private const double NearbyMultiplier = 2.0;
-    private const int CooldownSeconds = 120;
     private const int PollingIntervalMs = 5000;
 
     private List<POI> _pois = new();
-    private readonly Dictionary<int, DateTime> _lastTriggered = new();
     private readonly Dictionary<int, bool> _insideZone = new();
 
     private CancellationTokenSource? _cts;
@@ -21,8 +19,15 @@ public class GeofenceService : IGeofenceService, IDisposable
 
     public bool IsRunning { get; private set; }
 
+    // Event cũ giữ lại để tương thích ngược — nhưng logic mới dùng PoisInRangeChanged
     public event EventHandler<GeofenceTriggeredEventArgs>? GeofenceTriggered;
     public event EventHandler<LocationUpdate>? LocationUpdated;
+
+    /// <summary>
+    /// MỚI: sự kiện phát khi tập hợp POI trong vùng thay đổi.
+    /// MapViewModel sẽ subscribe vào đây và feed vào AudioQueueService.
+    /// </summary>
+    public event EventHandler<PoisInRangeEventArgs>? PoisInRangeChanged;
 
     public GeofenceService(IDatabaseService db, IApiService api)
     {
@@ -103,86 +108,44 @@ public class GeofenceService : IGeofenceService, IDisposable
         }
     }
 
+    /// <summary>
+    /// Thay vì chỉ tìm 1 POI gần nhất, giờ build ra DANH SÁCH tất cả POI
+    /// trong vùng activation. AudioQueue sẽ xử lý queue và cooldown riêng.
+    /// </summary>
     private async Task CheckGeofencesAsync(LocationUpdate loc)
     {
         if (_pois.Count == 0) return;
 
-        var apiResult = await _api.TriggerGeofenceAsync(loc.Lat, loc.Lng);
-        if (apiResult?.Triggered == true)
-        {
-            var apiPoi = _pois.FirstOrDefault(p => p.Id == apiResult.PoiId);
-            if (apiPoi is not null)
-            {
-                if (!string.IsNullOrEmpty(apiResult.AudioUrl))
-                    apiPoi.AudioUrl = apiResult.AudioUrl;
-                if (!string.IsNullOrEmpty(apiResult.NarrationText))
-                    apiPoi.NarrationText = apiResult.NarrationText;
+        var inRange = new List<(POI poi, double distance)>();
 
-                MainThread.BeginInvokeOnMainThread(() =>
-                    GeofenceTriggered?.Invoke(this, new GeofenceTriggeredEventArgs
-                    {
-                        Poi = apiPoi,
-                        TriggerType = "enter",
-                        Distance = CalculateDistance(loc.Lat, loc.Lng, apiPoi.Lat, apiPoi.Lng)
-                    }));
-                return;
-            }
-        }
-
-        await CheckGeofencesOfflineAsync(loc);
-    }
-
-    private async Task CheckGeofencesOfflineAsync(LocationUpdate loc)
-    {
-        var triggered = new List<(POI poi, string type, double dist)>();
-
-        foreach (var poi in _pois.OrderBy(p => p.Priority))
+        foreach (var poi in _pois)
         {
             var dist = CalculateDistance(loc.Lat, loc.Lng, poi.Lat, poi.Lng);
             poi.DistanceMeters = dist;
 
             var r = poi.Radius > 0 ? poi.Radius : 100.0;
-            var wasInside = _insideZone.GetValueOrDefault(poi.Id, false);
             var isInside = dist <= r;
-            var isNearby = dist <= r * NearbyMultiplier && !isInside;
 
-            if (_lastTriggered.TryGetValue(poi.Id, out var last) &&
-                (DateTime.UtcNow - last).TotalSeconds < CooldownSeconds)
-            {
-                _insideZone[poi.Id] = isInside;
-                continue;
-            }
+            if (isInside)
+                inRange.Add((poi, dist));
 
+            // Log enter event để DB có record (cho heatmap, thống kê)
+            var wasInside = _insideZone.GetValueOrDefault(poi.Id, false);
             if (isInside && !wasInside)
             {
-                triggered.Add((poi, "enter", dist));
-                _insideZone[poi.Id] = true;
-                _lastTriggered[poi.Id] = DateTime.UtcNow;
                 await _db.AddGeofenceEventAsync(new GeofenceEvent
                 { PoiId = poi.Id, EventType = "enter", DistanceAtTrigger = dist });
             }
-            else if (isNearby && !wasInside)
-            {
-                triggered.Add((poi, "nearby", dist));
-                _lastTriggered[poi.Id] = DateTime.UtcNow;
-                await _db.AddGeofenceEventAsync(new GeofenceEvent
-                { PoiId = poi.Id, EventType = "nearby", DistanceAtTrigger = dist });
-            }
-            else if (!isInside && wasInside)
-            {
-                _insideZone[poi.Id] = false;
-            }
+            _insideZone[poi.Id] = isInside;
         }
 
-        var top = triggered.OrderBy(t => t.poi.Priority).FirstOrDefault();
-        if (top.poi is null) return;
-
+        // Phát sự kiện cho MapViewModel feed vào queue
         MainThread.BeginInvokeOnMainThread(() =>
-            GeofenceTriggered?.Invoke(this, new GeofenceTriggeredEventArgs
+            PoisInRangeChanged?.Invoke(this, new PoisInRangeEventArgs
             {
-                Poi = top.poi,
-                TriggerType = top.type,
-                Distance = top.dist
+                PoisInRange = inRange,
+                UserLat = loc.Lat,
+                UserLng = loc.Lng
             }));
     }
 
@@ -199,11 +162,17 @@ public class GeofenceService : IGeofenceService, IDisposable
         return R * 2 * Math.Atan2(Math.Sqrt(a), Math.Sqrt(1 - a));
     }
 
-    // Fix: KHÔNG dùng .GetAwaiter().GetResult() trong Dispose – gây deadlock
     public void Dispose()
     {
         _cts?.Cancel();
         _cts?.Dispose();
         _cts = null;
     }
+}
+
+public class PoisInRangeEventArgs : EventArgs
+{
+    public List<(POI poi, double distance)> PoisInRange { get; set; } = new();
+    public double UserLat { get; set; }
+    public double UserLng { get; set; }
 }
