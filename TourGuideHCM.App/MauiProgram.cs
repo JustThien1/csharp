@@ -32,26 +32,23 @@ public static class MauiProgram
             client.Timeout = TimeSpan.FromSeconds(30);
         });
 
-        // ====================== Services ======================
+        // ─── Services ────────────────────────────────────────────────────────
+        builder.Services.AddSingleton<IDeviceInfoService, DeviceInfoService>(); // ⭐ FIX DI
         builder.Services.AddSingleton<IDatabaseService, DatabaseService>();
         builder.Services.AddSingleton<IApiService, ApiService>();
         builder.Services.AddSingleton<IGeofenceService, GeofenceService>();
         builder.Services.AddSingleton<INarrationService, NarrationService>();
-
-        // ====================== MỚI: Cho Monitoring thật ======================
-        builder.Services.AddSingleton<IDeviceInfoService, DeviceInfoService>();
-        builder.Services.AddSingleton<IHeartbeatService, HeartbeatService>();
-
-        // ====================== MỚI: Audio Queue (nhiều POI chồng nhau) ======================
         builder.Services.AddSingleton<IAudioQueueService, AudioQueueService>();
 
-        // ====================== ViewModels ======================
+        // ─── ViewModels ──────────────────────────────────────────────────────
         builder.Services.AddSingleton<MapViewModel>();
         builder.Services.AddTransient<PoiViewModel>();
+        builder.Services.AddTransient<HomeViewModel>();
 
-        // ====================== Pages ======================
+        // ─── Pages ───────────────────────────────────────────────────────────
         builder.Services.AddSingleton<App>();
         builder.Services.AddSingleton<AppShell>();
+        builder.Services.AddTransient<HomePage>();
         builder.Services.AddSingleton<MapPage>();
         builder.Services.AddTransient<PoiListPage>();
         builder.Services.AddTransient<PoiDetailPage>();

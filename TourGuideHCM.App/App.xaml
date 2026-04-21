@@ -2,11 +2,13 @@
 <Application
     x:Class="TourGuideHCM.App.App"
     xmlns="http://schemas.microsoft.com/dotnet/2021/maui"
-    xmlns:x="http://schemas.microsoft.com/winfx/2009/xaml">
+    xmlns:x="http://schemas.microsoft.com/winfx/2009/xaml"
+    xmlns:conv="clr-namespace:TourGuideHCM.App.Converters">
 
     <Application.Resources>
         <ResourceDictionary>
-            <!-- Giữ resource/styles nếu có, hoặc để trống -->
+            <!-- Converter — dùng cho binding IsVisible theo string rỗng -->
+            <conv:NotEmptyConverter x:Key="NotEmptyConverter"/>
         </ResourceDictionary>
     </Application.Resources>
 

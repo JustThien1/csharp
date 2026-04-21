@@ -13,10 +13,10 @@ public partial class AppShell : Shell
         Routing.RegisterRoute(nameof(PoiDetailPage), typeof(PoiDetailPage));
         Routing.RegisterRoute(nameof(PoiBottomSheet), typeof(PoiBottomSheet));
 
-        // Khi Shell load xong → mở thẳng MapPage
+        // Khi Shell load xong → mở thẳng HomePage (trang chủ mới)
         this.Loaded += async (s, e) =>
         {
-            await GoToAsync("//MapPage");
+            await GoToAsync("//HomePage");
         };
     }
 
@@ -34,6 +34,12 @@ public partial class AppShell : Shell
 
         var sheet = new PoiBottomSheet(selectedPoi, narration, api);
         await Navigation.PushModalAsync(sheet, animated: true);
+    }
+
+    private async void OnHomeClicked(object sender, EventArgs e)
+    {
+        FlyoutIsPresented = false;
+        await GoToAsync("//HomePage");
     }
 
     private async void OnMapClicked(object sender, EventArgs e)

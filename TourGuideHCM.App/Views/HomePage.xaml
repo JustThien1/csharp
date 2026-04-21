@@ -1,0 +1,431 @@
+<?xml version="1.0" encoding="utf-8" ?>
+<ContentPage xmlns="http://schemas.microsoft.com/dotnet/2021/maui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2009/xaml"
+             xmlns:vm="clr-namespace:TourGuideHCM.App.ViewModels"
+             xmlns:models="clr-namespace:TourGuideHCM.App.Models"
+             x:Class="TourGuideHCM.App.Views.HomePage"
+             Shell.NavBarIsVisible="False"
+             Shell.TabBarIsVisible="False"
+             BackgroundColor="#FAFBFF">
+
+    <!-- Grid 2 hàng: Nội dung cuộn ở trên, TabBar cố định ở dưới -->
+    <Grid RowDefinitions="*,Auto">
+
+        <!-- ======================================================== -->
+        <!--                     NỘI DUNG CUỘN                         -->
+        <!-- ======================================================== -->
+        <RefreshView Grid.Row="0"
+                     x:Name="RefreshView"
+                     Command="{Binding RefreshCommand}"
+                     IsRefreshing="{Binding IsLoading}">
+            <ScrollView>
+                <VerticalStackLayout Spacing="0">
+
+                    <!-- ============ HEADER GRADIENT ============ -->
+                    <Grid Padding="18,20,18,24">
+                        <Grid.Background>
+                            <LinearGradientBrush StartPoint="0,0" EndPoint="1,1">
+                                <GradientStop Color="#FF6B6B" Offset="0"/>
+                                <GradientStop Color="#FF8E53" Offset="0.4"/>
+                                <GradientStop Color="#FFB347" Offset="1"/>
+                            </LinearGradientBrush>
+                        </Grid.Background>
+
+                        <VerticalStackLayout Spacing="14">
+
+                            <!-- Greeting + icons -->
+                            <Grid ColumnDefinitions="*,Auto,Auto" ColumnSpacing="8">
+                                <VerticalStackLayout Grid.Column="0" Spacing="2">
+                                    <Label Text="Xin chào, Du khách" TextColor="#FFFFFFCC" FontSize="12"/>
+                                    <Label Text="Khám phá" TextColor="White" FontSize="22" FontAttributes="Bold" LineHeight="1.1"/>
+                                    <Label Text="Sài Gòn" TextColor="White" FontSize="22" FontAttributes="Bold" LineHeight="1.1"/>
+                                </VerticalStackLayout>
+
+                                <Border Grid.Column="1" WidthRequest="36" HeightRequest="36" StrokeThickness="0">
+                                    <Border.StrokeShape>
+                                        <RoundRectangle CornerRadius="18"/>
+                                    </Border.StrokeShape>
+                                    <Border.Background>
+                                        <SolidColorBrush Color="#FFFFFF40"/>
+                                    </Border.Background>
+                                    <Label Text="🔔" FontSize="16" HorizontalOptions="Center" VerticalOptions="Center"/>
+                                </Border>
+
+                                <Border Grid.Column="2" WidthRequest="36" HeightRequest="36" StrokeThickness="0">
+                                    <Border.StrokeShape>
+                                        <RoundRectangle CornerRadius="18"/>
+                                    </Border.StrokeShape>
+                                    <Border.Background>
+                                        <SolidColorBrush Color="#FFFFFF40"/>
+                                    </Border.Background>
+                                    <Label Text="DK" FontSize="13" FontAttributes="Bold" TextColor="White"
+                                           HorizontalOptions="Center" VerticalOptions="Center"/>
+                                </Border>
+                            </Grid>
+
+                            <!-- Info: Vị trí + Thời tiết -->
+                            <Border StrokeThickness="0" Padding="14,10">
+                                <Border.StrokeShape>
+                                    <RoundRectangle CornerRadius="12"/>
+                                </Border.StrokeShape>
+                                <Border.Background>
+                                    <SolidColorBrush Color="#FFFFFF2E"/>
+                                </Border.Background>
+                                <Grid ColumnDefinitions="*,1,*" ColumnSpacing="12">
+                                    <VerticalStackLayout Grid.Column="0" Spacing="2">
+                                        <Label Text="Vị trí của bạn" TextColor="#FFFFFFCC" FontSize="11"/>
+                                        <Label Text="{Binding LocationName}" TextColor="White" FontSize="13" FontAttributes="Bold"/>
+                                    </VerticalStackLayout>
+                                    <BoxView Grid.Column="1" Color="#FFFFFF50" WidthRequest="1"/>
+                                    <VerticalStackLayout Grid.Column="2" Spacing="2">
+                                        <Label Text="Thời tiết" TextColor="#FFFFFFCC" FontSize="11"/>
+                                        <HorizontalStackLayout Spacing="4">
+                                            <Label Text="{Binding WeatherIcon}" FontSize="14"/>
+                                            <Label Text="{Binding WeatherText}" TextColor="White" FontSize="13" FontAttributes="Bold"/>
+                                        </HorizontalStackLayout>
+                                    </VerticalStackLayout>
+                                </Grid>
+                            </Border>
+
+                            <!-- Search box -->
+                            <Border StrokeThickness="0" Padding="14,8">
+                                <Border.StrokeShape>
+                                    <RoundRectangle CornerRadius="24"/>
+                                </Border.StrokeShape>
+                                <Border.Background>
+                                    <SolidColorBrush Color="White"/>
+                                </Border.Background>
+                                <HorizontalStackLayout Spacing="10">
+                                    <Label Text="🔍" FontSize="14" VerticalOptions="Center"/>
+                                    <Entry Placeholder="Tìm địa điểm, audio tour…"
+                                           BackgroundColor="Transparent"
+                                           PlaceholderColor="#888" TextColor="#1A1A2E"
+                                           FontSize="13" VerticalOptions="Center"
+                                           WidthRequest="260"/>
+                                </HorizontalStackLayout>
+                            </Border>
+
+                            <!-- Chips: nearby count + audio count -->
+                            <HorizontalStackLayout Spacing="8">
+                                <Border StrokeThickness="0" Padding="12,6">
+                                    <Border.StrokeShape>
+                                        <RoundRectangle CornerRadius="20"/>
+                                    </Border.StrokeShape>
+                                    <Border.Background>
+                                        <SolidColorBrush Color="#FFFFFF47"/>
+                                    </Border.Background>
+                                    <Label Text="{Binding NearbyCountText}" TextColor="White" FontSize="12" FontAttributes="Bold"/>
+                                </Border>
+                                <Border StrokeThickness="0" Padding="12,6">
+                                    <Border.StrokeShape>
+                                        <RoundRectangle CornerRadius="20"/>
+                                    </Border.StrokeShape>
+                                    <Border.Background>
+                                        <SolidColorBrush Color="#FFFFFF47"/>
+                                    </Border.Background>
+                                    <Label Text="{Binding TotalAudioText}" TextColor="White" FontSize="12" FontAttributes="Bold"/>
+                                </Border>
+                            </HorizontalStackLayout>
+
+                        </VerticalStackLayout>
+                    </Grid>
+
+                    <!-- ============ STATS HÀNH TRÌNH ============ -->
+                    <VerticalStackLayout Padding="18,16,18,8" Spacing="10">
+                        <Label Text="HÀNH TRÌNH CỦA BẠN" TextColor="#666" FontSize="11"
+                               FontAttributes="Bold" CharacterSpacing="1.5"/>
+                        <Grid ColumnDefinitions="*,*,*" ColumnSpacing="8">
+                            <Border Grid.Column="0" StrokeThickness="0" Padding="12">
+                                <Border.StrokeShape>
+                                    <RoundRectangle CornerRadius="14"/>
+                                </Border.StrokeShape>
+                                <Border.Background>
+                                    <LinearGradientBrush StartPoint="0,0" EndPoint="1,1">
+                                        <GradientStop Color="#667EEA" Offset="0"/>
+                                        <GradientStop Color="#764BA2" Offset="1"/>
+                                    </LinearGradientBrush>
+                                </Border.Background>
+                                <VerticalStackLayout Spacing="4">
+                                    <Label Text="{Binding PoiVisitedCount}" TextColor="White" FontSize="22" FontAttributes="Bold" LineHeight="1"/>
+                                    <Label Text="POI đã thăm" TextColor="#FFFFFFCC" FontSize="10"/>
+                                </VerticalStackLayout>
+                            </Border>
+
+                            <Border Grid.Column="1" StrokeThickness="0" Padding="12">
+                                <Border.StrokeShape>
+                                    <RoundRectangle CornerRadius="14"/>
+                                </Border.StrokeShape>
+                                <Border.Background>
+                                    <LinearGradientBrush StartPoint="0,0" EndPoint="1,1">
+                                        <GradientStop Color="#11998E" Offset="0"/>
+                                        <GradientStop Color="#38EF7D" Offset="1"/>
+                                    </LinearGradientBrush>
+                                </Border.Background>
+                                <VerticalStackLayout Spacing="4">
+                                    <Label Text="{Binding TotalKmDisplay}" TextColor="White" FontSize="22" FontAttributes="Bold" LineHeight="1"/>
+                                    <Label Text="km đã đi" TextColor="#FFFFFFCC" FontSize="10"/>
+                                </VerticalStackLayout>
+                            </Border>
+
+                            <Border Grid.Column="2" StrokeThickness="0" Padding="12">
+                                <Border.StrokeShape>
+                                    <RoundRectangle CornerRadius="14"/>
+                                </Border.StrokeShape>
+                                <Border.Background>
+                                    <LinearGradientBrush StartPoint="0,0" EndPoint="1,1">
+                                        <GradientStop Color="#F093FB" Offset="0"/>
+                                        <GradientStop Color="#F5576C" Offset="1"/>
+                                    </LinearGradientBrush>
+                                </Border.Background>
+                                <VerticalStackLayout Spacing="4">
+                                    <Label Text="{Binding AudioListenedCount}" TextColor="White" FontSize="22" FontAttributes="Bold" LineHeight="1"/>
+                                    <Label Text="Audio nghe" TextColor="#FFFFFFCC" FontSize="10"/>
+                                </VerticalStackLayout>
+                            </Border>
+                        </Grid>
+                    </VerticalStackLayout>
+
+                    <!-- ============ AUDIO GUIDE NỔI BẬT ============ -->
+                    <Grid Padding="18,8,18,16">
+                        <Border StrokeThickness="0" Padding="16">
+                            <Border.StrokeShape>
+                                <RoundRectangle CornerRadius="18"/>
+                            </Border.StrokeShape>
+                            <Border.Background>
+                                <LinearGradientBrush StartPoint="0,0" EndPoint="1,1">
+                                    <GradientStop Color="#C33764" Offset="0"/>
+                                    <GradientStop Color="#1D2671" Offset="1"/>
+                                </LinearGradientBrush>
+                            </Border.Background>
+                            <Grid ColumnDefinitions="*,Auto">
+                                <VerticalStackLayout Grid.Column="0" Spacing="6">
+                                    <Border StrokeThickness="0" Padding="10,3" HorizontalOptions="Start">
+                                        <Border.StrokeShape>
+                                            <RoundRectangle CornerRadius="10"/>
+                                        </Border.StrokeShape>
+                                        <Border.Background>
+                                            <SolidColorBrush Color="#FFFFFF40"/>
+                                        </Border.Background>
+                                        <Label Text="🎧 AUDIO GUIDE NỔI BẬT" TextColor="White" FontSize="9" FontAttributes="Bold" CharacterSpacing="1"/>
+                                    </Border>
+                                    <Label Text="Sài Gòn 100 năm" TextColor="White" FontSize="17" FontAttributes="Bold"/>
+                                    <Label Text="Hành trình qua những dấu ấn lịch sử" TextColor="#FFFFFFCC" FontSize="11"/>
+                                    <HorizontalStackLayout Spacing="12" Margin="0,4,0,0">
+                                        <Label Text="🕐 45 phút" TextColor="#FFFFFFCC" FontSize="11"/>
+                                        <Label Text="📍 12 chặng" TextColor="#FFFFFFCC" FontSize="11"/>
+                                        <Label Text="⭐ 4.9" TextColor="#FFFFFFCC" FontSize="11"/>
+                                    </HorizontalStackLayout>
+                                </VerticalStackLayout>
+
+                                <Border Grid.Column="1" WidthRequest="44" HeightRequest="44" StrokeThickness="0" VerticalOptions="Center">
+                                    <Border.StrokeShape>
+                                        <RoundRectangle CornerRadius="22"/>
+                                    </Border.StrokeShape>
+                                    <Border.Background>
+                                        <SolidColorBrush Color="White"/>
+                                    </Border.Background>
+                                    <Label Text="▶" TextColor="#C33764" FontSize="16" FontAttributes="Bold"
+                                           HorizontalOptions="Center" VerticalOptions="Center"/>
+                                </Border>
+                            </Grid>
+                        </Border>
+                    </Grid>
+
+                    <!-- ============ POI GẦN BẠN ============ -->
+                    <VerticalStackLayout Padding="18,0,18,16" Spacing="10">
+                        <Grid ColumnDefinitions="*,Auto">
+                            <VerticalStackLayout Grid.Column="0" Spacing="2">
+                                <Label Text="Đang ở gần bạn" TextColor="#1A1A2E" FontSize="15" FontAttributes="Bold"/>
+                                <Label Text="Trong bán kính 2km" TextColor="#888" FontSize="11"/>
+                            </VerticalStackLayout>
+                            <Border Grid.Column="1" StrokeThickness="0" Padding="10,4" VerticalOptions="Center">
+                                <Border.StrokeShape>
+                                    <RoundRectangle CornerRadius="12"/>
+                                </Border.StrokeShape>
+                                <Border.Background>
+                                    <SolidColorBrush Color="#FF6B6B"/>
+                                </Border.Background>
+                                <Label Text="{Binding NearbyCount, StringFormat='{0} điểm'}" TextColor="White" FontSize="11" FontAttributes="Bold"/>
+                            </Border>
+                        </Grid>
+
+                        <CollectionView ItemsSource="{Binding NearbyPois}"
+                                        SelectionMode="Single"
+                                        SelectionChanged="OnPoiSelected"
+                                        EmptyView="Chưa có POI nào gần bạn">
+                            <CollectionView.ItemsLayout>
+                                <LinearItemsLayout Orientation="Vertical" ItemSpacing="8"/>
+                            </CollectionView.ItemsLayout>
+                            <CollectionView.ItemTemplate>
+                                <DataTemplate x:DataType="models:POI">
+                                    <Border StrokeThickness="1" Stroke="#EEF0F6" Padding="10">
+                                        <Border.StrokeShape>
+                                            <RoundRectangle CornerRadius="14"/>
+                                        </Border.StrokeShape>
+                                        <Border.Background>
+                                            <SolidColorBrush Color="White"/>
+                                        </Border.Background>
+                                        <Grid ColumnDefinitions="Auto,*" ColumnSpacing="10">
+
+                                            <Border Grid.Column="0" WidthRequest="56" HeightRequest="56" StrokeThickness="0">
+                                                <Border.StrokeShape>
+                                                    <RoundRectangle CornerRadius="10"/>
+                                                </Border.StrokeShape>
+                                                <Border.Background>
+                                                    <LinearGradientBrush StartPoint="0,0" EndPoint="1,1">
+                                                        <GradientStop Color="{Binding GradientStart}" Offset="0"/>
+                                                        <GradientStop Color="{Binding GradientEnd}" Offset="1"/>
+                                                    </LinearGradientBrush>
+                                                </Border.Background>
+                                                <Label Text="{Binding IconEmoji}" FontSize="24"
+                                                       HorizontalOptions="Center" VerticalOptions="Center"/>
+                                            </Border>
+
+                                            <VerticalStackLayout Grid.Column="1" Spacing="3">
+                                                <Grid ColumnDefinitions="*,Auto">
+                                                    <Label Grid.Column="0" Text="{Binding Name}" TextColor="#1A1A2E"
+                                                           FontSize="13" FontAttributes="Bold"
+                                                           LineBreakMode="TailTruncation" MaxLines="1"/>
+                                                    <Label Grid.Column="1" Text="⭐ 4.8" TextColor="#FFB800" FontSize="11" FontAttributes="Bold"/>
+                                                </Grid>
+
+                                                <Label FontSize="11" TextColor="#999" LineBreakMode="TailTruncation" MaxLines="1">
+                                                    <Label.FormattedText>
+                                                        <FormattedString>
+                                                            <Span Text="{Binding CategoryLabel}"/>
+                                                            <Span Text=" · "/>
+                                                            <Span Text="{Binding OpeningDisplay}"/>
+                                                        </FormattedString>
+                                                    </Label.FormattedText>
+                                                </Label>
+
+                                                <HorizontalStackLayout Spacing="6">
+                                                    <Border StrokeThickness="0" Padding="6,2" BackgroundColor="{Binding BusyBgColor}">
+                                                        <Border.StrokeShape>
+                                                            <RoundRectangle CornerRadius="8"/>
+                                                        </Border.StrokeShape>
+                                                        <Label Text="{Binding BusyStatus}" TextColor="{Binding BusyColor}" FontSize="10" FontAttributes="Bold"/>
+                                                    </Border>
+                                                    <Border StrokeThickness="0" Padding="6,2" BackgroundColor="#FFF3E0">
+                                                        <Border.StrokeShape>
+                                                            <RoundRectangle CornerRadius="8"/>
+                                                        </Border.StrokeShape>
+                                                        <Label FontSize="10" TextColor="#E65100" FontAttributes="Bold">
+                                                            <Label.FormattedText>
+                                                                <FormattedString>
+                                                                    <Span Text="🎫 "/>
+                                                                    <Span Text="{Binding TicketDisplay}"/>
+                                                                </FormattedString>
+                                                            </Label.FormattedText>
+                                                        </Label>
+                                                    </Border>
+                                                    <Border StrokeThickness="0" Padding="6,2" BackgroundColor="#E3F2FD"
+                                                            IsVisible="{Binding DistanceDisplay, Converter={StaticResource NotEmptyConverter}}">
+                                                        <Border.StrokeShape>
+                                                            <RoundRectangle CornerRadius="8"/>
+                                                        </Border.StrokeShape>
+                                                        <Label FontSize="10" TextColor="#1565C0" FontAttributes="Bold">
+                                                            <Label.FormattedText>
+                                                                <FormattedString>
+                                                                    <Span Text="📍 "/>
+                                                                    <Span Text="{Binding DistanceDisplay}"/>
+                                                                </FormattedString>
+                                                            </Label.FormattedText>
+                                                        </Label>
+                                                    </Border>
+                                                </HorizontalStackLayout>
+                                            </VerticalStackLayout>
+                                        </Grid>
+                                    </Border>
+                                </DataTemplate>
+                            </CollectionView.ItemTemplate>
+                        </CollectionView>
+                    </VerticalStackLayout>
+
+                    <!-- Spacer để nội dung cuối không bị TabBar che -->
+                    <BoxView HeightRequest="40" Color="Transparent"/>
+
+                </VerticalStackLayout>
+            </ScrollView>
+        </RefreshView>
+
+        <!-- ======================================================== -->
+        <!--                   BOTTOM TAB BAR                          -->
+        <!-- ======================================================== -->
+        <Grid Grid.Row="1" HeightRequest="72" BackgroundColor="White">
+            <Grid.Shadow>
+                <Shadow Brush="#22000000" Offset="0,-2" Radius="10" Opacity="0.25"/>
+            </Grid.Shadow>
+
+            <Grid ColumnDefinitions="*,*,*,*,*" VerticalOptions="Fill">
+
+                <!-- Tab 1: Khám phá (active) -->
+                <VerticalStackLayout Grid.Column="0" Spacing="3"
+                                     HorizontalOptions="Center" VerticalOptions="Center">
+                    <VerticalStackLayout.GestureRecognizers>
+                        <TapGestureRecognizer Tapped="OnExploreTabTapped"/>
+                    </VerticalStackLayout.GestureRecognizers>
+                    <Label Text="🧭" FontSize="22" HorizontalOptions="Center"/>
+                    <Label Text="Khám phá" TextColor="#FF6B35" FontSize="10" FontAttributes="Bold" HorizontalOptions="Center"/>
+                    <Ellipse WidthRequest="4" HeightRequest="4" Fill="#FF6B35" HorizontalOptions="Center"/>
+                </VerticalStackLayout>
+
+                <!-- Tab 2: Bản đồ -->
+                <VerticalStackLayout Grid.Column="1" Spacing="3"
+                                     HorizontalOptions="Center" VerticalOptions="Center">
+                    <VerticalStackLayout.GestureRecognizers>
+                        <TapGestureRecognizer Tapped="OnMapTabTapped"/>
+                    </VerticalStackLayout.GestureRecognizers>
+                    <Label Text="🗺" FontSize="22" HorizontalOptions="Center"/>
+                    <Label Text="Bản đồ" TextColor="#9AA5B4" FontSize="10" HorizontalOptions="Center"/>
+                </VerticalStackLayout>
+
+                <!-- Tab 3: Audio (nút tròn nổi bật ở giữa, nhô lên) -->
+                <Grid Grid.Column="2" HorizontalOptions="Center" VerticalOptions="Center">
+                    <Border WidthRequest="56" HeightRequest="56" StrokeThickness="0"
+                            TranslationY="-18">
+                        <Border.StrokeShape>
+                            <RoundRectangle CornerRadius="28"/>
+                        </Border.StrokeShape>
+                        <Border.Background>
+                            <LinearGradientBrush StartPoint="0,0" EndPoint="1,1">
+                                <GradientStop Color="#FF8E53" Offset="0"/>
+                                <GradientStop Color="#FF6B35" Offset="1"/>
+                            </LinearGradientBrush>
+                        </Border.Background>
+                        <Border.Shadow>
+                            <Shadow Brush="#FF6B35" Offset="0,4" Radius="12" Opacity="0.5"/>
+                        </Border.Shadow>
+                        <Border.GestureRecognizers>
+                            <TapGestureRecognizer Tapped="OnAudioTabTapped"/>
+                        </Border.GestureRecognizers>
+                        <Label Text="🎧" FontSize="26" TextColor="White"
+                               HorizontalOptions="Center" VerticalOptions="Center"/>
+                    </Border>
+                </Grid>
+
+                <!-- Tab 4: Đã lưu -->
+                <VerticalStackLayout Grid.Column="3" Spacing="3"
+                                     HorizontalOptions="Center" VerticalOptions="Center">
+                    <VerticalStackLayout.GestureRecognizers>
+                        <TapGestureRecognizer Tapped="OnFavoritesTabTapped"/>
+                    </VerticalStackLayout.GestureRecognizers>
+                    <Label Text="🤍" FontSize="22" HorizontalOptions="Center"/>
+                    <Label Text="Đã lưu" TextColor="#9AA5B4" FontSize="10" HorizontalOptions="Center"/>
+                </VerticalStackLayout>
+
+                <!-- Tab 5: Cá nhân -->
+                <VerticalStackLayout Grid.Column="4" Spacing="3"
+                                     HorizontalOptions="Center" VerticalOptions="Center">
+                    <VerticalStackLayout.GestureRecognizers>
+                        <TapGestureRecognizer Tapped="OnProfileTabTapped"/>
+                    </VerticalStackLayout.GestureRecognizers>
+                    <Label Text="👤" FontSize="22" HorizontalOptions="Center"/>
+                    <Label Text="Cá nhân" TextColor="#9AA5B4" FontSize="10" HorizontalOptions="Center"/>
+                </VerticalStackLayout>
+
+            </Grid>
+        </Grid>
+
+    </Grid>
+</ContentPage>

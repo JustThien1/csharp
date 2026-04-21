@@ -1,22 +1,15 @@
 ﻿using Microsoft.Maui.Devices;
 using Microsoft.Maui.Storage;
+using TourGuideHCM.App.Services.Interfaces;
 
 namespace TourGuideHCM.App.Services;
 
 /// <summary>
-/// Cung cấp thông tin thiết bị cho việc monitoring.
-/// DeviceId được sinh 1 lần duy nhất per thiết bị và lưu trong Preferences
-/// → mỗi lần cài lại app sẽ sinh DeviceId mới (đây là hành vi mong muốn).
+/// Implementation của <see cref="IDeviceInfoService"/>.
+/// - <c>DeviceId</c>: sinh GUID 1 lần duy nhất, lưu Preferences (reset khi gỡ/cài lại app).
+/// - <c>DeviceName</c>, <c>Platform</c>: lấy từ <see cref="DeviceInfo.Current"/>, có cache in-memory.
+/// - <c>CurrentUserId</c>: đọc từ Preferences, 0 nếu chưa login.
 /// </summary>
-public interface IDeviceInfoService
-{
-    string DeviceId { get; }
-    string DeviceName { get; }
-    string Platform { get; }
-    int CurrentUserId { get; }
-    void SetCurrentUser(int userId);
-}
-
 public class DeviceInfoService : IDeviceInfoService
 {
     private const string DeviceIdKey = "tourguide_device_id";
@@ -82,10 +75,7 @@ public class DeviceInfoService : IDeviceInfoService
         }
     }
 
-    public int CurrentUserId
-    {
-        get => Preferences.Default.Get(UserIdKey, 0);
-    }
+    public int CurrentUserId => Preferences.Default.Get(UserIdKey, 0);
 
     public void SetCurrentUser(int userId)
     {

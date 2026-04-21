@@ -40,6 +40,9 @@
 		<MauiAsset Include="Resources\Raw\**\*.*" LogicalName="%(RecursiveDir)%(Filename)%(Extension)" />
 	</ItemGroup>
 	<ItemGroup>
+		<MauiXaml Update="Views\HomePage.xaml">
+		  <Generator>MSBuild:Compile</Generator>
+		</MauiXaml>
 		<MauiXaml Update="Views\PoiBottomSheet.xaml">
 			<Generator>MSBuild:Compile</Generator>
 		</MauiXaml>
