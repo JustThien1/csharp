@@ -14,11 +14,13 @@ namespace TourGuideHCM.API.Controllers
     {
         private readonly AppDbContext _context;
         private readonly JwtService _jwt;
+        private readonly SubscriptionService _subscriptionService;
 
-        public AuthController(AppDbContext context, JwtService jwt)
+        public AuthController(AppDbContext context, JwtService jwt, SubscriptionService subscriptionService)
         {
             _context = context;
             _jwt = jwt;
+            _subscriptionService = subscriptionService;
         }
 
         // ================= REGISTER (chỉ cho Saler) =================
@@ -50,7 +52,11 @@ namespace TourGuideHCM.API.Controllers
                 Role = "Saler",                  // Đăng ký công khai = Saler
                 IsActive = true,
                 CreatedAt = DateTime.UtcNow,
+<<<<<<< HEAD
                 SubscriptionEndUtc = DateTime.UtcNow.AddDays(14)   // dùng thử, sau đó cần gia hạn
+=======
+                SubscriptionExpiresAt = _subscriptionService.GetStarterExpiry(DateTime.UtcNow)
+>>>>>>> d8c1abf (backup before refactor)
             };
 
             _context.Users.Add(user);
@@ -66,7 +72,12 @@ namespace TourGuideHCM.API.Controllers
                 username = user.Username,
                 fullName = user.FullName,
                 role = user.Role,
+<<<<<<< HEAD
                 subscriptionEndUtc = user.SubscriptionEndUtc
+=======
+                subscriptionExpiresAt = user.SubscriptionExpiresAt,
+                hasActiveSubscription = _subscriptionService.HasActiveSubscription(user)
+>>>>>>> d8c1abf (backup before refactor)
             });
         }
 
@@ -101,7 +112,12 @@ namespace TourGuideHCM.API.Controllers
                 email = user.Email,
                 phone = user.Phone,
                 role = user.Role,
+<<<<<<< HEAD
                 subscriptionEndUtc = user.SubscriptionEndUtc
+=======
+                subscriptionExpiresAt = user.SubscriptionExpiresAt,
+                hasActiveSubscription = _subscriptionService.HasActiveSubscription(user)
+>>>>>>> d8c1abf (backup before refactor)
             });
         }
 
@@ -125,7 +141,12 @@ namespace TourGuideHCM.API.Controllers
                 phone = user.Phone,
                 role = user.Role,
                 isActive = user.IsActive,
+<<<<<<< HEAD
                 subscriptionEndUtc = user.SubscriptionEndUtc
+=======
+                subscriptionExpiresAt = user.SubscriptionExpiresAt,
+                hasActiveSubscription = _subscriptionService.HasActiveSubscription(user)
+>>>>>>> d8c1abf (backup before refactor)
             });
         }
 

@@ -2,6 +2,7 @@
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 using TourGuideHCM.API.Data;
+using TourGuideHCM.API.Filters;
 using TourGuideHCM.API.Models;
 using TourGuideHCM.API.Services;
 
@@ -64,6 +65,7 @@ namespace TourGuideHCM.API.Controllers
         // ====================== MỚI: POI của saler hiện tại ======================
         [HttpGet("mine")]
         [Authorize]
+        [RequireActiveSalerSubscription]
         public async Task<IActionResult> GetMine()
         {
             var userId = _currentUser.UserId;
@@ -80,6 +82,7 @@ namespace TourGuideHCM.API.Controllers
 
         // ✅ CREATE — tự set CreatedByUserId + ReviewStatus theo role
         [HttpPost]
+        [RequireActiveSalerSubscription]
         public async Task<IActionResult> Create([FromBody] POI poi)
         {
             if (poi == null || string.IsNullOrWhiteSpace(poi.Name))
@@ -132,6 +135,7 @@ namespace TourGuideHCM.API.Controllers
 
         // ✅ UPDATE — chỉ cho saler sửa POI của mình; sửa xong về PendingReview
         [HttpPut("{id}")]
+        [RequireActiveSalerSubscription]
         public async Task<IActionResult> Update(int id, [FromBody] POI updated)
         {
             if (updated == null) return BadRequest("Dữ liệu không hợp lệ");
@@ -203,6 +207,7 @@ namespace TourGuideHCM.API.Controllers
 
         // ✅ DELETE — saler xoá POI của mình; admin xoá được tất cả (notify saler)
         [HttpDelete("{id}")]
+        [RequireActiveSalerSubscription]
         public async Task<IActionResult> Delete(int id)
         {
             var existing = await _context.POIs.FindAsync(id);

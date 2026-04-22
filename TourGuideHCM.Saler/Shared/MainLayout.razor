@@ -1,6 +1,8 @@
-﻿@inherits LayoutComponentBase
+@inherits LayoutComponentBase
+@implements IDisposable
 @inject AuthService Auth
 @inject NavigationManager Nav
+@inject SubscriptionStateService SubscriptionState
 
 <MudLayout>
     <MudAppBar Elevation="2" Dense="true" Style="background:linear-gradient(90deg,#FF7043,#FFA040);">
@@ -9,7 +11,6 @@
         </MudText>
         <MudSpacer />
 
-        <!-- Notification Bell -->
         <NotificationBell />
 
         @if (currentUser != null)
@@ -47,6 +48,13 @@
 
     <MudMainContent>
         <MudContainer MaxWidth="MaxWidth.ExtraLarge" Class="pa-5">
+            @if (!string.IsNullOrWhiteSpace(SubscriptionState.Message))
+            {
+                <MudAlert Severity="Severity.Warning" Variant="Variant.Filled" Dense="true" Class="mb-4">
+                    @SubscriptionState.Message
+                </MudAlert>
+            }
+
             @Body
         </MudContainer>
     </MudMainContent>
@@ -58,11 +66,22 @@
     protected override async Task OnInitializedAsync()
     {
         currentUser = await Auth.GetCurrentUserAsync();
+        SubscriptionState.Changed += OnSubscriptionChanged;
+    }
+
+    public void Dispose()
+    {
+        SubscriptionState.Changed -= OnSubscriptionChanged;
     }
 
     private async Task Logout()
     {
         await Auth.LogoutAsync();
         Nav.NavigateTo("/login", forceLoad: true);
+    }
+
+    private void OnSubscriptionChanged()
+    {
+        InvokeAsync(StateHasChanged);
     }
 }

@@ -1,6 +1,7 @@
 ﻿using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 using TourGuideHCM.API.Data;
+using TourGuideHCM.API.Filters;
 using TourGuideHCM.API.Models;
 using TourGuideHCM.API.Services;
 
@@ -48,6 +49,7 @@ namespace TourGuideHCM.API.Controllers
 
         // ── CONVERT TEXT → AUDIO (TTS) ────────────────────────────────────────
         [HttpPost("convert")]
+        [RequireActiveSalerSubscription]
         public async Task<IActionResult> ConvertTts([FromBody] TtsConvertDto dto)
         {
             if (string.IsNullOrWhiteSpace(dto.Text))
@@ -157,6 +159,7 @@ namespace TourGuideHCM.API.Controllers
 
         // ── UPLOAD FILE ────────────────────────────────────────────────────────
         [HttpPost("upload")]
+        [RequireActiveSalerSubscription]
         public async Task<IActionResult> UploadAudio(IFormFile file)
         {
             if (file == null || file.Length == 0)
@@ -209,6 +212,7 @@ namespace TourGuideHCM.API.Controllers
 
         // ====================== MỚI: Audio của saler hiện tại ======================
         [HttpGet("mine")]
+        [RequireActiveSalerSubscription]
         public async Task<IActionResult> GetMine()
         {
             if (!_currentUser.IsAuthenticated) return Unauthorized();
@@ -259,6 +263,7 @@ namespace TourGuideHCM.API.Controllers
 
         // ── CREATE ─────────────────────────────────────────────────────────────
         [HttpPost]
+        [RequireActiveSalerSubscription]
         public async Task<IActionResult> Create([FromBody] AudioDto dto)
         {
             if (dto.PoiId == 0) return BadRequest("Vui lòng chọn POI");
@@ -283,6 +288,7 @@ namespace TourGuideHCM.API.Controllers
 
         // ── UPDATE ─────────────────────────────────────────────────────────────
         [HttpPut("{id}")]
+        [RequireActiveSalerSubscription]
         public async Task<IActionResult> Update(int id, [FromBody] AudioDto dto)
         {
             var audio = await _context.Audios.FindAsync(id);
@@ -303,6 +309,7 @@ namespace TourGuideHCM.API.Controllers
 
         // ── DELETE ─────────────────────────────────────────────────────────────
         [HttpDelete("{id}")]
+        [RequireActiveSalerSubscription]
         public async Task<IActionResult> Delete(int id)
         {
             var audio = await _context.Audios.FindAsync(id);

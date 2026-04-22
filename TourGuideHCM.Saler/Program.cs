@@ -39,6 +39,8 @@ builder.Services.AddScoped<AuthService>();
 builder.Services.AddScoped<PoiService>();
 builder.Services.AddScoped<AudioService>();
 builder.Services.AddScoped<NotificationService>();
+builder.Services.AddScoped<SubscriptionService>();
+builder.Services.AddScoped<SubscriptionStateService>();
 
 // Blazor Auth State
 builder.Services.AddAuthorizationCore();
