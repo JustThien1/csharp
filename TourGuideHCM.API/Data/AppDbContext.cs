@@ -20,6 +20,7 @@ namespace TourGuideHCM.API.Data
         public DbSet<Tour> Tours { get; set; }
         public DbSet<Audio> Audios { get; set; }
         public DbSet<PlaybackHistory> PlaybackHistories { get; set; } = null!;
+        public DbSet<Payment> Payments { get; set; } = null!;
 
         // ====================== MỚI ======================
         public DbSet<DuplicateReport> DuplicateReports { get; set; } = null!;
@@ -129,6 +130,19 @@ namespace TourGuideHCM.API.Data
             // User unique index
             modelBuilder.Entity<User>()
                 .HasIndex(u => u.Username)
+                .IsUnique();
+
+            modelBuilder.Entity<Payment>()
+                .HasOne(p => p.User)
+                .WithMany(u => u.Payments)
+                .HasForeignKey(p => p.UserId)
+                .OnDelete(DeleteBehavior.Cascade);
+
+            modelBuilder.Entity<Payment>()
+                .HasIndex(p => new { p.UserId, p.Status, p.CreatedAt });
+
+            modelBuilder.Entity<Payment>()
+                .HasIndex(p => p.ProviderReference)
                 .IsUnique();
 
             // ====================== Seed Data ======================

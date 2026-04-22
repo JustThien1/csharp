@@ -48,6 +48,7 @@ builder.Services.AddScoped<DuplicateReportService>();
 builder.Services.AddScoped<AudioRecoveryService>();
 builder.Services.AddScoped<NotificationService>();
 builder.Services.AddScoped<POIApprovalService>();
+builder.Services.AddScoped<PaymentHistoryService>();
 
 Console.WriteLine("✅ Admin services initialized — API base: " + ApiBaseUrl);
 

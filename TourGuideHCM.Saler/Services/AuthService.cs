@@ -51,7 +51,9 @@ public class AuthService
                 FullName = body.FullName,
                 Email = body.Email,
                 Phone = body.Phone,
-                Role = body.Role
+                Role = body.Role,
+                SubscriptionExpiresAt = body.SubscriptionExpiresAt,
+                HasActiveSubscription = body.HasActiveSubscription
             });
 
             ((CustomAuthStateProvider)_authProvider).NotifyUserAuthenticated();
@@ -87,7 +89,9 @@ public class AuthService
                 FullName = body.FullName,
                 Email = body.Email,
                 Phone = body.Phone,
-                Role = body.Role
+                Role = body.Role,
+                SubscriptionExpiresAt = body.SubscriptionExpiresAt,
+                HasActiveSubscription = body.HasActiveSubscription
             });
 
             ((CustomAuthStateProvider)_authProvider).NotifyUserAuthenticated();

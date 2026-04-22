@@ -5,6 +5,7 @@ using Microsoft.IdentityModel.Tokens;
 using System.Text;
 using System.Text.Json.Serialization;
 using TourGuideHCM.API.Data;
+using TourGuideHCM.API.Filters;
 using TourGuideHCM.API.Services;
 
 var builder = WebApplication.CreateBuilder(args);
@@ -24,6 +25,8 @@ builder.Services.AddScoped<DuplicateDetectionService>();
 builder.Services.AddScoped<TtsQueueService>();
 builder.Services.AddScoped<JwtService>();
 builder.Services.AddScoped<CurrentUserService>();
+builder.Services.AddScoped<SubscriptionService>();
+builder.Services.AddScoped<RequireActiveSalerSubscriptionFilter>();
 
 // ====================== Upload File lớn ======================
 builder.WebHost.ConfigureKestrel(options => options.Limits.MaxRequestBodySize = 50 * 1024 * 1024);
@@ -222,7 +225,8 @@ using (var scope = app.Services.CreateScope())
         var userColumns = new[]
         {
             ("Role", "TEXT NOT NULL DEFAULT 'Saler'"),
-            ("LastLoginAt", "TEXT NULL")
+            ("LastLoginAt", "TEXT NULL"),
+            ("SubscriptionExpiresAt", "TEXT NULL")
         };
         foreach (var (col, def) in userColumns)
         {
@@ -233,6 +237,19 @@ using (var scope = app.Services.CreateScope())
             }
             catch { /* đã tồn tại */ }
         }
+
+        try
+        {
+            var starterDurationDays = builder.Configuration.GetValue<int?>("Payment:StarterDurationDays") ?? 30;
+            var initializedUsers = context.Database.ExecuteSqlRaw($@"
+                UPDATE Users
+                SET SubscriptionExpiresAt = datetime('now', '+{starterDurationDays} days')
+                WHERE Role = 'Saler' AND SubscriptionExpiresAt IS NULL;
+            ");
+            if (initializedUsers > 0)
+                Console.WriteLine($"   🔧 Đã khởi tạo hạn dùng cho {initializedUsers} tài khoản Saler");
+        }
+        catch { }
 
         // ====================== AUTO-ADD cột cho POIs (Saler feature) ======================
         var poiColumns = new[]
@@ -294,6 +311,32 @@ using (var scope = app.Services.CreateScope())
             Console.WriteLine("   ➕ Đã tạo bảng Notifications");
         }
         catch (Exception e) { Console.WriteLine($"   ⚠ Notifications: {e.Message}"); }
+
+        // ====================== AUTO-CREATE bảng Payments ======================
+        try
+        {
+            context.Database.ExecuteSqlRaw(@"
+                CREATE TABLE IF NOT EXISTS Payments (
+                    Id INTEGER PRIMARY KEY AUTOINCREMENT,
+                    UserId INTEGER NOT NULL,
+                    AmountVnd INTEGER NOT NULL,
+                    Status TEXT NOT NULL DEFAULT 'Pending',
+                    Provider TEXT NOT NULL DEFAULT 'VietQR',
+                    ProviderReference TEXT NOT NULL,
+                    TransferContent TEXT NOT NULL,
+                    Note TEXT NULL,
+                    CreatedAt TEXT NOT NULL,
+                    PaidAt TEXT NULL,
+                    SubscriptionExpiresAtBefore TEXT NULL,
+                    SubscriptionExpiresAtAfter TEXT NULL,
+                    FOREIGN KEY (UserId) REFERENCES Users(Id) ON DELETE CASCADE
+                );
+                CREATE UNIQUE INDEX IF NOT EXISTS IX_Payments_ProviderReference ON Payments(ProviderReference);
+                CREATE INDEX IF NOT EXISTS IX_Payments_UserId_Status_CreatedAt ON Payments(UserId, Status, CreatedAt);
+            ");
+            Console.WriteLine("   ➕ Đã tạo bảng Payments");
+        }
+        catch (Exception e) { Console.WriteLine($"   ⚠ Payments: {e.Message}"); }
 
         // ====================== SEED ADMIN MẶC ĐỊNH ======================
         // Nếu chưa có user Admin nào → tạo tài khoản admin/admin123

@@ -14,11 +14,13 @@ namespace TourGuideHCM.API.Controllers
     {
         private readonly AppDbContext _context;
         private readonly JwtService _jwt;
+        private readonly SubscriptionService _subscriptionService;
 
-        public AuthController(AppDbContext context, JwtService jwt)
+        public AuthController(AppDbContext context, JwtService jwt, SubscriptionService subscriptionService)
         {
             _context = context;
             _jwt = jwt;
+            _subscriptionService = subscriptionService;
         }
 
         // ================= REGISTER (chỉ cho Saler) =================
@@ -49,7 +51,8 @@ namespace TourGuideHCM.API.Controllers
                 Phone = req.Phone,
                 Role = "Saler",                  // Đăng ký công khai = Saler
                 IsActive = true,
-                CreatedAt = DateTime.UtcNow
+                CreatedAt = DateTime.UtcNow,
+                SubscriptionExpiresAt = _subscriptionService.GetStarterExpiry(DateTime.UtcNow)
             };
 
             _context.Users.Add(user);
@@ -64,7 +67,9 @@ namespace TourGuideHCM.API.Controllers
                 userId = user.Id,
                 username = user.Username,
                 fullName = user.FullName,
-                role = user.Role
+                role = user.Role,
+                subscriptionExpiresAt = user.SubscriptionExpiresAt,
+                hasActiveSubscription = _subscriptionService.HasActiveSubscription(user)
             });
         }
 
@@ -98,7 +103,9 @@ namespace TourGuideHCM.API.Controllers
                 fullName = user.FullName,
                 email = user.Email,
                 phone = user.Phone,
-                role = user.Role
+                role = user.Role,
+                subscriptionExpiresAt = user.SubscriptionExpiresAt,
+                hasActiveSubscription = _subscriptionService.HasActiveSubscription(user)
             });
         }
 
@@ -121,7 +128,9 @@ namespace TourGuideHCM.API.Controllers
                 email = user.Email,
                 phone = user.Phone,
                 role = user.Role,
-                isActive = user.IsActive
+                isActive = user.IsActive,
+                subscriptionExpiresAt = user.SubscriptionExpiresAt,
+                hasActiveSubscription = _subscriptionService.HasActiveSubscription(user)
             });
         }
 

@@ -1,0 +1,174 @@
+@page "/payment-history"
+@using System.Globalization
+@using TourGuideHCM.Admin.Models
+@using TourGuideHCM.Admin.Services
+@inject PaymentHistoryService PaymentHistoryService
+@inject ISnackbar Snackbar
+
+<div class="d-flex align-center mb-6">
+    <MudText Typo="Typo.h4" Class="font-weight-bold">💰 Lịch sử giao dịch</MudText>
+    <MudSpacer />
+    <MudButton Variant="Variant.Filled" Color="Color.Primary"
+               StartIcon="@Icons.Material.Filled.Refresh"
+               OnClick="LoadAsync" Disabled="@loading">
+        Làm mới
+    </MudButton>
+</div>
+
+<MudPaper Class="pa-4 mb-4" Elevation="2" Style="border-radius:16px;">
+    <MudGrid Spacing="2">
+        <MudItem xs="12" md="3">
+            <MudTextField @bind-Value="username"
+                          Label="Username / họ tên"
+                          Variant="Variant.Outlined"
+                          Dense="true" />
+        </MudItem>
+        <MudItem xs="12" md="2">
+            <MudTextField @bind-Value="userIdText"
+                          Label="User ID"
+                          Variant="Variant.Outlined"
+                          Dense="true" />
+        </MudItem>
+        <MudItem xs="12" md="2">
+            <MudSelect T="string" @bind-Value="status" Label="Trạng thái" Dense="true" Variant="Variant.Outlined">
+                <MudSelectItem Value="@string.Empty">Tất cả</MudSelectItem>
+                <MudSelectItem Value="@("Pending")">Pending</MudSelectItem>
+                <MudSelectItem Value="@("Paid")">Paid</MudSelectItem>
+                <MudSelectItem Value="@("Failed")">Failed</MudSelectItem>
+            </MudSelect>
+        </MudItem>
+        <MudItem xs="12" md="2">
+            <MudDatePicker @bind-Date="fromDate" Label="Từ ngày" Variant="Variant.Outlined" Dense="true" />
+        </MudItem>
+        <MudItem xs="12" md="2">
+            <MudDatePicker @bind-Date="toDate" Label="Đến ngày" Variant="Variant.Outlined" Dense="true" />
+        </MudItem>
+        <MudItem xs="12" md="1" Class="d-flex align-center">
+            <MudButton Variant="Variant.Outlined" Color="Color.Primary" OnClick="ApplyFilter" FullWidth="true">
+                Lọc
+            </MudButton>
+        </MudItem>
+    </MudGrid>
+</MudPaper>
+
+<MudTable Items="@items" Hover="true" Dense="true" Bordered="true" Loading="@loading">
+    <HeaderContent>
+        <MudTh>ID</MudTh>
+        <MudTh>Tài khoản</MudTh>
+        <MudTh>Số tiền</MudTh>
+        <MudTh>Trạng thái</MudTh>
+        <MudTh>Nội dung CK</MudTh>
+        <MudTh>Ngày tạo</MudTh>
+        <MudTh>Đã trả đến</MudTh>
+    </HeaderContent>
+    <RowTemplate Context="item">
+        <MudTd DataLabel="ID">#@item.Id</MudTd>
+        <MudTd DataLabel="Tài khoản">
+            <div>
+                <div style="font-weight:600;">@item.Username</div>
+                <div style="font-size:12px;color:#7a7a7a;">@(string.IsNullOrWhiteSpace(item.FullName) ? $"ID {item.UserId}" : $"ID {item.UserId} · {item.FullName}")</div>
+            </div>
+        </MudTd>
+        <MudTd DataLabel="Số tiền">@FormatCurrency(item.AmountVnd)</MudTd>
+        <MudTd DataLabel="Trạng thái">
+            <MudChip T="string" Color="@GetStatusColor(item.Status)" Size="Size.Small">@item.Status</MudChip>
+        </MudTd>
+        <MudTd DataLabel="Nội dung CK">
+            <div style="font-family:monospace;">@item.TransferContent</div>
+            <div style="font-size:12px;color:#7a7a7a;">@item.ProviderReference</div>
+        </MudTd>
+        <MudTd DataLabel="Ngày tạo">@item.CreatedAt.ToLocalTime().ToString("dd/MM/yyyy HH:mm")</MudTd>
+        <MudTd DataLabel="Đã trả đến">
+            @if (item.SubscriptionExpiresAtAfter.HasValue)
+            {
+                <div>@item.SubscriptionExpiresAtAfter.Value.ToLocalTime().ToString("dd/MM/yyyy HH:mm")</div>
+                @if (item.SubscriptionExpiresAtBefore.HasValue)
+                {
+                    <div style="font-size:12px;color:#7a7a7a;">
+                        Từ @item.SubscriptionExpiresAtBefore.Value.ToLocalTime().ToString("dd/MM/yyyy HH:mm")
+                    </div>
+                }
+            }
+            else
+            {
+                <span>-</span>
+            }
+        </MudTd>
+    </RowTemplate>
+    <NoRecordsContent>
+        <MudText>Chưa có giao dịch phù hợp bộ lọc.</MudText>
+    </NoRecordsContent>
+</MudTable>
+
+@if (totalPages > 1)
+{
+    <div class="d-flex justify-center mt-4">
+        <MudPagination Count="@totalPages" Selected="@currentPage" SelectedChanged="OnPageChanged" />
+    </div>
+}
+
+@code {
+    private List<PaymentHistoryDto> items = new();
+    private bool loading = true;
+    private int currentPage = 1;
+    private const int PageSize = 10;
+    private int totalCount;
+
+    private string username = "";
+    private string userIdText = "";
+    private string status = "";
+    private DateTime? fromDate;
+    private DateTime? toDate;
+
+    private int totalPages => Math.Max(1, (int)Math.Ceiling(totalCount / (double)PageSize));
+
+    protected override async Task OnInitializedAsync()
+    {
+        await LoadAsync();
+    }
+
+    private async Task LoadAsync()
+    {
+        loading = true;
+        try
+        {
+            int? parsedUserId = int.TryParse(userIdText, out var value) ? value : null;
+            var result = await PaymentHistoryService.GetAsync(currentPage, PageSize, parsedUserId, username, status, fromDate, toDate);
+            items = result.Items;
+            totalCount = result.TotalCount;
+        }
+        catch (Exception ex)
+        {
+            Snackbar.Add($"Không tải được lịch sử giao dịch: {ex.Message}", Severity.Error);
+            items = new();
+            totalCount = 0;
+        }
+        finally
+        {
+            loading = false;
+        }
+    }
+
+    private async Task ApplyFilter()
+    {
+        currentPage = 1;
+        await LoadAsync();
+    }
+
+    private async Task OnPageChanged(int value)
+    {
+        currentPage = value;
+        await LoadAsync();
+    }
+
+    private static string FormatCurrency(int amount) =>
+        string.Format(new CultureInfo("vi-VN"), "{0:C0}", amount);
+
+    private static Color GetStatusColor(string status) => status switch
+    {
+        "Paid" => Color.Success,
+        "Pending" => Color.Warning,
+        "Failed" => Color.Error,
+        _ => Color.Default
+    };
+}

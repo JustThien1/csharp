@@ -1,0 +1,192 @@
+@page "/subscription"
+@attribute [Microsoft.AspNetCore.Authorization.Authorize]
+@using System.Globalization
+@inject SubscriptionService SubscriptionService
+@inject SubscriptionStateService SubscriptionState
+@inject ISnackbar Snackbar
+
+<div class="d-flex align-center mb-6">
+    <MudText Typo="Typo.h4" Class="font-weight-bold">💳 Gia hạn gói Saler</MudText>
+    <MudSpacer />
+    <MudButton Variant="Variant.Outlined" Color="Color.Primary"
+               StartIcon="@Icons.Material.Filled.Refresh"
+               OnClick="LoadAsync" Disabled="@loading">
+        Làm mới
+    </MudButton>
+</div>
+
+@if (loading)
+{
+    <MudProgressLinear Indeterminate="true" Color="Color.Primary" Class="my-4" />
+}
+else if (subscriptionInfo == null)
+{
+    <MudAlert Severity="Severity.Error">Không tải được thông tin gia hạn.</MudAlert>
+}
+else
+{
+    <MudGrid Spacing="3">
+        <MudItem xs="12" md="5">
+            <MudPaper Class="pa-5" Elevation="3" Style="border-radius:18px;height:100%;background:linear-gradient(180deg,#fffaf1,#fff3e5);">
+                <MudText Typo="Typo.overline" Style="color:#9c6b30;">GÓI HIỆN TẠI</MudText>
+                <MudText Typo="Typo.h5" Class="mb-3">Saler Subscription</MudText>
+
+                <MudChip T="string" Color="@(subscriptionInfo.HasActiveSubscription ? Color.Success : Color.Error)"
+                         Icon="@(subscriptionInfo.HasActiveSubscription ? Icons.Material.Filled.Verified : Icons.Material.Filled.Warning)"
+                         Class="mb-4">
+                    @(subscriptionInfo.HasActiveSubscription ? "Đang hoạt động" : "Đã hết hạn")
+                </MudChip>
+
+                <MudText Typo="Typo.body1" Class="mb-2">
+                    Gia hạn: <strong>@FormatCurrency(subscriptionInfo.RenewalPriceVnd) / lần</strong>
+                </MudText>
+                <MudText Typo="Typo.body2" Color="Color.Secondary" Class="mb-2">
+                    Mỗi lần thanh toán cộng thêm @subscriptionInfo.RenewalDurationDays ngày sử dụng.
+                </MudText>
+                <MudText Typo="Typo.body2" Class="mb-4">
+                    Hạn hiện tại:
+                    <strong>@FormatDate(subscriptionInfo.SubscriptionExpiresAt)</strong>
+                </MudText>
+
+                <MudAlert Severity="Severity.Info" Dense="true">
+                    Nội dung chuyển khoản gợi ý có định danh riêng để đối soát nhanh.
+                </MudAlert>
+            </MudPaper>
+        </MudItem>
+
+        <MudItem xs="12" md="7">
+            <MudPaper Class="pa-5" Elevation="3" Style="border-radius:18px;">
+                <MudText Typo="Typo.h6" Class="mb-2">Quét mã QR để chuyển khoản</MudText>
+                <MudText Typo="Typo.body2" Color="Color.Secondary" Class="mb-4">
+                    Gia hạn: 299.000đ / lần. Ứng dụng ngân hàng sẽ điền sẵn số tiền @FormatCurrency(currentPayment?.PaymentInfo.AmountVnd ?? subscriptionInfo.PaymentInfo.AmountVnd).
+                </MudText>
+
+                @if (currentPayment?.PaymentInfo != null)
+                {
+                    <div class="text-center mb-4">
+                        <img src="@currentPayment.PaymentInfo.QrImageUrl"
+                             alt="QR thanh toán"
+                             style="max-width:320px;width:100%;border-radius:16px;border:1px solid #f0e1c3;padding:12px;background:white;" />
+                    </div>
+
+                    <MudGrid Spacing="2">
+                        <MudItem xs="12" sm="6">
+                            <MudText Typo="Typo.caption" Color="Color.Secondary">Ngân hàng</MudText>
+                            <MudText Typo="Typo.body1">@currentPayment.PaymentInfo.BankCode</MudText>
+                        </MudItem>
+                        <MudItem xs="12" sm="6">
+                            <MudText Typo="Typo.caption" Color="Color.Secondary">Số tài khoản</MudText>
+                            <MudText Typo="Typo.body1">@currentPayment.PaymentInfo.AccountNumber</MudText>
+                        </MudItem>
+                        <MudItem xs="12" sm="6">
+                            <MudText Typo="Typo.caption" Color="Color.Secondary">Chủ tài khoản</MudText>
+                            <MudText Typo="Typo.body1">@currentPayment.PaymentInfo.AccountName</MudText>
+                        </MudItem>
+                        <MudItem xs="12" sm="6">
+                            <MudText Typo="Typo.caption" Color="Color.Secondary">Nội dung</MudText>
+                            <MudText Typo="Typo.body1" Style="font-family:monospace;">@currentPayment.PaymentInfo.TransferContent</MudText>
+                        </MudItem>
+                    </MudGrid>
+
+                    <div class="d-flex flex-wrap mt-4" style="gap:12px;">
+                        <MudButton Variant="Variant.Filled" Color="Color.Primary"
+                                   StartIcon="@Icons.Material.Filled.QrCode2"
+                                   OnClick="CreateRenewalRequestAsync" Disabled="@loadingPayment">
+                            Tạo mã QR mới
+                        </MudButton>
+
+                        @if (subscriptionInfo.CanSimulatePayment)
+                        {
+                            <MudButton Variant="Variant.Outlined" Color="Color.Success"
+                                       StartIcon="@Icons.Material.Filled.Done"
+                                       OnClick="SimulateSuccessAsync" Disabled="@(loadingPayment || currentPayment?.PaymentId <= 0)">
+                                Dev: Mô phỏng thanh toán thành công
+                            </MudButton>
+                        }
+                    </div>
+                }
+            </MudPaper>
+        </MudItem>
+    </MudGrid>
+}
+
+@code {
+    private SubscriptionInfoResponse? subscriptionInfo;
+    private RenewalRequestResponse? currentPayment;
+    private bool loading = true;
+    private bool loadingPayment;
+
+    protected override async Task OnInitializedAsync()
+    {
+        await LoadAsync();
+    }
+
+    private async Task LoadAsync()
+    {
+        loading = true;
+        try
+        {
+            subscriptionInfo = await SubscriptionService.GetInfoAsync();
+            if (subscriptionInfo != null)
+            {
+                SubscriptionState.Clear();
+                await CreateRenewalRequestAsync();
+            }
+        }
+        catch (Exception ex)
+        {
+            Snackbar.Add($"Không tải được thông tin gia hạn: {ex.Message}", Severity.Error);
+        }
+        finally
+        {
+            loading = false;
+        }
+    }
+
+    private async Task CreateRenewalRequestAsync()
+    {
+        loadingPayment = true;
+        try
+        {
+            currentPayment = await SubscriptionService.CreateRenewalRequestAsync();
+        }
+        catch (Exception ex)
+        {
+            Snackbar.Add($"Không tạo được mã QR: {ex.Message}", Severity.Error);
+        }
+        finally
+        {
+            loadingPayment = false;
+            StateHasChanged();
+        }
+    }
+
+    private async Task SimulateSuccessAsync()
+    {
+        if (currentPayment == null) return;
+
+        loadingPayment = true;
+        try
+        {
+            var result = await SubscriptionService.SimulateSuccessAsync(currentPayment.PaymentId);
+            Snackbar.Add(result?.Message ?? "Gia hạn thành công", Severity.Success);
+            await LoadAsync();
+        }
+        catch (Exception ex)
+        {
+            Snackbar.Add($"Mô phỏng thanh toán thất bại: {ex.Message}", Severity.Error);
+        }
+        finally
+        {
+            loadingPayment = false;
+        }
+    }
+
+    private static string FormatCurrency(int amount) =>
+        string.Format(new CultureInfo("vi-VN"), "{0:C0}", amount);
+
+    private static string FormatDate(DateTime? value) =>
+        value.HasValue
+            ? value.Value.ToLocalTime().ToString("dd/MM/yyyy HH:mm")
+            : "Chưa có gói";
+}

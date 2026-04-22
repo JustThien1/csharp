@@ -15,9 +15,11 @@
         public bool IsActive { get; set; } = true;
         public DateTime CreatedAt { get; set; } = DateTime.UtcNow;
         public DateTime? LastLoginAt { get; set; }
+        public DateTime? SubscriptionExpiresAt { get; set; }
 
         // Navigation properties
         public ICollection<Review> Reviews { get; set; } = new List<Review>();
         public ICollection<Favorite> Favorites { get; set; } = new List<Favorite>();
+        public ICollection<Payment> Payments { get; set; } = new List<Payment>();
     }
 }
