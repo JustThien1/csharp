@@ -1,0 +1,13 @@
+erDiagram
+    USER ||--o{ POI : creates
+    CATEGORY ||--o{ POI : classifies
+    POI ||--o{ AUDIO : has
+    USER ||--o{ NOTIFICATION : receives
+    USER ||--o{ PLAYBACK_LOG : generates
+    USER ||--o{ ROUTE_LOG : generates
+    POI ||--o{ PLAYBACK_LOG : referenced_by
+    POI ||--o{ DUPLICATE_REPORT : poi_a
+    POI ||--o{ DUPLICATE_REPORT : poi_b
+    POI ||--o{ TTS_JOB : requests
+    TOUR ||--o{ TOUR_STOP : contains
+    POI ||--o{ TOUR_STOP : destination

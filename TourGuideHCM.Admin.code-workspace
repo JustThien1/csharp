@@ -1,0 +1,16 @@
+{
+	"folders": [
+		{
+			"path": "TourGuideHCM.Admin"
+		},
+		{
+			"path": "TourGuideHCM.API"
+		},
+		{
+			"path": "TourGuideHCM.App"
+		},
+		{
+			"path": "TourGuideHCM.Saler"
+		}
+	]
+}

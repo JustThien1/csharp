@@ -1,0 +1,14 @@
+flowchart TD
+    P1[Receive request] --> P2[Authenticate JWT]
+    P2 --> P3[Authorize role/ownership]
+    P3 --> P4[Validate DTO/business rules]
+    P4 --> P5[Persist entity]
+    P5 --> P6{Need side effects?}
+    P6 -- Duplicate --> P7[Run duplicate detection]
+    P6 -- Notification --> P8[Create notification]
+    P6 -- Audio --> P9[Store file + audio row]
+    P6 -- Analytics --> P10[Write playback/heartbeat]
+    P7 --> P11[Return response]
+    P8 --> P11
+    P9 --> P11
+    P10 --> P11

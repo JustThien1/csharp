@@ -1,0 +1,34 @@
+classDiagram
+    class POI {
+        +int Id
+        +string Name
+        +double Lat
+        +double Lng
+        +double Radius
+        +string AudioUrl
+        +string NarrationText
+        +int CategoryId
+        +bool IsFavorite
+    }
+    class MapViewModel {
+        +InitializeAsync()
+        +RefreshPoisAsync()
+        +PlayPoiAsync()
+    }
+    class ApiService {
+        +GetPoisAsync()
+        +GetNearbyPoisAsync()
+        +GetAudioForPoiAsync()
+    }
+    class GeofenceService {
+        +StartAsync()
+        +GetInRangePois()
+    }
+    class AudioQueueService {
+        +EnqueuePoi()
+        +TryGetNext()
+    }
+    MapViewModel --> ApiService : uses
+    MapViewModel --> GeofenceService : uses
+    MapViewModel --> AudioQueueService : uses
+    AudioQueueService --> POI : queues

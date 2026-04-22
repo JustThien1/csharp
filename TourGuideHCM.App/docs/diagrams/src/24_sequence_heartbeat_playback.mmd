@@ -1,0 +1,19 @@
+sequenceDiagram
+    participant App as AppMobile
+    participant HeartBG as HeartbeatService (BG)
+    participant PlaybackSvc as PlaybackLogger
+    participant API as AnalyticsController
+    participant DB
+    loop Mỗi 30 giây
+        HeartBG->>API: POST /api/analytics/heartbeat {deviceId, lat, lng, userId?}
+        API->>DB: UPSERT UserHeartbeat SET LastSeen=now
+        API-->>HeartBG: 204
+    end
+    Note over App: Người dùng nghe thuyết minh 1 POI
+    App->>PlaybackSvc: OnAudioStart(poiId, audioId, lang)
+    PlaybackSvc->>PlaybackSvc: Record t0
+    App->>PlaybackSvc: OnAudioComplete(duration)
+    PlaybackSvc->>API: POST /api/analytics/playback {poiId, audioId, lang, duration, deviceId, userId?}
+    API->>DB: INSERT PlaybackLog
+    DB-->>API: ok
+    API-->>PlaybackSvc: 201

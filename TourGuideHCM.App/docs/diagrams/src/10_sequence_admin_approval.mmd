@@ -1,0 +1,10 @@
+sequenceDiagram
+    participant Admin
+    participant AdminWeb
+    participant API
+    participant Noti as Notification
+    Admin->>AdminWeb: Approve/Reject/Lock POI
+    AdminWeb->>API: POST /api/poi-approval/{id}/action
+    API->>Noti: Create notification to saler
+    API-->>AdminWeb: Updated status + message
+    AdminWeb-->>Admin: Refresh list/counts

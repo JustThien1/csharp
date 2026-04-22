@@ -1,0 +1,19 @@
+flowchart TD
+    O1[Admin mở Orphan Audio] --> O2[Service quét Audio không có POI active]
+    O2 --> O3[Kiểm tra file vật lý tồn tại]
+    O3 --> O4{Có bản ghi orphan?}
+    O4 -- No --> O5[Hiển thị Empty state]
+    O5 --> O_END((End))
+    O4 -- Yes --> O6[Hiển thị danh sách + preview audio]
+    O6 --> O7{Quyết định}
+    O7 -- Restore --> O8[Admin chọn POI đích]
+    O8 --> O9{POI đích active?}
+    O9 -- No --> O10[Báo lỗi: POI không tồn tại]
+    O10 --> O6
+    O9 -- Yes --> O11[UPDATE Audio SET PoiId=newPoi, IsActive=1]
+    O11 --> O12[Notify owner POI đích]
+    O12 --> O_END
+    O7 -- Delete --> O13[Xoá file vật lý]
+    O13 --> O14[DELETE FROM Audio]
+    O14 --> O_END
+    O7 -- Skip --> O_END

@@ -1,0 +1,12 @@
+flowchart TD
+    S1[Login/Register] --> S2[Open My POIs]
+    S2 --> S3[Create/Edit POI form]
+    S3 --> S4[Validate fields]
+    S4 --> S5[Save POI API]
+    S5 --> S6{Add audio?}
+    S6 -- TTS --> S7[Convert TTS]
+    S6 -- Upload --> S8[Upload file + create audio]
+    S6 -- Skip --> S9[Finish]
+    S7 --> S9
+    S8 --> S9
+    S9 --> S10[Wait review status + notifications]

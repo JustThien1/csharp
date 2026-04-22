@@ -1,0 +1,20 @@
+flowchart TD
+    D1[Admin mở DuplicateReport list] --> D2[Chọn 1 report]
+    D2 --> D3[So sánh 2 POI: tên, toạ độ, audio]
+    D3 --> D4{Quyết định}
+    D4 -- Dismiss --> D5[UPDATE Status=Dismissed]
+    D5 --> D6[Notify cả 2 saler: không trùng]
+    D6 --> D_END((End))
+    D4 -- Merge --> D7[Chọn keep vs remove]
+    D7 --> D8[BEGIN TRANSACTION]
+    D8 --> D9[UPDATE Audio.PoiId về keep]
+    D9 --> D10[UPDATE PlaybackLog.PoiId về keep]
+    D10 --> D11[UPDATE FavoritePoi.PoiId về keep]
+    D11 --> D12[POI remove: IsActive=0, MergedIntoId=keep]
+    D12 --> D13[UPDATE Report Status=Merged]
+    D13 --> D14{Lỗi SQL?}
+    D14 -- Yes --> D15[ROLLBACK + log + Alert admin]
+    D15 --> D_END
+    D14 -- No --> D16[COMMIT]
+    D16 --> D17[Notify saler POI bị merge]
+    D17 --> D_END

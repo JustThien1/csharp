@@ -1,0 +1,21 @@
+flowchart TD
+    T1[Saler bấm Tạo TTS] --> T2[Validate text độ dài + ngôn ngữ]
+    T2 --> T3{Text hợp lệ?}
+    T3 -- No --> T4[Trả lỗi 400]
+    T3 -- Yes --> T5[INSERT TtsJob Pending]
+    T5 --> T6[Enqueue vào JobQueue]
+    T6 --> T7[Trả 202 + jobId]
+    T7 --> T8((Worker BG))
+    T8 --> T9[Dequeue job]
+    T9 --> T10[UPDATE TtsJob Processing]
+    T10 --> T11[Gọi Google TTS]
+    T11 --> T12{Response OK?}
+    T12 -- No --> T13[UPDATE TtsJob Failed + errorMsg]
+    T13 --> T14[Notify Saler: TTS thất bại]
+    T12 -- Yes --> T15[Lưu file .mp3 vào storage]
+    T15 --> T16[INSERT Audio row]
+    T16 --> T17[UPDATE TtsJob Done + AudioUrl]
+    T17 --> T18[Notify Saler: TTS sẵn sàng]
+    T18 --> T19((End))
+    T14 --> T19
+    T4 --> T19

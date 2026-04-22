@@ -49,7 +49,8 @@ namespace TourGuideHCM.API.Controllers
                 Phone = req.Phone,
                 Role = "Saler",                  // Đăng ký công khai = Saler
                 IsActive = true,
-                CreatedAt = DateTime.UtcNow
+                CreatedAt = DateTime.UtcNow,
+                SubscriptionEndUtc = DateTime.UtcNow.AddDays(14)   // dùng thử, sau đó cần gia hạn
             };
 
             _context.Users.Add(user);
@@ -64,7 +65,8 @@ namespace TourGuideHCM.API.Controllers
                 userId = user.Id,
                 username = user.Username,
                 fullName = user.FullName,
-                role = user.Role
+                role = user.Role,
+                subscriptionEndUtc = user.SubscriptionEndUtc
             });
         }
 
@@ -98,7 +100,8 @@ namespace TourGuideHCM.API.Controllers
                 fullName = user.FullName,
                 email = user.Email,
                 phone = user.Phone,
-                role = user.Role
+                role = user.Role,
+                subscriptionEndUtc = user.SubscriptionEndUtc
             });
         }
 
@@ -121,7 +124,8 @@ namespace TourGuideHCM.API.Controllers
                 email = user.Email,
                 phone = user.Phone,
                 role = user.Role,
-                isActive = user.IsActive
+                isActive = user.IsActive,
+                subscriptionEndUtc = user.SubscriptionEndUtc
             });
         }
 

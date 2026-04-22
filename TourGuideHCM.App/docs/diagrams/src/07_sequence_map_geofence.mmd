@@ -1,0 +1,22 @@
+sequenceDiagram
+    participant User
+    participant App as AppMobile
+    participant LocalDB
+    participant Geofence
+    participant API
+    participant Queue as AudioQueue
+    User->>App: Open Map
+    App->>LocalDB: Load cached POIs
+    LocalDB-->>App: Cached POIs
+    App->>API: GET /api/poi + /api/poi/nearby
+    API-->>App: POIs
+    App->>Geofence: Start location polling
+    Geofence-->>App: In-range POI list
+    App->>Queue: Enqueue in-range POIs
+    Queue-->>App: Next POI to play
+    App->>API: GET /api/audio/poi/{id}
+    API-->>App: Audio URL by language
+    alt no audio file
+        App->>App: TTS fallback from narration text
+    end
+    App->>User: Play narration

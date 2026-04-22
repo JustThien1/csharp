@@ -1,0 +1,38 @@
+classDiagram
+    class PoiDto {
+        +int Id
+        +string Name
+        +string ReviewStatus
+        +string RejectionReason
+        +int CategoryId
+        +string CreatedByUserId
+    }
+    class AudioDto {
+        +int Id
+        +int PoiId
+        +string Language
+        +string AudioUrl
+    }
+    class AuthService {
+        +LoginAsync()
+        +RegisterAsync()
+        +ChangePasswordAsync()
+    }
+    class PoiService {
+        +GetMineAsync()
+        +CreateAsync()
+        +UpdateAsync()
+        +DeleteAsync()
+    }
+    class AudioService {
+        +ConvertTtsAsync()
+        +UploadAudioAsync()
+        +CreateAudioAsync()
+    }
+    class NotificationService {
+        +GetNotificationsAsync()
+        +MarkReadAsync()
+    }
+    PoiService --> PoiDto
+    AudioService --> AudioDto
+    AudioDto --> PoiDto : belongs to

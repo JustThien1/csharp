@@ -1,0 +1,26 @@
+sequenceDiagram
+    participant App as AppMobile
+    participant GPS as LocationService
+    participant Buffer as RouteBuffer
+    participant API as RouteController
+    participant DB
+    participant AdminWeb
+    participant Admin
+    App->>GPS: StartTracking()
+    loop Mỗi 5 giây
+        GPS-->>App: {lat, lng, accuracy, timestamp}
+        App->>Buffer: Append(point)
+    end
+    Note over Buffer: Khi buffer đạt 20 điểm hoặc 2 phút
+    Buffer->>API: POST /api/route/batch {deviceId, userId?, points[]}
+    API->>DB: INSERT BULK RouteLog
+    DB-->>API: ok
+    API-->>Buffer: 201
+    Buffer->>Buffer: Clear()
+    Note over Admin: Admin xem heatmap
+    Admin->>AdminWeb: Mở trang Route Analytics
+    AdminWeb->>API: GET /api/route/heatmap?from=&to=
+    API->>DB: SELECT lat,lng,COUNT(*) GROUP BY grid
+    DB-->>API: heatmap data
+    API-->>AdminWeb: json
+    AdminWeb-->>Admin: Hiển thị heatmap lên Leaflet

@@ -1,0 +1,618 @@
+<!doctype html>
+<html lang="vi">
+<head>
+<meta charset="utf-8" />
+<title>TourGuideHCM — 19 Mermaid Diagrams Renderer</title>
+<meta name="viewport" content="width=device-width,initial-scale=1" />
+<style>
+  :root { --bg:#0f172a; --card:#111827; --fg:#e5e7eb; --muted:#94a3b8;
+          --accent:#22d3ee; --ok:#10b981; --warn:#f59e0b; }
+  * { box-sizing: border-box; }
+  body { margin:0; font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+         background:var(--bg); color:var(--fg); }
+  header { position:sticky; top:0; z-index:10; background:#0b1220cc; backdrop-filter: blur(6px);
+           padding:14px 20px; border-bottom:1px solid #1f2937;
+           display:flex; gap:12px; align-items:center; flex-wrap:wrap; }
+  header h1 { font-size:16px; margin:0; flex:1; }
+  header .meta { color:var(--muted); font-size:12px; }
+  .btn { background:var(--accent); color:#082f3a; border:0; border-radius:8px;
+         padding:9px 14px; font-weight:600; cursor:pointer; font-size:13px; }
+  .btn.secondary { background:#1f2937; color:var(--fg); }
+  .btn:disabled { opacity:0.5; cursor:not-allowed; }
+  main { max-width: 1100px; margin: 0 auto; padding: 20px; }
+  .card { background:var(--card); border:1px solid #1f2937; border-radius:12px;
+          margin-bottom:20px; overflow:hidden; }
+  .card-head { padding:12px 16px; display:flex; align-items:center; gap:10px;
+               border-bottom:1px solid #1f2937; }
+  .card-head .idx { background:#1f2937; color:var(--accent); border-radius:6px;
+                    padding:2px 8px; font-size:12px; font-weight:700; font-family: ui-monospace, monospace; }
+  .card-head h2 { margin:0; font-size:14px; flex:1; font-weight:600; }
+  .card-head .status { font-size:11px; color:var(--muted); }
+  .card-body { padding: 18px; background:#fff; overflow:auto; }
+  .card-body svg { max-width:100%; height:auto; display:block; margin:0 auto; }
+  .card-foot { padding:10px 16px; border-top:1px solid #1f2937;
+               display:flex; gap:8px; justify-content:flex-end; }
+  .error { color:#fca5a5; background:#450a0a; padding:12px; border-radius:8px;
+           font-family: ui-monospace, monospace; font-size:12px; white-space: pre-wrap; }
+  #log { position:fixed; bottom:16px; right:16px; background:#0b1220e6;
+         border:1px solid #1f2937; border-radius:8px; padding:10px 14px;
+         font-size:12px; color:var(--muted); max-width:360px; display:none; }
+  #log.visible { display:block; }
+  a { color:var(--accent); }
+</style>
+</head>
+<body>
+<header>
+  <h1>TourGuideHCM — 19 Mermaid Diagrams</h1>
+  <span class="meta" id="counter">0 / 19 rendered</span>
+  <button class="btn" id="downloadAll" disabled>⬇ Download All as PNG (ZIP)</button>
+  <button class="btn secondary" id="downloadAllSeparate" disabled>⬇ Save 19 PNG riêng lẻ</button>
+</header>
+<main id="main"></main>
+<div id="log"></div>
+
+<!-- Mermaid from cdnjs (required for rendering in the browser) -->
+<script src="https://cdnjs.cloudflare.com/ajax/libs/mermaid/10.9.0/mermaid.min.js"></script>
+<!-- JSZip for ZIP bundling -->
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js"></script>
+
+<script>
+const DIAGRAMS = [
+  { id:"01_context", title:"1. Kiến trúc tổng quan (Context)",
+    code:`flowchart LR
+    App[TourGuideHCM.App] --> API[TourGuideHCM.API]
+    Saler[TourGuideHCM.Saler] --> API
+    Admin[TourGuideHCM.Admin] --> API
+    API --> DB[(SQL Database)]
+    API --> FS[(Audio File Storage)]
+    API --> TTS[Google TTS API]` },
+
+  { id:"02_erd", title:"2. ERD — Cơ sở dữ liệu",
+    code:`erDiagram
+    USER ||--o{ POI : creates
+    CATEGORY ||--o{ POI : classifies
+    POI ||--o{ AUDIO : has
+    USER ||--o{ NOTIFICATION : receives
+    USER ||--o{ PLAYBACK_LOG : generates
+    USER ||--o{ ROUTE_LOG : generates
+    POI ||--o{ PLAYBACK_LOG : referenced_by
+    POI ||--o{ DUPLICATE_REPORT : poi_a
+    POI ||--o{ DUPLICATE_REPORT : poi_b
+    POI ||--o{ TTS_JOB : requests
+    TOUR ||--o{ TOUR_STOP : contains
+    POI ||--o{ TOUR_STOP : destination` },
+
+  { id:"03_usecase_tourist", title:"3. Use Case — Tourist (App)",
+    code:`flowchart TB
+    U[Tourist User] --> A1[Open Home dashboard]
+    U --> A2[View map and nearby POIs]
+    U --> A3[Search/filter POI list]
+    U --> A4[Open POI detail]
+    U --> A5[Manual listen narration]
+    U --> A6[Auto geofence narration]
+    U --> A7[Toggle language VI/EN]
+    U --> A8[Save favorite POI]
+    A2 --> A6
+    A4 --> A5
+    A3 --> A4` },
+
+  { id:"04_usecase_saler", title:"4. Use Case — Saler",
+    code:`flowchart TB
+    S[Saler User] --> S1[Login/Register account]
+    S --> S2[Create POI draft]
+    S --> S3[Edit POI details]
+    S --> S4[Delete POI]
+    S --> S5[Upload audio file]
+    S --> S6[Generate TTS audio]
+    S --> S7[Track review status]
+    S --> S8[Read moderation notifications]
+    S2 --> S5
+    S2 --> S6
+    S3 --> S7` },
+
+  { id:"05_usecase_api", title:"5. Use Case — API (Client roles)",
+    code:`flowchart TB
+    C[Client App/Saler/Admin] --> P1[Authenticate via JWT]
+    C --> P2[CRUD POI]
+    C --> P3[Approve/Reject/Lock POI]
+    C --> P4[Generate/Upload audio]
+    C --> P5[Log playback and heartbeat]
+    C --> P6[Manage duplicate reports]
+    C --> P7[Serve notifications]
+    C --> P8[Route tracking]` },
+
+  { id:"06_usecase_admin", title:"6. Use Case — Admin",
+    code:`flowchart TB
+    A[Admin] --> AD1[Review pending POI]
+    A --> AD2[Approve/Reject/Lock/Unlock POI]
+    A --> AD3[Resolve duplicates merge/dismiss]
+    A --> AD4[Manage users]
+    A --> AD5[Manage audios and recover orphans]
+    A --> AD6[Monitor dashboard and realtime]
+    A --> AD7[Track routes and heatmap]` },
+
+  { id:"07_sequence_map_geofence", title:"7. Sequence — App: Map & Geofence",
+    code:`sequenceDiagram
+    participant User
+    participant App as AppMobile
+    participant LocalDB
+    participant Geofence
+    participant API
+    participant Queue as AudioQueue
+    User->>App: Open Map
+    App->>LocalDB: Load cached POIs
+    LocalDB-->>App: Cached POIs
+    App->>API: GET /api/poi + /api/poi/nearby
+    API-->>App: POIs
+    App->>Geofence: Start location polling
+    Geofence-->>App: In-range POI list
+    App->>Queue: Enqueue in-range POIs
+    Queue-->>App: Next POI to play
+    App->>API: GET /api/audio/poi/{id}
+    API-->>App: Audio URL by language
+    alt no audio file
+        App->>App: TTS fallback from narration text
+    end
+    App->>User: Play narration` },
+
+  { id:"08_sequence_saler_poi", title:"8. Sequence — Saler: tạo POI + Audio",
+    code:`sequenceDiagram
+    participant Saler
+    participant SalerWeb
+    participant API
+    Saler->>SalerWeb: Save POI form
+    SalerWeb->>API: POST/PUT /api/poi
+    API-->>SalerWeb: POI saved (PendingReview)
+    alt Optional TTS
+        SalerWeb->>API: POST /api/audio/convert
+    else Optional Upload
+        SalerWeb->>API: POST /api/audio/upload
+        SalerWeb->>API: POST /api/audio
+    end
+    API-->>SalerWeb: Audio result
+    SalerWeb-->>Saler: Success/partial-success feedback` },
+
+  { id:"09_sequence_api_auth_poi", title:"9. Sequence — API: Auth + Create POI",
+    code:`sequenceDiagram
+    participant Client
+    participant Auth as AuthController
+    participant Poi as POIController
+    participant Dup as DuplicateDetectionService
+    participant Noti as NotificationService
+    participant DB
+    Client->>Auth: POST /api/auth/login
+    Auth-->>Client: JWT
+    Client->>Poi: POST /api/poi (Bearer JWT)
+    Poi->>DB: Save POI (PendingReview for Saler)
+    Poi->>Dup: CheckAndReportAsync(poi)
+    Dup->>DB: Create duplicate report if matched
+    Poi->>Noti: Notify admin on new POI
+    Poi-->>Client: POI + duplicate warning` },
+
+  { id:"10_sequence_admin_approval", title:"10. Sequence — Admin: duyệt POI",
+    code:`sequenceDiagram
+    participant Admin
+    participant AdminWeb
+    participant API
+    participant Noti as Notification
+    Admin->>AdminWeb: Approve/Reject/Lock POI
+    AdminWeb->>API: POST /api/poi-approval/{id}/action
+    API->>Noti: Create notification to saler
+    API-->>AdminWeb: Updated status + message
+    AdminWeb-->>Admin: Refresh list/counts` },
+
+  { id:"11_activity_app", title:"11. Activity — App (Geofence loop)",
+    code:`flowchart TD
+    A1[App start] --> A2[Init services + heartbeat]
+    A2 --> A3[Load Home/Map]
+    A3 --> A4[Load cached POIs]
+    A4 --> A5[Refresh POIs from API]
+    A5 --> A6[Start geofence polling]
+    A6 --> A7{POI in activation radius?}
+    A7 -- No --> A6
+    A7 -- Yes --> A8[Queue narration]
+    A8 --> A9[Play audio or TTS]
+    A9 --> A10[Log playback/route]
+    A10 --> A6` },
+
+  { id:"12_activity_saler", title:"12. Activity — Saler (POI flow)",
+    code:`flowchart TD
+    S1[Login/Register] --> S2[Open My POIs]
+    S2 --> S3[Create/Edit POI form]
+    S3 --> S4[Validate fields]
+    S4 --> S5[Save POI API]
+    S5 --> S6{Add audio?}
+    S6 -- TTS --> S7[Convert TTS]
+    S6 -- Upload --> S8[Upload file + create audio]
+    S6 -- Skip --> S9[Finish]
+    S7 --> S9
+    S8 --> S9
+    S9 --> S10[Wait review status + notifications]` },
+
+  { id:"13_activity_api", title:"13. Activity — API (Request pipeline)",
+    code:`flowchart TD
+    P1[Receive request] --> P2[Authenticate JWT]
+    P2 --> P3[Authorize role/ownership]
+    P3 --> P4[Validate DTO/business rules]
+    P4 --> P5[Persist entity]
+    P5 --> P6{Need side effects?}
+    P6 -- Duplicate --> P7[Run duplicate detection]
+    P6 -- Notification --> P8[Create notification]
+    P6 -- Audio --> P9[Store file + audio row]
+    P6 -- Analytics --> P10[Write playback/heartbeat]
+    P7 --> P11[Return response]
+    P8 --> P11
+    P9 --> P11
+    P10 --> P11` },
+
+  { id:"14_activity_admin", title:"14. Activity — Admin (Moderation)",
+    code:`flowchart TD
+    AD1[Load pending POI queue] --> AD2[Inspect POI + audio]
+    AD2 --> AD3{Decision}
+    AD3 -- Approve --> AD4[Set Approved]
+    AD3 -- Reject --> AD5[Set Rejected + reason]
+    AD3 -- Lock --> AD6[Set Locked + reason]
+    AD3 -- Unlock --> AD7[Set Approved]
+    AD4 --> AD8[Notify saler]
+    AD5 --> AD8
+    AD6 --> AD8
+    AD7 --> AD8
+    AD8 --> AD9[Refresh counters and lists]` },
+
+  { id:"15_class_app", title:"15. Class — App (MAUI)",
+    code:`classDiagram
+    class POI {
+        +int Id
+        +string Name
+        +double Lat
+        +double Lng
+        +double Radius
+        +string AudioUrl
+        +string NarrationText
+        +int CategoryId
+        +bool IsFavorite
+    }
+    class MapViewModel {
+        +InitializeAsync()
+        +RefreshPoisAsync()
+        +PlayPoiAsync()
+    }
+    class ApiService {
+        +GetPoisAsync()
+        +GetNearbyPoisAsync()
+        +GetAudioForPoiAsync()
+    }
+    class GeofenceService {
+        +StartAsync()
+        +GetInRangePois()
+    }
+    class AudioQueueService {
+        +EnqueuePoi()
+        +TryGetNext()
+    }
+    MapViewModel --> ApiService : uses
+    MapViewModel --> GeofenceService : uses
+    MapViewModel --> AudioQueueService : uses
+    AudioQueueService --> POI : queues` },
+
+  { id:"16_class_saler", title:"16. Class — Saler (Portal)",
+    code:`classDiagram
+    class PoiDto {
+        +int Id
+        +string Name
+        +string ReviewStatus
+        +string RejectionReason
+        +int CategoryId
+        +string CreatedByUserId
+    }
+    class AudioDto {
+        +int Id
+        +int PoiId
+        +string Language
+        +string AudioUrl
+    }
+    class AuthService {
+        +LoginAsync()
+        +RegisterAsync()
+        +ChangePasswordAsync()
+    }
+    class PoiService {
+        +GetMineAsync()
+        +CreateAsync()
+        +UpdateAsync()
+        +DeleteAsync()
+    }
+    class AudioService {
+        +ConvertTtsAsync()
+        +UploadAudioAsync()
+        +CreateAudioAsync()
+    }
+    class NotificationService {
+        +GetNotificationsAsync()
+        +MarkReadAsync()
+    }
+    PoiService --> PoiDto
+    AudioService --> AudioDto
+    AudioDto --> PoiDto : belongs to` },
+
+  { id:"17_class_api", title:"17. Class — API (Domain core)",
+    code:`classDiagram
+    class User {
+        +int Id
+        +string Username
+        +string Role
+        +bool IsActive
+    }
+    class POI {
+        +int Id
+        +string Name
+        +string ReviewStatus
+        +int CreatedByUserId
+        +int CategoryId
+        +bool IsActive
+    }
+    class Audio {
+        +int Id
+        +int PoiId
+        +string Language
+        +string AudioUrl
+        +bool IsActive
+    }
+    class DuplicateReport {
+        +int Id
+        +int PoiAId
+        +int PoiBId
+        +string Level
+        +string Status
+    }
+    class Notification {
+        +int Id
+        +int UserId
+        +string Type
+        +bool IsRead
+    }
+    class PlaybackLog {
+        +int Id
+        +int UserId
+        +int PoiId
+        +string DeviceId
+    }
+    User "1" --> "many" POI : creates
+    POI "1" --> "many" Audio : has
+    POI "1" --> "many" PlaybackLog : referenced
+    User "1" --> "many" Notification : receives
+    POI "1" --> "many" DuplicateReport : poi_a/poi_b` },
+
+  { id:"18_class_admin", title:"18. Class — Admin (Services)",
+    code:`classDiagram
+    class PoiApprovalService {
+        +GetItemsAsync()
+        +ApproveAsync()
+        +RejectAsync()
+        +LockAsync()
+        +UnlockAsync()
+    }
+    class DuplicateReportService {
+        +GetAllAsync()
+        +ScanAsync()
+        +MergeAsync()
+        +DismissAsync()
+    }
+    class UserService {
+        +GetUsersAsync()
+        +CreateUserAsync()
+        +ToggleActiveAsync()
+    }
+    class AnalyticsService {
+        +GetOverviewAsync()
+        +GetRealtimeAsync()
+    }
+    class AudioRecoveryService {
+        +GetOrphansAsync()
+        +RestoreAsync()
+        +DeleteOrphanAsync()
+    }
+    class PoiDto
+    class DuplicateReportDto
+    PoiApprovalService --> PoiDto
+    DuplicateReportService --> DuplicateReportDto` },
+
+  { id:"19_review_lifecycle", title:"19. Review Lifecycle — POI end-to-end",
+    code:`flowchart TD
+    R1[POI submitted by Saler] --> R2[Set PendingReview]
+    R2 --> R3{Duplicate detected?}
+    R3 -- Yes --> R4[Create duplicate report + warning]
+    R3 -- No --> R5[Wait admin review]
+    R5 --> R6{Admin action}
+    R6 -- Approve --> R7[Visible to App users]
+    R6 -- Reject --> R8[Store rejection reason]
+    R6 -- Lock --> R9[Saler cannot edit]
+    R7 --> R10{Audio available?}
+    R10 -- Yes --> R11[Play file]
+    R10 -- No --> R12[TTS fallback]` },
+];
+
+const PNG_SCALE = 2; // export at 2x for crispness
+
+mermaid.initialize({
+  startOnLoad:false,
+  theme:"default",
+  securityLevel:"loose",
+  flowchart:{ useMaxWidth:false, htmlLabels:true },
+  sequence:{ useMaxWidth:false },
+  er:{ useMaxWidth:false },
+  class:{ useMaxWidth:false },
+});
+
+const main = document.getElementById("main");
+const counter = document.getElementById("counter");
+const btnAll = document.getElementById("downloadAll");
+const btnSeparate = document.getElementById("downloadAllSeparate");
+const logEl = document.getElementById("log");
+
+function log(msg){
+  logEl.textContent = msg;
+  logEl.classList.add("visible");
+  clearTimeout(log._t);
+  log._t = setTimeout(()=> logEl.classList.remove("visible"), 3500);
+}
+
+// Track rendered SVG per id
+const rendered = {};
+let doneCount = 0;
+
+// Build cards
+for (const d of DIAGRAMS) {
+  const card = document.createElement("section");
+  card.className = "card";
+  card.innerHTML = `
+    <div class="card-head">
+      <span class="idx">${d.id.split("_")[0]}</span>
+      <h2>${d.title}</h2>
+      <span class="status" data-status>rendering…</span>
+    </div>
+    <div class="card-body" data-body><em style="color:#555">Đang render…</em></div>
+    <div class="card-foot">
+      <button class="btn secondary" data-action="svg" disabled>⬇ SVG</button>
+      <button class="btn" data-action="png" disabled>⬇ PNG</button>
+    </div>`;
+  main.appendChild(card);
+  renderOne(d, card);
+}
+
+async function renderOne(d, card){
+  const body = card.querySelector("[data-body]");
+  const status = card.querySelector("[data-status]");
+  try {
+    const { svg } = await mermaid.render("m_"+d.id, d.code);
+    body.innerHTML = svg;
+    rendered[d.id] = body.querySelector("svg");
+    doneCount++;
+    counter.textContent = `${doneCount} / ${DIAGRAMS.length} rendered`;
+    status.textContent = "✓ OK";
+    status.style.color = "var(--ok)";
+    card.querySelector('[data-action="png"]').disabled = false;
+    card.querySelector('[data-action="svg"]').disabled = false;
+    card.querySelector('[data-action="png"]').addEventListener("click",
+      ()=> downloadPng(d.id));
+    card.querySelector('[data-action="svg"]').addEventListener("click",
+      ()=> downloadSvg(d.id));
+    if (doneCount === DIAGRAMS.length) {
+      btnAll.disabled = false;
+      btnSeparate.disabled = false;
+    }
+  } catch(err) {
+    status.textContent = "✗ lỗi";
+    status.style.color = "var(--warn)";
+    body.innerHTML = `<div class="error">${(err && err.message) || err}</div>`;
+    console.error(d.id, err);
+  }
+}
+
+function svgToString(svg){
+  // Inject explicit namespace to be safe
+  const clone = svg.cloneNode(true);
+  if (!clone.getAttribute("xmlns")) clone.setAttribute("xmlns","http://www.w3.org/2000/svg");
+  return new XMLSerializer().serializeToString(clone);
+}
+
+function svgSize(svg){
+  const rect = svg.getBoundingClientRect();
+  let w = Math.ceil(rect.width), h = Math.ceil(rect.height);
+  if (!w || !h) {
+    const vb = svg.viewBox && svg.viewBox.baseVal;
+    if (vb) { w = Math.ceil(vb.width); h = Math.ceil(vb.height); }
+  }
+  if (!w) w = 1200;
+  if (!h) h = 800;
+  return { w, h };
+}
+
+async function svgToPngBlob(svg, scale = PNG_SCALE){
+  const str = svgToString(svg);
+  const { w, h } = svgSize(svg);
+  const svgBlob = new Blob([str], { type: "image/svg+xml;charset=utf-8" });
+  const url = URL.createObjectURL(svgBlob);
+  try {
+    const img = new Image();
+    img.decoding = "sync";
+    await new Promise((res, rej) => {
+      img.onload = res;
+      img.onerror = rej;
+      img.src = url;
+    });
+    const canvas = document.createElement("canvas");
+    canvas.width = w * scale;
+    canvas.height = h * scale;
+    const ctx = canvas.getContext("2d");
+    ctx.fillStyle = "#ffffff";
+    ctx.fillRect(0, 0, canvas.width, canvas.height);
+    ctx.setTransform(scale, 0, 0, scale, 0, 0);
+    ctx.drawImage(img, 0, 0, w, h);
+    return await new Promise(resolve => canvas.toBlob(resolve, "image/png"));
+  } finally {
+    URL.revokeObjectURL(url);
+  }
+}
+
+function triggerDownload(blob, name){
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement("a");
+  a.href = url;
+  a.download = name;
+  document.body.appendChild(a);
+  a.click();
+  a.remove();
+  setTimeout(()=> URL.revokeObjectURL(url), 1500);
+}
+
+async function downloadPng(id){
+  const svg = rendered[id];
+  if (!svg) return;
+  const blob = await svgToPngBlob(svg);
+  triggerDownload(blob, `${id}.png`);
+}
+
+function downloadSvg(id){
+  const svg = rendered[id];
+  if (!svg) return;
+  const blob = new Blob([svgToString(svg)], { type:"image/svg+xml;charset=utf-8" });
+  triggerDownload(blob, `${id}.svg`);
+}
+
+btnAll.addEventListener("click", async () => {
+  btnAll.disabled = true;
+  btnAll.textContent = "Đang đóng gói…";
+  try {
+    const zip = new JSZip();
+    for (const d of DIAGRAMS) {
+      const svg = rendered[d.id];
+      if (!svg) continue;
+      const blob = await svgToPngBlob(svg);
+      zip.file(`${d.id}.png`, blob);
+    }
+    const out = await zip.generateAsync({ type:"blob" });
+    triggerDownload(out, "TourGuideHCM_diagrams.zip");
+    log("Đã tải ZIP chứa 19 PNG.");
+  } catch (e) {
+    log("Lỗi khi đóng gói ZIP: " + e.message);
+  } finally {
+    btnAll.disabled = false;
+    btnAll.textContent = "⬇ Download All as PNG (ZIP)";
+  }
+});
+
+btnSeparate.addEventListener("click", async () => {
+  btnSeparate.disabled = true;
+  btnSeparate.textContent = "Đang tải từng file…";
+  for (const d of DIAGRAMS) {
+    await downloadPng(d.id);
+    await new Promise(r => setTimeout(r, 250)); // browser serialization
+  }
+  btnSeparate.textContent = "⬇ Save 19 PNG riêng lẻ";
+  btnSeparate.disabled = false;
+  log("Hoàn tất 19 file PNG (kiểm tra thư mục Downloads).");
+});
+</script>
+</body>
+</html>

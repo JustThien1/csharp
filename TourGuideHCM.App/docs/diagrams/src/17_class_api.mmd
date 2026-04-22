@@ -1,0 +1,46 @@
+classDiagram
+    class User {
+        +int Id
+        +string Username
+        +string Role
+        +bool IsActive
+    }
+    class POI {
+        +int Id
+        +string Name
+        +string ReviewStatus
+        +int CreatedByUserId
+        +int CategoryId
+        +bool IsActive
+    }
+    class Audio {
+        +int Id
+        +int PoiId
+        +string Language
+        +string AudioUrl
+        +bool IsActive
+    }
+    class DuplicateReport {
+        +int Id
+        +int PoiAId
+        +int PoiBId
+        +string Level
+        +string Status
+    }
+    class Notification {
+        +int Id
+        +int UserId
+        +string Type
+        +bool IsRead
+    }
+    class PlaybackLog {
+        +int Id
+        +int UserId
+        +int PoiId
+        +string DeviceId
+    }
+    User "1" --> "many" POI : creates
+    POI "1" --> "many" Audio : has
+    POI "1" --> "many" PlaybackLog : referenced
+    User "1" --> "many" Notification : receives
+    POI "1" --> "many" DuplicateReport : poi_a/poi_b

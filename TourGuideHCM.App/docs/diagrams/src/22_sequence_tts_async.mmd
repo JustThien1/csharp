@@ -1,0 +1,32 @@
+sequenceDiagram
+    participant Saler
+    participant SalerWeb
+    participant API as AudioController
+    participant TtsSvc as TtsService
+    participant Queue as JobQueue
+    participant Worker as TtsBackgroundWorker
+    participant Google as Google TTS
+    participant FS as File Storage
+    participant DB
+    Saler->>SalerWeb: Bấm "Tạo TTS" trên POI
+    SalerWeb->>API: POST /api/audio/convert {poiId, lang, text}
+    API->>TtsSvc: EnqueueAsync(poiId, lang, text)
+    TtsSvc->>DB: INSERT TtsJob (Status=Pending)
+    DB-->>TtsSvc: jobId
+    TtsSvc->>Queue: Enqueue(jobId)
+    API-->>SalerWeb: 202 Accepted {jobId}
+    SalerWeb-->>Saler: Đang xử lý, hiển thị spinner
+    Worker->>Queue: Dequeue()
+    Queue-->>Worker: jobId
+    Worker->>DB: UPDATE TtsJob SET Status=Processing
+    Worker->>Google: synthesizeSpeech(text, lang)
+    Google-->>Worker: audioBytes
+    Worker->>FS: Save /audio/{poiId}_{lang}.mp3
+    FS-->>Worker: audioUrl
+    Worker->>DB: INSERT Audio (poiId, lang, audioUrl)
+    Worker->>DB: UPDATE TtsJob SET Status=Done, AudioUrl=?
+    loop Poll until done
+        SalerWeb->>API: GET /api/audio/tts-job/{jobId}
+        API-->>SalerWeb: {status, audioUrl}
+    end
+    SalerWeb-->>Saler: Hiển thị audio player

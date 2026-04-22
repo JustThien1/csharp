@@ -1,0 +1,15 @@
+sequenceDiagram
+    participant Client
+    participant Auth as AuthController
+    participant Poi as POIController
+    participant Dup as DuplicateDetectionService
+    participant Noti as NotificationService
+    participant DB
+    Client->>Auth: POST /api/auth/login
+    Auth-->>Client: JWT
+    Client->>Poi: POST /api/poi (Bearer JWT)
+    Poi->>DB: Save POI (PendingReview for Saler)
+    Poi->>Dup: CheckAndReportAsync(poi)
+    Dup->>DB: Create duplicate report if matched
+    Poi->>Noti: Notify admin on new POI
+    Poi-->>Client: POI + duplicate warning

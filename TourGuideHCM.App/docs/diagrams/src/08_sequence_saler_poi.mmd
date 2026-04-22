@@ -1,0 +1,15 @@
+sequenceDiagram
+    participant Saler
+    participant SalerWeb
+    participant API
+    Saler->>SalerWeb: Save POI form
+    SalerWeb->>API: POST/PUT /api/poi
+    API-->>SalerWeb: POI saved (PendingReview)
+    alt Optional TTS
+        SalerWeb->>API: POST /api/audio/convert
+    else Optional Upload
+        SalerWeb->>API: POST /api/audio/upload
+        SalerWeb->>API: POST /api/audio
+    end
+    API-->>SalerWeb: Audio result
+    SalerWeb-->>Saler: Success/partial-success feedback

@@ -1,0 +1,31 @@
+sequenceDiagram
+    participant Admin
+    participant AdminWeb
+    participant API as AudioRecoveryController
+    participant RecSvc as AudioRecoveryService
+    participant FS as File Storage
+    participant DB
+    Admin->>AdminWeb: Mở trang "Orphan Audio"
+    AdminWeb->>API: GET /api/audio-recovery/orphans
+    API->>RecSvc: GetOrphansAsync()
+    RecSvc->>DB: SELECT * FROM Audio a WHERE a.PoiId NOT IN (SELECT Id FROM POIs WHERE IsActive=1)
+    DB-->>RecSvc: orphanAudios
+    RecSvc->>FS: Check file exists cho mỗi audio
+    FS-->>RecSvc: existFlags
+    RecSvc-->>API: orphans + fileStatus
+    API-->>AdminWeb: list
+    Admin->>AdminWeb: Chọn audio + POI đích để restore
+    AdminWeb->>API: POST /api/audio-recovery/{audioId}/restore {newPoiId}
+    API->>RecSvc: RestoreAsync(audioId, newPoiId)
+    RecSvc->>DB: UPDATE Audio SET PoiId=? , IsActive=1
+    DB-->>RecSvc: ok
+    RecSvc-->>API: ok
+    API-->>AdminWeb: 200
+    alt Xoá vĩnh viễn
+        Admin->>AdminWeb: Bấm "Delete orphan"
+        AdminWeb->>API: DELETE /api/audio-recovery/{audioId}
+        API->>RecSvc: DeleteOrphanAsync(audioId)
+        RecSvc->>FS: Delete file
+        RecSvc->>DB: DELETE FROM Audio WHERE Id=?
+    end
+    AdminWeb-->>Admin: Refresh danh sách

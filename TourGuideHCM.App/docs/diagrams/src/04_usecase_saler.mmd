@@ -1,0 +1,12 @@
+flowchart TB
+    S[Saler User] --> S1[Login/Register account]
+    S --> S2[Create POI draft]
+    S --> S3[Edit POI details]
+    S --> S4[Delete POI]
+    S --> S5[Upload audio file]
+    S --> S6[Generate TTS audio]
+    S --> S7[Track review status]
+    S --> S8[Read moderation notifications]
+    S2 --> S5
+    S2 --> S6
+    S3 --> S7

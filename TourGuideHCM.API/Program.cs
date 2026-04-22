@@ -5,6 +5,7 @@ using Microsoft.IdentityModel.Tokens;
 using System.Text;
 using System.Text.Json.Serialization;
 using TourGuideHCM.API.Data;
+using TourGuideHCM.API.Filters;
 using TourGuideHCM.API.Services;
 
 var builder = WebApplication.CreateBuilder(args);
@@ -24,6 +25,7 @@ builder.Services.AddScoped<DuplicateDetectionService>();
 builder.Services.AddScoped<TtsQueueService>();
 builder.Services.AddScoped<JwtService>();
 builder.Services.AddScoped<CurrentUserService>();
+builder.Services.AddScoped<SalerSubscriptionGuardFilter>();
 
 // ====================== Upload File lớn ======================
 builder.WebHost.ConfigureKestrel(options => options.Limits.MaxRequestBodySize = 50 * 1024 * 1024);
@@ -49,7 +51,10 @@ builder.Services.AddAuthentication(JwtBearerDefaults.AuthenticationScheme)
 builder.Services.AddAuthorization();
 
 // ====================== Controllers & Swagger ======================
-builder.Services.AddControllers()
+builder.Services.AddControllers(options =>
+    {
+        options.Filters.AddService<SalerSubscriptionGuardFilter>();
+    })
     .AddJsonOptions(options =>
     {
         options.JsonSerializerOptions.ReferenceHandler = ReferenceHandler.IgnoreCycles;
@@ -233,6 +238,23 @@ using (var scope = app.Services.CreateScope())
             }
             catch { /* đã tồn tại */ }
         }
+
+        try
+        {
+            context.Database.ExecuteSqlRaw("ALTER TABLE Users ADD COLUMN SubscriptionEndUtc TEXT NULL;");
+            Console.WriteLine("   ➕ Đã thêm cột Users.SubscriptionEndUtc");
+        }
+        catch { /* đã tồn tại */ }
+
+        try
+        {
+            var n = context.Database.ExecuteSqlRaw(@"
+                UPDATE Users SET SubscriptionEndUtc = datetime('now', '+3650 days')
+                WHERE Role = 'Saler' AND SubscriptionEndUtc IS NULL;");
+            if (n > 0)
+                Console.WriteLine($"   🔧 Đã gán SubscriptionEndUtc cho {n} Saler (tài khoản cũ chưa có ngày hết hạn).");
+        }
+        catch (Exception e) { Console.WriteLine($"   ⚠ SubscriptionEndUtc backfill: {e.Message}"); }
 
         // ====================== AUTO-ADD cột cho POIs (Saler feature) ======================
         var poiColumns = new[]

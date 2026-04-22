@@ -1,6 +1,7 @@
 <Solution>
   <Folder Name="/Solution Items/">
     <File Path=".editorconfig" />
+    <File Path="diagrams.puml" />
   </Folder>
   <Project Path="TourGuideHCM.Admin/TourGuideHCM.Admin.csproj" Id="73fc80c4-fac4-4181-8ce2-4b25251ebeae" />
   <Project Path="TourGuideHCM.API/TourGuideHCM.API.csproj" Id="995632d2-1c42-43f9-a11f-639c66a82d90" />

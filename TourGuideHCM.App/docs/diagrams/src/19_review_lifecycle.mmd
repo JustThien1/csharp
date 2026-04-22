@@ -1,0 +1,12 @@
+flowchart TD
+    R1[POI submitted by Saler] --> R2[Set PendingReview]
+    R2 --> R3{Duplicate detected?}
+    R3 -- Yes --> R4[Create duplicate report + warning]
+    R3 -- No --> R5[Wait admin review]
+    R5 --> R6{Admin action}
+    R6 -- Approve --> R7[Visible to App users]
+    R6 -- Reject --> R8[Store rejection reason]
+    R6 -- Lock --> R9[Saler cannot edit]
+    R7 --> R10{Audio available?}
+    R10 -- Yes --> R11[Play file]
+    R10 -- No --> R12[TTS fallback]

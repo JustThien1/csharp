@@ -1,0 +1,168 @@
+erDiagram
+    USERS {
+        int Id PK
+        nvarchar_100 Username UK
+        nvarchar_255 PasswordHash
+        nvarchar_255 Email UK
+        nvarchar_200 FullName
+        nvarchar_20 Role "Admin|Saler|User"
+        bit IsActive
+        datetime2 CreatedAt
+        datetime2 UpdatedAt
+    }
+    CATEGORIES {
+        int Id PK
+        nvarchar_100 Name UK
+        nvarchar_500 Description
+        nvarchar_255 IconUrl
+        bit IsActive
+        datetime2 CreatedAt
+    }
+    POIS {
+        int Id PK
+        nvarchar_200 Name
+        nvarchar_500 Address
+        float Lat
+        float Lng
+        float Radius "meters"
+        nvarchar_max NarrationText
+        int CategoryId FK
+        int CreatedByUserId FK
+        nvarchar_20 ReviewStatus "Draft|Pending|Approved|Rejected|Locked"
+        nvarchar_500 RejectionReason
+        int MergedIntoId FK "null trừ khi bị merge"
+        bit IsActive
+        bit IsLocked
+        datetime2 CreatedAt
+        datetime2 UpdatedAt
+    }
+    AUDIOS {
+        int Id PK
+        int PoiId FK
+        nvarchar_10 Language "vi|en"
+        nvarchar_500 AudioUrl
+        nvarchar_255 FileName
+        int DurationSeconds
+        bigint SizeBytes
+        nvarchar_20 Source "Upload|TTS"
+        bit IsActive
+        datetime2 CreatedAt
+    }
+    TTS_JOBS {
+        int Id PK
+        int PoiId FK
+        nvarchar_10 Language
+        nvarchar_max InputText
+        nvarchar_20 Status "Pending|Processing|Done|Failed"
+        nvarchar_500 AudioUrl
+        nvarchar_1000 ErrorMessage
+        int RequestedByUserId FK
+        datetime2 CreatedAt
+        datetime2 CompletedAt
+    }
+    DUPLICATE_REPORTS {
+        int Id PK
+        int PoiAId FK
+        int PoiBId FK
+        nvarchar_20 Level "High|Medium|Low"
+        float Score "0..1"
+        nvarchar_20 Status "Open|Merged|Dismissed"
+        int ResolvedByUserId FK
+        nvarchar_500 ResolutionNote
+        datetime2 CreatedAt
+        datetime2 ResolvedAt
+    }
+    NOTIFICATIONS {
+        int Id PK
+        int UserId FK
+        nvarchar_50 Type "POI_Approved|POI_Rejected|Duplicate|TTS_Done|..."
+        nvarchar_200 Title
+        nvarchar_1000 Message
+        int RelatedEntityId
+        nvarchar_50 RelatedEntityType
+        bit IsRead
+        datetime2 CreatedAt
+        datetime2 ReadAt
+    }
+    PLAYBACK_LOGS {
+        bigint Id PK
+        int UserId FK "nullable"
+        nvarchar_100 DeviceId
+        int PoiId FK
+        int AudioId FK
+        nvarchar_10 Language
+        int DurationSeconds
+        bit Completed
+        datetime2 PlayedAt
+    }
+    ROUTE_LOGS {
+        bigint Id PK
+        int UserId FK "nullable"
+        nvarchar_100 DeviceId
+        float Lat
+        float Lng
+        float Accuracy
+        float Speed
+        datetime2 RecordedAt
+    }
+    USER_HEARTBEATS {
+        int Id PK
+        int UserId FK "nullable"
+        nvarchar_100 DeviceId UK
+        float LastLat
+        float LastLng
+        datetime2 LastSeen
+    }
+    FAVORITE_POIS {
+        int Id PK
+        int UserId FK
+        int PoiId FK
+        datetime2 CreatedAt
+    }
+    TOURS {
+        int Id PK
+        nvarchar_200 Name
+        nvarchar_1000 Description
+        int CreatedByUserId FK
+        bit IsPublic
+        datetime2 CreatedAt
+    }
+    TOUR_STOPS {
+        int Id PK
+        int TourId FK
+        int PoiId FK
+        int OrderIndex
+        nvarchar_500 Notes
+    }
+    AUDIT_LOGS {
+        bigint Id PK
+        int UserId FK "nullable"
+        nvarchar_50 Action "Create|Update|Delete|Approve|..."
+        nvarchar_50 EntityType
+        int EntityId
+        nvarchar_max BeforeJson
+        nvarchar_max AfterJson
+        datetime2 CreatedAt
+    }
+
+    USERS ||--o{ POIS : creates
+    USERS ||--o{ TTS_JOBS : requests
+    USERS ||--o{ NOTIFICATIONS : receives
+    USERS ||--o{ PLAYBACK_LOGS : generates
+    USERS ||--o{ ROUTE_LOGS : generates
+    USERS ||--o{ USER_HEARTBEATS : owns
+    USERS ||--o{ FAVORITE_POIS : favorites
+    USERS ||--o{ TOURS : creates
+    USERS ||--o{ DUPLICATE_REPORTS : resolves
+    USERS ||--o{ AUDIT_LOGS : acts
+    CATEGORIES ||--o{ POIS : classifies
+    POIS ||--o{ AUDIOS : has
+    POIS ||--o{ TTS_JOBS : targets
+    POIS ||--o{ DUPLICATE_REPORTS : poi_a
+    POIS ||--o{ DUPLICATE_REPORTS : poi_b
+    POIS ||--o{ PLAYBACK_LOGS : referenced
+    POIS ||--o{ FAVORITE_POIS : bookmarked
+    POIS ||--o{ TOUR_STOPS : appears_in
+    POIS ||--o| POIS : merged_into
+    AUDIOS ||--o{ PLAYBACK_LOGS : referenced
+    TOURS ||--o{ TOUR_STOPS : contains

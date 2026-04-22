@@ -1,0 +1,12 @@
+flowchart TD
+    A1[App start] --> A2[Init services + heartbeat]
+    A2 --> A3[Load Home/Map]
+    A3 --> A4[Load cached POIs]
+    A4 --> A5[Refresh POIs from API]
+    A5 --> A6[Start geofence polling]
+    A6 --> A7{POI in activation radius?}
+    A7 -- No --> A6
+    A7 -- Yes --> A8[Queue narration]
+    A8 --> A9[Play audio or TTS]
+    A9 --> A10[Log playback/route]
+    A10 --> A6

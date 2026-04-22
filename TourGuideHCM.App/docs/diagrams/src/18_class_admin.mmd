@@ -1,0 +1,32 @@
+classDiagram
+    class PoiApprovalService {
+        +GetItemsAsync()
+        +ApproveAsync()
+        +RejectAsync()
+        +LockAsync()
+        +UnlockAsync()
+    }
+    class DuplicateReportService {
+        +GetAllAsync()
+        +ScanAsync()
+        +MergeAsync()
+        +DismissAsync()
+    }
+    class UserService {
+        +GetUsersAsync()
+        +CreateUserAsync()
+        +ToggleActiveAsync()
+    }
+    class AnalyticsService {
+        +GetOverviewAsync()
+        +GetRealtimeAsync()
+    }
+    class AudioRecoveryService {
+        +GetOrphansAsync()
+        +RestoreAsync()
+        +DeleteOrphanAsync()
+    }
+    class PoiDto
+    class DuplicateReportDto
+    PoiApprovalService --> PoiDto
+    DuplicateReportService --> DuplicateReportDto

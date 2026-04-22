@@ -1,0 +1,22 @@
+flowchart TD
+    J1[Client gửi request + Authorization: Bearer token] --> J2[JwtMiddleware nhận request]
+    J2 --> J3{Có header Authorization?}
+    J3 -- No --> J4{Endpoint [AllowAnonymous]?}
+    J4 -- Yes --> J5[Bỏ qua auth, chạy tiếp]
+    J4 -- No --> J6[Trả 401 Unauthorized]
+    J3 -- Yes --> J7[Parse JWT]
+    J7 --> J8{Signature hợp lệ?}
+    J8 -- No --> J6
+    J8 -- Yes --> J9{Token hết hạn?}
+    J9 -- Yes --> J10[Trả 401 Token expired]
+    J9 -- No --> J11[Load claims: userId, role]
+    J11 --> J12{User.IsActive?}
+    J12 -- No --> J13[Trả 403 User bị khoá]
+    J12 -- Yes --> J14[Gán HttpContext.User]
+    J14 --> J15{Endpoint có [Authorize Role]?}
+    J15 -- Yes --> J16{Role trong token khớp?}
+    J16 -- No --> J17[Trả 403 Forbidden]
+    J16 -- Yes --> J18[Gọi controller action]
+    J15 -- No --> J18
+    J18 --> J19[Trả response]
+    J5 --> J19

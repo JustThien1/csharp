@@ -1,0 +1,21 @@
+sequenceDiagram
+    participant Saler
+    participant SalerWeb
+    participant Auth as AuthController
+    participant UserSvc as UserService
+    participant DB
+    participant Noti as NotificationService
+    Saler->>SalerWeb: Mở trang đăng ký
+    Saler->>SalerWeb: Nhập username/email/password + role=Saler
+    SalerWeb->>Auth: POST /api/auth/register
+    Auth->>UserSvc: ValidateDto(dto)
+    UserSvc-->>Auth: Valid
+    Auth->>DB: SELECT * FROM Users WHERE Username=? OR Email=?
+    DB-->>Auth: None
+    Auth->>UserSvc: HashPassword(dto.Password)
+    UserSvc-->>Auth: PasswordHash
+    Auth->>DB: INSERT User (role=Saler, IsActive=true)
+    DB-->>Auth: UserId
+    Auth->>Noti: Notify admin "New saler registered"
+    Auth-->>SalerWeb: 200 {userId, token}
+    SalerWeb-->>Saler: Đăng ký thành công, chuyển sang dashboard

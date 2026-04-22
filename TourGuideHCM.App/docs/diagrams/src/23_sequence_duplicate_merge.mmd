@@ -1,0 +1,30 @@
+sequenceDiagram
+    participant Admin
+    participant AdminWeb
+    participant API as DuplicateReportController
+    participant DupSvc as DuplicateReportService
+    participant PoiSvc as PoiService
+    participant Noti as NotificationService
+    participant DB
+    Admin->>AdminWeb: Mở danh sách duplicate report
+    AdminWeb->>API: GET /api/duplicate-report
+    API->>DupSvc: GetAllAsync(status=Open)
+    DupSvc->>DB: SELECT * FROM DuplicateReports WHERE Status='Open'
+    DB-->>DupSvc: reports
+    DupSvc-->>API: reports
+    API-->>AdminWeb: reports
+    Admin->>AdminWeb: Chọn report, xem 2 POI A/B
+    Admin->>AdminWeb: Quyết định Merge (giữ A, loại B)
+    AdminWeb->>API: POST /api/duplicate-report/{id}/merge {keepId:A, removeId:B}
+    API->>DupSvc: MergeAsync(reportId, A, B)
+    DupSvc->>DB: BEGIN TRANSACTION
+    DupSvc->>DB: UPDATE Audio SET PoiId=A WHERE PoiId=B
+    DupSvc->>DB: UPDATE PlaybackLog SET PoiId=A WHERE PoiId=B
+    DupSvc->>DB: UPDATE POI SET IsActive=0, MergedIntoId=A WHERE Id=B
+    DupSvc->>DB: UPDATE DuplicateReport SET Status='Merged', ResolvedBy=?
+    DupSvc->>DB: COMMIT
+    DB-->>DupSvc: ok
+    DupSvc->>Noti: Notify saler của B: "POI đã được gộp vào A"
+    DupSvc-->>API: Success
+    API-->>AdminWeb: 200 OK
+    AdminWeb-->>Admin: Refresh danh sách

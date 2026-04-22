@@ -1,0 +1,7 @@
+flowchart LR
+    App[TourGuideHCM.App] --> API[TourGuideHCM.API]
+    Saler[TourGuideHCM.Saler] --> API
+    Admin[TourGuideHCM.Admin] --> API
+    API --> DB[(SQL Database)]
+    API --> FS[(Audio File Storage)]
+    API --> TTS[Google TTS API]

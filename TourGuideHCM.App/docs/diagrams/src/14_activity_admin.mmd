@@ -1,0 +1,12 @@
+flowchart TD
+    AD1[Load pending POI queue] --> AD2[Inspect POI + audio]
+    AD2 --> AD3{Decision}
+    AD3 -- Approve --> AD4[Set Approved]
+    AD3 -- Reject --> AD5[Set Rejected + reason]
+    AD3 -- Lock --> AD6[Set Locked + reason]
+    AD3 -- Unlock --> AD7[Set Approved]
+    AD4 --> AD8[Notify saler]
+    AD5 --> AD8
+    AD6 --> AD8
+    AD7 --> AD8
+    AD8 --> AD9[Refresh counters and lists]
