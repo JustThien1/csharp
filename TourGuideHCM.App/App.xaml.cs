@@ -22,6 +22,7 @@ public partial class App : Application
         // Timer tự pause khi OS suspend app (Android Doze, iOS background throttling)
         // và tự resume khi app foreground lại. Đây là hành vi đúng cho mobile.
         _heartbeat?.Start();
+        _ = _heartbeat?.SendOnceAsync();
     }
 
     protected override Window CreateWindow(IActivationState? activationState)

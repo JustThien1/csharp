@@ -29,6 +29,7 @@ public class AnalyticsController : ControllerBase
             {
                 UserId = request.UserId > 0 ? request.UserId : null,
                 POIId = request.POIId,
+                PlayedAt = DateTime.UtcNow,
                 TriggerType = string.IsNullOrWhiteSpace(request.TriggerType) ? "manual" : request.TriggerType,
                 TriggeredAt = DateTime.UtcNow,
                 DurationSeconds = request.DurationSeconds,
@@ -63,11 +64,13 @@ public class AnalyticsController : ControllerBase
         {
             var ip = GetClientIp();
             var userName = await ResolveUserNameAsync(request.UserId, request.DeviceId);
+            Console.WriteLine($"💓 RECEIVED HEARTBEAT | DeviceId={request.DeviceId} | UserId={request.UserId} | Platform={request.Platform}");
 
             var log = new PlaybackLog
             {
                 UserId = request.UserId > 0 ? request.UserId : null,
                 POIId = null,                           // null = không liên quan POI (heartbeat)
+                PlayedAt = DateTime.UtcNow,
                 TriggerType = "heartbeat",
                 TriggeredAt = DateTime.UtcNow,
                 DurationSeconds = 0,
@@ -98,10 +101,10 @@ public class AnalyticsController : ControllerBase
         var now = DateTime.UtcNow;
 
         // ====================== NGƯỠNG REALTIME ======================
-        // App gửi heartbeat mỗi 10s → ngưỡng offline 30s (= 3× heartbeat, chịu được 2 lần fail).
-        // Ngưỡng listening 15s (tương đương 1 chu kỳ heartbeat + chút buffer).
-        var offlineThreshold = now.AddSeconds(-30);     // trước đây: -2 phút
-        var listeningThreshold = now.AddSeconds(-15);   // trước đây: -1 phút
+        // Heartbeat mỗi 10s. Giữ online trong 2 phút để khớp UI và tránh flicker.
+        // Listening giữ 30s để bớt aggressive nhưng vẫn đủ realtime.
+        var offlineThreshold = now.AddMinutes(-2);
+        var listeningThreshold = now.AddSeconds(-30);
         var startOfDay = now.Date;
 
         try
@@ -115,8 +118,8 @@ public class AnalyticsController : ControllerBase
 
             // --- Số USER (unique UserId > 0) online trong 30s qua ---
             var onlineUsers = await _context.PlaybackLogs
-                .Where(pl => pl.TriggeredAt >= offlineThreshold && pl.UserId != null && pl.UserId > 0)
-                .Select(pl => pl.UserId)
+                .Where(pl => pl.TriggeredAt >= offlineThreshold)
+                .Select(pl => pl.UserId > 0 ? pl.UserId.ToString() : pl.DeviceId)
                 .Distinct()
                 .CountAsync();
 
@@ -165,25 +168,29 @@ public class AnalyticsController : ControllerBase
 
             // --- Danh sách session đang active (group theo DeviceId, lấy log mới nhất) ---
             var recentLogs = await _context.PlaybackLogs
-                .Where(pl => pl.TriggeredAt >= offlineThreshold && pl.DeviceId != null && pl.DeviceId != "")
+                .Where(pl => pl.TriggeredAt >= now.AddMinutes(-5) && pl.DeviceId != null && pl.DeviceId != "")
                 .Include(pl => pl.POI)
                 .OrderByDescending(pl => pl.TriggeredAt)
-                .Take(200)
+                .Take(500)
                 .ToListAsync();
 
             var activeSessions = recentLogs
                 .GroupBy(pl => pl.DeviceId!)
                 .Select(g =>
                 {
-                    var latest = g.First();   // đã OrderByDescending
+                    var latestHeartbeat = g
+                        .Where(x => x.TriggerType == "heartbeat")
+                        .OrderByDescending(x => x.TriggeredAt)
+                        .FirstOrDefault();
+                    var latest = latestHeartbeat ?? g.First();
                     var latestListening = g.FirstOrDefault(x => x.POIId > 0
                         && x.TriggerType != "heartbeat" && x.TriggerType != "online");
                     var status = "idle";
-                    // Listening: có log POI trong 15s qua
-                    if (latestListening != null && (now - latestListening.TriggeredAt).TotalSeconds < 15)
+                    // Listening chỉ dựa vào playback gần đây
+                    if (latestListening != null && (now - latestListening.TriggeredAt).TotalSeconds < 30)
                         status = "listening";
-                    // Online: có heartbeat trong 30s qua
-                    else if ((now - latest.TriggeredAt).TotalSeconds < 30)
+                    // Online: chỉ dựa vào heartbeat gần nhất
+                    else if (latestHeartbeat != null && (now - latestHeartbeat.TriggeredAt).TotalSeconds < 120)
                         status = "online";
 
                     return new ActiveSession
@@ -202,6 +209,8 @@ public class AnalyticsController : ControllerBase
                 .ThenByDescending(s => s.Status == "online")
                 .Take(20)
                 .ToList();
+
+            Console.WriteLine($"📡 REALTIME | records={recentLogs.Count} | onlineUsers={onlineUsers} | onlineDevices={onlineDevices} | listeningUsers={listeningUsers}");
 
             // --- Phân tích theo platform ---
             var deviceBreakdown = recentLogs
@@ -239,10 +248,10 @@ public class AnalyticsController : ControllerBase
     public async Task<IActionResult> GetActiveDevices()
     {
         var now = DateTime.UtcNow;
-        var offlineThreshold = now.AddSeconds(-30);   // 30s: cùng ngưỡng với dashboard realtime
+        var offlineThreshold = now.AddMinutes(-2);
 
         var recentLogs = await _context.PlaybackLogs
-            .Where(pl => pl.TriggeredAt >= offlineThreshold && pl.DeviceId != null && pl.DeviceId != "")
+            .Where(pl => pl.TriggeredAt >= now.AddMinutes(-5) && pl.DeviceId != null && pl.DeviceId != "")
             .Include(pl => pl.POI)
             .OrderByDescending(pl => pl.TriggeredAt)
             .Take(500)

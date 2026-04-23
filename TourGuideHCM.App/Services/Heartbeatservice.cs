@@ -80,6 +80,7 @@ public class HeartbeatService : IHeartbeatService
     {
         try
         {
+            Console.WriteLine($"💓 Sending heartbeat from app | Device={_device.DeviceId[..Math.Min(8, _device.DeviceId.Length)]} | Platform={_device.Platform}");
             await _api.SendHeartbeatAsync(
                 userId: _device.CurrentUserId,
                 deviceId: _device.DeviceId,

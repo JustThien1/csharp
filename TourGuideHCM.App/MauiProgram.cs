@@ -36,6 +36,7 @@ public static class MauiProgram
         builder.Services.AddSingleton<IDeviceInfoService, DeviceInfoService>(); // ⭐ FIX DI
         builder.Services.AddSingleton<IDatabaseService, DatabaseService>();
         builder.Services.AddSingleton<IApiService, ApiService>();
+        builder.Services.AddSingleton<IHeartbeatService, HeartbeatService>();
         builder.Services.AddSingleton<IGeofenceService, GeofenceService>();
         builder.Services.AddSingleton<INarrationService, NarrationService>();
         builder.Services.AddSingleton<IAudioQueueService, AudioQueueService>();

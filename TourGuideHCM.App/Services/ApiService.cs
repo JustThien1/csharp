@@ -104,6 +104,7 @@ public class ApiService : IApiService
     {
         try
         {
+            var heartbeatUrl = new Uri(_http.BaseAddress!, "/api/analytics/heartbeat");
             var payload = new
             {
                 UserId = userId,
@@ -112,7 +113,9 @@ public class ApiService : IApiService
                 Platform = platform
             };
 
+            Console.WriteLine($"💓 Sending heartbeat → {heartbeatUrl} | Device={deviceId[..Math.Min(8, deviceId.Length)]} | UserId={userId}");
             var response = await _http.PostAsJsonAsync("/api/analytics/heartbeat", payload);
+            Console.WriteLine($"💓 Heartbeat response ← {(int)response.StatusCode} {response.ReasonPhrase}");
             if (!response.IsSuccessStatusCode)
                 Console.WriteLine($"💔 Heartbeat status: {(int)response.StatusCode}");
         }

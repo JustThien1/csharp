@@ -1,0 +1,205 @@
+Building...
+info: Microsoft.EntityFrameworkCore.Database.Command[20101]
+      Executed DbCommand (36ms) [Parameters=[], CommandType='Text', CommandTimeout='30']
+      SELECT COUNT(*) FROM "sqlite_master" WHERE "name" = '__EFMigrationsHistory' AND "type" = 'table';
+info: Microsoft.EntityFrameworkCore.Database.Command[20101]
+      Executed DbCommand (0ms) [Parameters=[], CommandType='Text', CommandTimeout='30']
+      SELECT COUNT(*) FROM "sqlite_master" WHERE "name" = '__EFMigrationsHistory' AND "type" = 'table';
+info: Microsoft.EntityFrameworkCore.Database.Command[20101]
+      Executed DbCommand (0ms) [Parameters=[], CommandType='Text', CommandTimeout='30']
+      SELECT "MigrationId", "ProductVersion"
+      FROM "__EFMigrationsHistory"
+      ORDER BY "MigrationId";
+info: Microsoft.EntityFrameworkCore.Migrations[20405]
+      No migrations were applied. The database is already up to date.
+fail: Microsoft.EntityFrameworkCore.Database.Command[20102]
+      Failed executing DbCommand (2ms) [Parameters=[], CommandType='Text', CommandTimeout='30']
+      ALTER TABLE PlaybackLogs ADD COLUMN DeviceId TEXT;
+fail: Microsoft.EntityFrameworkCore.Database.Command[20102]
+      Failed executing DbCommand (0ms) [Parameters=[], CommandType='Text', CommandTimeout='30']
+      ALTER TABLE PlaybackLogs ADD COLUMN DeviceName TEXT;
+fail: Microsoft.EntityFrameworkCore.Database.Command[20102]
+      Failed executing DbCommand (0ms) [Parameters=[], CommandType='Text', CommandTimeout='30']
+      ALTER TABLE PlaybackLogs ADD COLUMN Platform TEXT;
+fail: Microsoft.EntityFrameworkCore.Database.Command[20102]
+      Failed executing DbCommand (0ms) [Parameters=[], CommandType='Text', CommandTimeout='30']
+      ALTER TABLE PlaybackLogs ADD COLUMN IpAddress TEXT;
+fail: Microsoft.EntityFrameworkCore.Database.Command[20102]
+      Failed executing DbCommand (0ms) [Parameters=[], CommandType='Text', CommandTimeout='30']
+      ALTER TABLE PlaybackLogs ADD COLUMN UserName TEXT;
+fail: Microsoft.EntityFrameworkCore.Database.Command[20102]
+      Failed executing DbCommand (0ms) [Parameters=[], CommandType='Text', CommandTimeout='30']
+      ALTER TABLE POIs ADD COLUMN ReviewStatus TEXT NOT NULL DEFAULT 'Approved';
+   ➕ Đã tạo bảng DuplicateReports
+   ➕ Đã tạo bảng TtsJobs
+fail: Microsoft.EntityFrameworkCore.Database.Command[20102]
+      Failed executing DbCommand (0ms) [Parameters=[], CommandType='Text', CommandTimeout='30']
+      ALTER TABLE Users ADD COLUMN Role TEXT NOT NULL DEFAULT 'Saler';
+fail: Microsoft.EntityFrameworkCore.Database.Command[20102]
+      Failed executing DbCommand (0ms) [Parameters=[], CommandType='Text', CommandTimeout='30']
+      ALTER TABLE Users ADD COLUMN LastLoginAt TEXT NULL;
+fail: Microsoft.EntityFrameworkCore.Database.Command[20102]
+      Failed executing DbCommand (0ms) [Parameters=[], CommandType='Text', CommandTimeout='30']
+      ALTER TABLE Users ADD COLUMN SubscriptionExpiresAt TEXT NULL;
+fail: Microsoft.EntityFrameworkCore.Database.Command[20102]
+      Failed executing DbCommand (0ms) [Parameters=[], CommandType='Text', CommandTimeout='30']
+      ALTER TABLE POIs ADD COLUMN RejectionReason TEXT NULL;
+fail: Microsoft.EntityFrameworkCore.Database.Command[20102]
+      Failed executing DbCommand (0ms) [Parameters=[], CommandType='Text', CommandTimeout='30']
+      ALTER TABLE POIs ADD COLUMN CreatedByUserId INTEGER NULL;
+fail: Microsoft.EntityFrameworkCore.Database.Command[20102]
+      Failed executing DbCommand (0ms) [Parameters=[], CommandType='Text', CommandTimeout='30']
+      ALTER TABLE POIs ADD COLUMN ReviewedAt TEXT NULL;
+fail: Microsoft.EntityFrameworkCore.Database.Command[20102]
+      Failed executing DbCommand (0ms) [Parameters=[], CommandType='Text', CommandTimeout='30']
+      ALTER TABLE POIs ADD COLUMN ReviewedByUserId INTEGER NULL;
+fail: Microsoft.EntityFrameworkCore.Database.Command[20102]
+      Failed executing DbCommand (0ms) [Parameters=[], CommandType='Text', CommandTimeout='30']
+      ALTER TABLE POIs ADD COLUMN CreatedAt TEXT NULL;
+   ➕ Đã tạo bảng Notifications
+   ➕ Đã tạo bảng Payments
+ℹ️ Đã có 8 POI trong database
+✅ Database SQLite đã sẵn sàng!
+   POI: 8
+info: Microsoft.Hosting.Lifetime[14]
+      Now listening on: http://0.0.0.0:8080
+info: Microsoft.Hosting.Lifetime[0]
+      Application started. Press Ctrl+C to shut down.
+info: Microsoft.Hosting.Lifetime[0]
+      Hosting environment: Development
+info: Microsoft.Hosting.Lifetime[0]
+      Content root path: C:\Users\thien\source\repos\TourGuideHCM\TourGuideHCM.API
+💓 RECEIVED HEARTBEAT | DeviceId=emu-test-final-1111 | UserId=0 | Platform=Android
+info: Microsoft.EntityFrameworkCore.Database.Command[20101]
+      Executed DbCommand (2ms) [Parameters=[@__offlineThreshold_0='?' (DbType = DateTime)], CommandType='Text', CommandTimeout='30']
+      SELECT COUNT(*)
+      FROM (
+          SELECT DISTINCT "p"."DeviceId"
+          FROM "PlaybackLogs" AS "p"
+          WHERE "p"."TriggeredAt" >= @__offlineThreshold_0 AND "p"."DeviceId" IS NOT NULL AND "p"."DeviceId" <> ''
+      ) AS "t"
+info: Microsoft.EntityFrameworkCore.Database.Command[20101]
+      Executed DbCommand (4ms) [Parameters=[@p0='?' (Size = 19), @p1='?' (Size = 16), @p2='?' (DbType = Double), @p3='?' (Size = 9), @p4='?' (DbType = Int32), @p5='?' (Size = 7), @p6='?' (DbType = DateTime), @p7='?' (Size = 9), @p8='?' (DbType = DateTime), @p9='?' (DbType = Int32), @p10='?' (Size = 14)], CommandType='Text', CommandTimeout='30']
+      INSERT INTO "PlaybackLogs" ("DeviceId", "DeviceName", "DurationSeconds", "IpAddress", "POIId", "Platform", "PlayedAt", "TriggerType", "TriggeredAt", "UserId", "UserName")
+      VALUES (@p0, @p1, @p2, @p3, @p4, @p5, @p6, @p7, @p8, @p9, @p10)
+      RETURNING "Id";
+info: Microsoft.EntityFrameworkCore.Database.Command[20101]
+      Executed DbCommand (0ms) [Parameters=[@__offlineThreshold_0='?' (DbType = DateTime)], CommandType='Text', CommandTimeout='30']
+      SELECT COUNT(*)
+      FROM (
+          SELECT DISTINCT CASE
+              WHEN "p"."UserId" > 0 THEN CAST("p"."UserId" AS TEXT)
+              ELSE "p"."DeviceId"
+          END AS "c"
+          FROM "PlaybackLogs" AS "p"
+          WHERE "p"."TriggeredAt" >= @__offlineThreshold_0
+      ) AS "t"
+info: Microsoft.EntityFrameworkCore.Database.Command[20101]
+      Executed DbCommand (0ms) [Parameters=[@__listeningThreshold_0='?' (DbType = DateTime)], CommandType='Text', CommandTimeout='30']
+      SELECT COUNT(*)
+      FROM (
+          SELECT DISTINCT "p"."DeviceId"
+          FROM "PlaybackLogs" AS "p"
+          WHERE "p"."TriggeredAt" >= @__listeningThreshold_0 AND "p"."POIId" > 0 AND ("p"."TriggerType" <> 'heartbeat' OR "p"."TriggerType" IS NULL) AND ("p"."TriggerType" <> 'online' OR "p"."TriggerType" IS NULL) AND "p"."DeviceId" IS NOT NULL
+      ) AS "t"
+info: Microsoft.EntityFrameworkCore.Database.Command[20101]
+      Executed DbCommand (0ms) [Parameters=[@__AddHours_0='?' (DbType = DateTime)], CommandType='Text', CommandTimeout='30']
+      SELECT "p"."POIId", COUNT(*) AS "Count"
+      FROM "PlaybackLogs" AS "p"
+      WHERE "p"."TriggeredAt" >= @__AddHours_0 AND "p"."POIId" > 0 AND ("p"."TriggerType" <> 'heartbeat' OR "p"."TriggerType" IS NULL) AND ("p"."TriggerType" <> 'online' OR "p"."TriggerType" IS NULL)
+      GROUP BY "p"."POIId"
+      ORDER BY COUNT(*) DESC
+      LIMIT 1
+info: Microsoft.EntityFrameworkCore.Database.Command[20101]
+      Executed DbCommand (1ms) [Parameters=[@__p_0='?' (DbType = Int32)], CommandType='Text', CommandTimeout='30']
+      SELECT "p"."Id", "p"."Address", "p"."AudioUrl", "p"."CategoryId", "p"."CreatedAt", "p"."CreatedByUserId", "p"."Description", "p"."ImageUrl", "p"."IsActive", "p"."Language", "p"."Lat", "p"."Lng", "p"."Name", "p"."NarrationText", "p"."OpeningHours", "p"."Priority", "p"."Radius", "p"."RejectionReason", "p"."ReviewStatus", "p"."ReviewedAt", "p"."ReviewedByUserId", "p"."TicketPrice"
+      FROM "POIs" AS "p"
+      WHERE "p"."Id" = @__p_0
+      LIMIT 1
+info: Microsoft.EntityFrameworkCore.Database.Command[20101]
+      Executed DbCommand (0ms) [Parameters=[], CommandType='Text', CommandTimeout='30']
+      SELECT AVG("p"."DurationSeconds")
+      FROM "PlaybackLogs" AS "p"
+      WHERE "p"."DurationSeconds" IS NOT NULL AND "p"."DurationSeconds" > 0.0
+info: Microsoft.EntityFrameworkCore.Database.Command[20101]
+      Executed DbCommand (0ms) [Parameters=[@__startOfDay_0='?' (DbType = DateTime)], CommandType='Text', CommandTimeout='30']
+      SELECT COUNT(*)
+      FROM "PlaybackLogs" AS "p"
+      WHERE "p"."TriggeredAt" >= @__startOfDay_0 AND "p"."POIId" > 0 AND ("p"."TriggerType" <> 'heartbeat' OR "p"."TriggerType" IS NULL) AND ("p"."TriggerType" <> 'online' OR "p"."TriggerType" IS NULL)
+info: Microsoft.EntityFrameworkCore.Database.Command[20101]
+      Executed DbCommand (0ms) [Parameters=[@__AddMinutes_0='?' (DbType = DateTime), @__p_1='?' (DbType = Int32)], CommandType='Text', CommandTimeout='30']
+      SELECT "t"."Id", "t"."DeviceId", "t"."DeviceName", "t"."DurationSeconds", "t"."IpAddress", "t"."POIId", "t"."Platform", "t"."PlayedAt", "t"."TriggerType", "t"."TriggeredAt", "t"."UserId", "t"."UserName", "p0"."Id", "p0"."Address", "p0"."AudioUrl", "p0"."CategoryId", "p0"."CreatedAt", "p0"."CreatedByUserId", "p0"."Description", "p0"."ImageUrl", "p0"."IsActive", "p0"."Language", "p0"."Lat", "p0"."Lng", "p0"."Name", "p0"."NarrationText", "p0"."OpeningHours", "p0"."Priority", "p0"."Radius", "p0"."RejectionReason", "p0"."ReviewStatus", "p0"."ReviewedAt", "p0"."ReviewedByUserId", "p0"."TicketPrice"
+      FROM (
+          SELECT "p"."Id", "p"."DeviceId", "p"."DeviceName", "p"."DurationSeconds", "p"."IpAddress", "p"."POIId", "p"."Platform", "p"."PlayedAt", "p"."TriggerType", "p"."TriggeredAt", "p"."UserId", "p"."UserName"
+          FROM "PlaybackLogs" AS "p"
+          WHERE "p"."TriggeredAt" >= @__AddMinutes_0 AND "p"."DeviceId" IS NOT NULL AND "p"."DeviceId" <> ''
+          ORDER BY "p"."TriggeredAt" DESC
+          LIMIT @__p_1
+      ) AS "t"
+      LEFT JOIN "POIs" AS "p0" ON "t"."POIId" = "p0"."Id"
+      ORDER BY "t"."TriggeredAt" DESC
+📡 REALTIME | records=2 | onlineUsers=1 | onlineDevices=0 | listeningUsers=0
+info: Microsoft.EntityFrameworkCore.Database.Command[20101]
+      Executed DbCommand (0ms) [Parameters=[@__offlineThreshold_0='?' (DbType = DateTime)], CommandType='Text', CommandTimeout='30']
+      SELECT COUNT(*)
+      FROM (
+          SELECT DISTINCT "p"."DeviceId"
+          FROM "PlaybackLogs" AS "p"
+          WHERE "p"."TriggeredAt" >= @__offlineThreshold_0 AND "p"."DeviceId" IS NOT NULL AND "p"."DeviceId" <> ''
+      ) AS "t"
+info: Microsoft.EntityFrameworkCore.Database.Command[20101]
+      Executed DbCommand (0ms) [Parameters=[@__offlineThreshold_0='?' (DbType = DateTime)], CommandType='Text', CommandTimeout='30']
+      SELECT COUNT(*)
+      FROM (
+          SELECT DISTINCT CASE
+              WHEN "p"."UserId" > 0 THEN CAST("p"."UserId" AS TEXT)
+              ELSE "p"."DeviceId"
+          END AS "c"
+          FROM "PlaybackLogs" AS "p"
+          WHERE "p"."TriggeredAt" >= @__offlineThreshold_0
+      ) AS "t"
+info: Microsoft.EntityFrameworkCore.Database.Command[20101]
+      Executed DbCommand (0ms) [Parameters=[@__listeningThreshold_0='?' (DbType = DateTime)], CommandType='Text', CommandTimeout='30']
+      SELECT COUNT(*)
+      FROM (
+          SELECT DISTINCT "p"."DeviceId"
+          FROM "PlaybackLogs" AS "p"
+          WHERE "p"."TriggeredAt" >= @__listeningThreshold_0 AND "p"."POIId" > 0 AND ("p"."TriggerType" <> 'heartbeat' OR "p"."TriggerType" IS NULL) AND ("p"."TriggerType" <> 'online' OR "p"."TriggerType" IS NULL) AND "p"."DeviceId" IS NOT NULL
+      ) AS "t"
+info: Microsoft.EntityFrameworkCore.Database.Command[20101]
+      Executed DbCommand (0ms) [Parameters=[@__AddHours_0='?' (DbType = DateTime)], CommandType='Text', CommandTimeout='30']
+      SELECT "p"."POIId", COUNT(*) AS "Count"
+      FROM "PlaybackLogs" AS "p"
+      WHERE "p"."TriggeredAt" >= @__AddHours_0 AND "p"."POIId" > 0 AND ("p"."TriggerType" <> 'heartbeat' OR "p"."TriggerType" IS NULL) AND ("p"."TriggerType" <> 'online' OR "p"."TriggerType" IS NULL)
+      GROUP BY "p"."POIId"
+      ORDER BY COUNT(*) DESC
+      LIMIT 1
+info: Microsoft.EntityFrameworkCore.Database.Command[20101]
+      Executed DbCommand (0ms) [Parameters=[@__p_0='?' (DbType = Int32)], CommandType='Text', CommandTimeout='30']
+      SELECT "p"."Id", "p"."Address", "p"."AudioUrl", "p"."CategoryId", "p"."CreatedAt", "p"."CreatedByUserId", "p"."Description", "p"."ImageUrl", "p"."IsActive", "p"."Language", "p"."Lat", "p"."Lng", "p"."Name", "p"."NarrationText", "p"."OpeningHours", "p"."Priority", "p"."Radius", "p"."RejectionReason", "p"."ReviewStatus", "p"."ReviewedAt", "p"."ReviewedByUserId", "p"."TicketPrice"
+      FROM "POIs" AS "p"
+      WHERE "p"."Id" = @__p_0
+      LIMIT 1
+info: Microsoft.EntityFrameworkCore.Database.Command[20101]
+      Executed DbCommand (0ms) [Parameters=[], CommandType='Text', CommandTimeout='30']
+      SELECT AVG("p"."DurationSeconds")
+      FROM "PlaybackLogs" AS "p"
+      WHERE "p"."DurationSeconds" IS NOT NULL AND "p"."DurationSeconds" > 0.0
+info: Microsoft.EntityFrameworkCore.Database.Command[20101]
+      Executed DbCommand (0ms) [Parameters=[@__startOfDay_0='?' (DbType = DateTime)], CommandType='Text', CommandTimeout='30']
+      SELECT COUNT(*)
+      FROM "PlaybackLogs" AS "p"
+      WHERE "p"."TriggeredAt" >= @__startOfDay_0 AND "p"."POIId" > 0 AND ("p"."TriggerType" <> 'heartbeat' OR "p"."TriggerType" IS NULL) AND ("p"."TriggerType" <> 'online' OR "p"."TriggerType" IS NULL)
+info: Microsoft.EntityFrameworkCore.Database.Command[20101]
+      Executed DbCommand (0ms) [Parameters=[@__AddMinutes_0='?' (DbType = DateTime), @__p_1='?' (DbType = Int32)], CommandType='Text', CommandTimeout='30']
+      SELECT "t"."Id", "t"."DeviceId", "t"."DeviceName", "t"."DurationSeconds", "t"."IpAddress", "t"."POIId", "t"."Platform", "t"."PlayedAt", "t"."TriggerType", "t"."TriggeredAt", "t"."UserId", "t"."UserName", "p0"."Id", "p0"."Address", "p0"."AudioUrl", "p0"."CategoryId", "p0"."CreatedAt", "p0"."CreatedByUserId", "p0"."Description", "p0"."ImageUrl", "p0"."IsActive", "p0"."Language", "p0"."Lat", "p0"."Lng", "p0"."Name", "p0"."NarrationText", "p0"."OpeningHours", "p0"."Priority", "p0"."Radius", "p0"."RejectionReason", "p0"."ReviewStatus", "p0"."ReviewedAt", "p0"."ReviewedByUserId", "p0"."TicketPrice"
+      FROM (
+          SELECT "p"."Id", "p"."DeviceId", "p"."DeviceName", "p"."DurationSeconds", "p"."IpAddress", "p"."POIId", "p"."Platform", "p"."PlayedAt", "p"."TriggerType", "p"."TriggeredAt", "p"."UserId", "p"."UserName"
+          FROM "PlaybackLogs" AS "p"
+          WHERE "p"."TriggeredAt" >= @__AddMinutes_0 AND "p"."DeviceId" IS NOT NULL AND "p"."DeviceId" <> ''
+          ORDER BY "p"."TriggeredAt" DESC
+          LIMIT @__p_1
+      ) AS "t"
+      LEFT JOIN "POIs" AS "p0" ON "t"."POIId" = "p0"."Id"
+      ORDER BY "t"."TriggeredAt" DESC
+📡 REALTIME | records=2 | onlineUsers=1 | onlineDevices=1 | listeningUsers=0

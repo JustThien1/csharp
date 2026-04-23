@@ -2,6 +2,7 @@ using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.AspNetCore.Http.Features;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.IdentityModel.Tokens;
+using System.Data;
 using System.Text;
 using System.Text.Json.Serialization;
 using TourGuideHCM.API.Data;
@@ -115,6 +116,7 @@ using (var scope = app.Services.CreateScope())
     {
         var context = services.GetRequiredService<AppDbContext>();
         context.Database.Migrate();
+        EnsurePlaybackLogsSchema(context);
 
         // ====================== AUTO-ADD COLUMNS cho Monitoring (SQLite) ======================
         // Thêm cột mới vào PlaybackLogs mà không cần tạo migration
@@ -392,6 +394,86 @@ using (var scope = app.Services.CreateScope())
     {
         Console.WriteLine($"❌ Database Error: {ex.Message}");
     }
+}
+
+static void EnsurePlaybackLogsSchema(AppDbContext context)
+{
+    using var connection = context.Database.GetDbConnection();
+    if (connection.State != ConnectionState.Open)
+        connection.Open();
+
+    using var command = connection.CreateCommand();
+    command.CommandText = "PRAGMA table_info('PlaybackLogs');";
+
+    var columns = new Dictionary<string, bool>(StringComparer.OrdinalIgnoreCase);
+    using (var reader = command.ExecuteReader())
+    {
+        while (reader.Read())
+        {
+            columns[reader.GetString(1)] = reader.GetInt32(3) == 1;
+        }
+    }
+
+    var needsRebuild =
+        !columns.TryGetValue("POIId", out var poiIdNotNull) || poiIdNotNull ||
+        !columns.ContainsKey("DeviceId") ||
+        !columns.ContainsKey("DeviceName") ||
+        !columns.ContainsKey("Platform") ||
+        !columns.ContainsKey("IpAddress") ||
+        !columns.ContainsKey("UserName");
+
+    if (!needsRebuild)
+        return;
+
+    Console.WriteLine("   Rebuilding PlaybackLogs for heartbeat-compatible schema...");
+
+    context.Database.ExecuteSqlRaw("PRAGMA foreign_keys = OFF;");
+    context.Database.ExecuteSqlRaw("DROP TABLE IF EXISTS PlaybackLogs__new;");
+    context.Database.ExecuteSqlRaw(@"
+        CREATE TABLE PlaybackLogs__new (
+            Id INTEGER NOT NULL CONSTRAINT PK_PlaybackLogs PRIMARY KEY AUTOINCREMENT,
+            UserId INTEGER NULL,
+            POIId INTEGER NULL,
+            PlayedAt TEXT NOT NULL,
+            TriggeredAt TEXT NOT NULL,
+            DurationSeconds REAL NULL,
+            TriggerType TEXT NULL,
+            DeviceId TEXT NULL,
+            DeviceName TEXT NULL,
+            Platform TEXT NULL,
+            IpAddress TEXT NULL,
+            UserName TEXT NULL,
+            CONSTRAINT FK_PlaybackLogs_POIs_POIId FOREIGN KEY (POIId) REFERENCES POIs (Id) ON DELETE CASCADE,
+            CONSTRAINT FK_PlaybackLogs_Users_UserId FOREIGN KEY (UserId) REFERENCES Users (Id)
+        );
+    ");
+    context.Database.ExecuteSqlRaw(@"
+        INSERT INTO PlaybackLogs__new (
+            Id, UserId, POIId, PlayedAt, TriggeredAt, DurationSeconds, TriggerType,
+            DeviceId, DeviceName, Platform, IpAddress, UserName
+        )
+        SELECT
+            Id,
+            UserId,
+            CASE WHEN POIId = 0 THEN NULL ELSE POIId END,
+            COALESCE(PlayedAt, TriggeredAt, CURRENT_TIMESTAMP),
+            COALESCE(TriggeredAt, PlayedAt, CURRENT_TIMESTAMP),
+            DurationSeconds,
+            TriggerType,
+            DeviceId,
+            DeviceName,
+            Platform,
+            IpAddress,
+            UserName
+        FROM PlaybackLogs;
+    ");
+    context.Database.ExecuteSqlRaw("DROP TABLE PlaybackLogs;");
+    context.Database.ExecuteSqlRaw("ALTER TABLE PlaybackLogs__new RENAME TO PlaybackLogs;");
+    context.Database.ExecuteSqlRaw("CREATE INDEX IF NOT EXISTS IX_PlaybackLogs_POIId ON PlaybackLogs (POIId);");
+    context.Database.ExecuteSqlRaw("CREATE INDEX IF NOT EXISTS IX_PlaybackLogs_UserId ON PlaybackLogs (UserId);");
+    context.Database.ExecuteSqlRaw("PRAGMA foreign_keys = ON;");
+
+    Console.WriteLine("   PlaybackLogs schema is ready for realtime heartbeat.");
 }
 
 app.Run("http://0.0.0.0:8080");
