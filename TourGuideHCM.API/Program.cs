@@ -387,6 +387,32 @@ using (var scope = app.Services.CreateScope())
 
         DbSeeder.Seed(context);
 
+        // Xóa toàn bộ dữ liệu ảo do seed-demo tạo ra (chạy 1 lần dọn sạch)
+        var demoPlaybackCount = context.PlaybackLogs
+            .Where(p => p.DeviceId != null && (p.DeviceId.StartsWith("demo-") || p.DeviceId.StartsWith("dev-")))
+            .Count();
+        if (demoPlaybackCount > 0)
+        {
+            context.PlaybackLogs.RemoveRange(
+                context.PlaybackLogs.Where(p => p.DeviceId != null &&
+                    (p.DeviceId.StartsWith("demo-") || p.DeviceId.StartsWith("dev-")))
+            );
+            context.SaveChanges();
+            Console.WriteLine($"🧹 Đã xóa {demoPlaybackCount} PlaybackLog ảo (demo)");
+        }
+
+        var demoRouteCount = context.RouteLogs
+            .Where(r => r.DeviceId.StartsWith("demo-route-"))
+            .Count();
+        if (demoRouteCount > 0)
+        {
+            context.RouteLogs.RemoveRange(
+                context.RouteLogs.Where(r => r.DeviceId.StartsWith("demo-route-"))
+            );
+            context.SaveChanges();
+            Console.WriteLine($"🧹 Đã xóa {demoRouteCount} RouteLog ảo (demo)");
+        }
+
         Console.WriteLine("✅ Database SQLite đã sẵn sàng!");
         Console.WriteLine($"   POI: {context.POIs.Count()}");
     }

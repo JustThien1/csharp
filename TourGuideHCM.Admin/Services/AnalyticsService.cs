@@ -40,36 +40,6 @@ public class AnalyticsService
         }
     }
 
-    // Tạo dữ liệu realtime demo (Monitoring) — thiết bị online tức thời
-    public async Task<bool> SeedDemoDataAsync()
-    {
-        try
-        {
-            var res = await _http.PostAsync("api/analytics/seed-demo", null);
-            return res.IsSuccessStatusCode;
-        }
-        catch (Exception ex)
-        {
-            Console.WriteLine($"[AnalyticsService] SeedDemo Error: {ex.Message}");
-            return false;
-        }
-    }
-
-    // MỚI: Tạo dữ liệu demo cho Dashboard — rải 150 lượt nghe trong 7 ngày qua
-    public async Task<bool> SeedDashboardDemoAsync()
-    {
-        try
-        {
-            var res = await _http.PostAsync("api/analytics/seed-dashboard-demo", null);
-            return res.IsSuccessStatusCode;
-        }
-        catch (Exception ex)
-        {
-            Console.WriteLine($"[AnalyticsService] SeedDashboardDemo Error: {ex.Message}");
-            return false;
-        }
-    }
-
     // Method cũ để tránh lỗi (nếu còn component nào gọi)
     public async Task<DashboardDto?> GetDashboard()
     {

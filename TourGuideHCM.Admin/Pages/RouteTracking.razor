@@ -19,13 +19,6 @@
     <div class="d-flex align-center justify-space-between mb-4">
         <MudText Typo="Typo.h6">📱 Chọn thiết bị để xem tuyến đường</MudText>
         <div class="d-flex align-center" style="gap:8px;">
-            <MudTooltip Text="Tạo dữ liệu route giả cho 5 thiết bị để test UI">
-                <MudButton Variant="Variant.Outlined" Color="Color.Warning"
-                           StartIcon="@Icons.Material.Filled.DataObject"
-                           OnClick="SeedDemoAsync" Disabled="@seeding">
-                    @(seeding ? "Đang tạo..." : "Tạo dữ liệu demo")
-                </MudButton>
-            </MudTooltip>
             <MudButton Variant="Variant.Outlined" Color="Color.Primary"
                        StartIcon="@Icons.Material.Filled.Refresh"
                        OnClick="LoadDevicesAsync" Disabled="@loadingDevices">
@@ -66,8 +59,7 @@
     {
         <MudAlert Severity="Severity.Info" Class="my-3">
             <strong>Chưa có thiết bị nào có dữ liệu tuyến đường.</strong><br />
-            Nhấn <strong>"Tạo dữ liệu demo"</strong> ở trên để test UI, hoặc cho app MAUI chạy một thời gian
-            để thu thập vị trí thật.
+            Khi có người dùng sử dụng app, vị trí của họ sẽ hiển thị tại đây.
         </MudAlert>
     }
     else
@@ -289,7 +281,6 @@
     private string searchText = "";
     private int filterDays = 30;
     private bool loadingDevices = false;
-    private bool seeding = false;
     private bool mapInitialized = false;
 
     private IEnumerable<DeviceRouteItem> filteredDevices =>
@@ -374,29 +365,6 @@
         if (e.Item != null) await LoadRouteAsync(e.Item.DeviceId);
     }
 
-    private async Task SeedDemoAsync()
-    {
-        seeding = true;
-        StateHasChanged();
-        try
-        {
-            var res = await Http.PostAsync("api/route/seed-demo", null);
-            if (res.IsSuccessStatusCode)
-            {
-                Snackbar.Add("✅ Đã tạo dữ liệu demo cho 5 thiết bị", Severity.Success);
-                await LoadDevicesAsync();
-            }
-            else
-            {
-                Snackbar.Add("❌ Không tạo được dữ liệu demo", Severity.Error);
-            }
-        }
-        finally
-        {
-            seeding = false;
-            StateHasChanged();
-        }
-    }
 
     private async Task RefreshMap()
     {

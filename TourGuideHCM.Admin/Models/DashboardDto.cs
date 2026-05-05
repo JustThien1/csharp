@@ -9,6 +9,7 @@ public class DashboardDto
     public string TopPoi { get; set; } = "Chưa có dữ liệu";
     public int AvgTime { get; set; } = 0;
     public List<TopPoiItem> TopPois { get; set; } = new();
+    public List<TopPoiItem> WeeklyByPoi { get; set; } = new();  // lượt nghe theo POI trong 7 ngày
     public int[] DailyViews { get; set; } = new int[7];
     public List<DeviceBreakdown> PlatformBreakdown { get; set; } = new();   // MỚI
 }

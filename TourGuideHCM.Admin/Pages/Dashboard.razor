@@ -11,12 +11,6 @@
 <div class="d-flex align-center mb-6" style="flex-wrap:wrap; gap:12px;">
     <MudText Typo="Typo.h4" Class="font-weight-bold">📊 Dashboard Analytics</MudText>
     <MudSpacer />
-    <MudTooltip Text="Tạo 150 lượt nghe giả trải đều 7 ngày qua (từ 12 thiết bị) để test UI">
-        <MudButton OnClick="SeedDemoAsync" Variant="Variant.Outlined" Color="Color.Warning"
-                   StartIcon="@Icons.Material.Filled.DataObject" Disabled="@seeding">
-            @(seeding ? "Đang tạo..." : "Tạo dữ liệu demo")
-        </MudButton>
-    </MudTooltip>
     <MudButton OnClick="Refresh" Variant="Variant.Filled" Color="Color.Primary"
                StartIcon="@Icons.Material.Filled.Refresh" Disabled="@loading">
         Làm mới
@@ -90,23 +84,74 @@ else
     </MudGrid>
 
     <MudGrid Spacing="4" Class="mt-4">
-        <!-- Biểu đồ lượt nghe theo ngày -->
+        <!-- Biểu đồ lượt nghe theo địa điểm -->
         <MudItem xs="12" md="8">
             <MudPaper Class="pa-6" Elevation="3" Style="border-radius:16px;">
-                <div class="d-flex align-center mb-4">
-                    <MudIcon Icon="@Icons.Material.Filled.BarChart" Color="Color.Primary" Class="mr-2" />
-                    <MudText Typo="Typo.h6">Lượt nghe theo ngày trong tuần (7 ngày qua)</MudText>
+                <div class="d-flex align-center justify-space-between mb-5">
+                    <div class="d-flex align-center">
+                        <MudIcon Icon="@Icons.Material.Filled.BarChart" Color="Color.Primary" Class="mr-2" />
+                        <MudText Typo="Typo.h6">Lượt nghe theo địa điểm (7 ngày qua)</MudText>
+                    </div>
+                    @if (data.WeeklyByPoi.Any())
+                    {
+                        <MudText Typo="Typo.caption" Color="Color.Secondary">
+                            Tổng @data.WeeklyByPoi.Sum(x => x.Count) lượt · @data.WeeklyByPoi.Count địa điểm
+                        </MudText>
+                    }
                 </div>
-                @if (data.DailyViews.Sum() == 0)
+
+                @if (!data.WeeklyByPoi.Any())
                 {
-                    <MudAlert Severity="Severity.Info" Class="mb-2">
-                        Chưa có dữ liệu. Bấm <strong>"Tạo dữ liệu demo"</strong> để xem biểu đồ mẫu.
-                    </MudAlert>
+                    <div style="display:flex; flex-direction:column; align-items:center; justify-content:center; height:240px; gap:12px; color:#9e9e9e;">
+                        <MudIcon Icon="@Icons.Material.Filled.Headphones" Style="font-size:48px; opacity:0.3;" />
+                        <MudText Typo="Typo.body2" Color="Color.Secondary">Chưa có lượt nghe trong 7 ngày qua</MudText>
+                        <MudText Typo="Typo.caption" Color="Color.Secondary">Dữ liệu sẽ xuất hiện khi người dùng nghe audio tại các POI</MudText>
+                    </div>
                 }
-                <MudChart ChartType="ChartType.Bar"
-                          Labels="@labels"
-                          ChartSeries="@chartSeries"
-                          Width="100%" Height="300px" />
+                else
+                {
+                    var maxCount = data.WeeklyByPoi.Max(x => x.Count);
+                    string[] barColors = { "#1976D2", "#388E3C", "#F57C00", "#7B1FA2", "#C62828", "#00838F", "#4527A0", "#2E7D32" };
+                    <!-- Chart dọc: cột + tên POI bên dưới -->
+                    <div style="display:flex; align-items:flex-end; gap:12px; height:220px; padding:0 8px;">
+                        @foreach (var (poi, i) in data.WeeklyByPoi.Select((p, i) => (p, i)))
+                        {
+                            var pct = maxCount > 0 ? (double)poi.Count / maxCount * 100.0 : 0;
+                            var color = barColors[i % barColors.Length];
+                            <div style="flex:1; display:flex; flex-direction:column; align-items:center; height:100%;">
+                                <!-- Số lượt -->
+                                <div style="font-size:13px; font-weight:700; color:@color; margin-bottom:4px;">
+                                    @poi.Count
+                                </div>
+                                <!-- Phần trống phía trên cột -->
+                                <div style="flex:1; display:flex; align-items:flex-end; width:100%;">
+                                    <!-- Cột bar -->
+                                    <div style="width:100%;
+                                                height:@($"{pct:F0}%");
+                                                min-height:6px;
+                                                background:@color;
+                                                border-radius:6px 6px 0 0;
+                                                transition:height 0.4s ease;
+                                                position:relative;">
+                                    </div>
+                                </div>
+                            </div>
+                        }
+                    </div>
+                    <!-- Đường kẻ đáy -->
+                    <div style="height:2px; background:#e0e0e0; margin:0 8px;"></div>
+                    <!-- Tên POI bên dưới -->
+                    <div style="display:flex; gap:12px; padding:8px 8px 0; margin-top:4px;">
+                        @foreach (var (poi, i) in data.WeeklyByPoi.Select((p, i) => (p, i)))
+                        {
+                            var color = barColors[i % barColors.Length];
+                            <div style="flex:1; text-align:center;">
+                                <div style="width:10px; height:10px; border-radius:50%; background:@color; margin:0 auto 4px;"></div>
+                                <div style="font-size:11px; color:#555; line-height:1.3; word-break:break-word;">@poi.Name</div>
+                            </div>
+                        }
+                    </div>
+                }
             </MudPaper>
         </MudItem>
 
@@ -238,12 +283,9 @@ else
 
 @code {
     private bool loading = true;
-    private bool seeding = false;
     private DashboardDto data = new();
     private List<PlaybackHistoryDto> recentHistory = new();
 
-    private string[] labels = { "T2", "T3", "T4", "T5", "T6", "T7", "CN" };
-    private List<ChartSeries> chartSeries = new();
 
     protected override async Task OnInitializedAsync()
     {
@@ -260,15 +302,6 @@ else
             data = await AnalyticsService.GetDashboardAsync() ?? new();
             recentHistory = (await PlaybackService.GetHistoryAsync(limit: 8)).Take(8).ToList();
 
-            // Dữ liệu biểu đồ — đảm bảo luôn có 7 điểm
-            var views = data.DailyViews?.Length == 7
-                ? data.DailyViews.Select(x => (double)x).ToArray()
-                : new double[] { 0, 0, 0, 0, 0, 0, 0 };
-
-            chartSeries = new List<ChartSeries>
-            {
-                new ChartSeries { Name = "Lượt nghe", Data = views }
-            };
         }
         catch (Exception ex)
         {
@@ -283,31 +316,6 @@ else
     }
 
     private async Task Refresh() => await LoadDashboard();
-
-    private async Task SeedDemoAsync()
-    {
-        seeding = true;
-        StateHasChanged();
-        try
-        {
-            var ok = await AnalyticsService.SeedDashboardDemoAsync();
-            if (ok)
-            {
-                Snackbar.Add("✅ Đã tạo 150 lượt nghe giả từ 12 thiết bị", Severity.Success);
-                await Task.Delay(400);
-                await LoadDashboard();
-            }
-            else
-            {
-                Snackbar.Add("❌ Không tạo được dữ liệu demo. Kiểm tra API còn chạy & đã có POI chưa", Severity.Error);
-            }
-        }
-        finally
-        {
-            seeding = false;
-            StateHasChanged();
-        }
-    }
 
     // ====================== HELPERS ======================
     private string GetRankColor(int i) => i switch

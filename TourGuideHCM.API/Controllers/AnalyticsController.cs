@@ -280,61 +280,6 @@ public class AnalyticsController : ControllerBase
         return Ok(devices);
     }
 
-    // ====================== ENDPOINT: Dữ liệu mẫu để test UI khi không có app chạy ======================
-    [HttpPost("seed-demo")]
-    public async Task<IActionResult> SeedDemo()
-    {
-        var rand = new Random();
-        var now = DateTime.UtcNow;
-        var platforms = new[] { "Android", "iOS", "Windows" };
-        var names = new[] { "Pixel 7", "iPhone 14 Pro", "Samsung SM-A515", "Xiaomi 13", "iPhone SE" };
-
-        var pois = await _context.POIs.Take(5).ToListAsync();
-        if (pois.Count == 0)
-            return BadRequest(new { message = "Cần có POI trong database trước" });
-
-        for (int i = 0; i < 8; i++)
-        {
-            var devId = $"demo-{Guid.NewGuid().ToString()[..8]}";
-            var platform = platforms[rand.Next(platforms.Length)];
-            var name = names[rand.Next(names.Length)];
-            var poi = pois[rand.Next(pois.Count)];
-
-            // heartbeat mới nhất (vừa xong)
-            _context.PlaybackLogs.Add(new PlaybackLog
-            {
-                POIId = null,                     // null = heartbeat (không gắn POI)
-                TriggerType = "heartbeat",
-                TriggeredAt = now.AddSeconds(-rand.Next(0, 90)),
-                DeviceId = devId,
-                DeviceName = name,
-                Platform = platform,
-                IpAddress = $"192.168.1.{rand.Next(2, 250)}",
-                UserName = $"Khách_demo{i + 1}"
-            });
-
-            // Nghe POI (50% chance)
-            if (rand.Next(2) == 0)
-            {
-                _context.PlaybackLogs.Add(new PlaybackLog
-                {
-                    POIId = poi.Id,
-                    TriggerType = rand.Next(2) == 0 ? "geofence" : "manual",
-                    TriggeredAt = now.AddSeconds(-rand.Next(0, 50)),
-                    DurationSeconds = rand.Next(30, 180),
-                    DeviceId = devId,
-                    DeviceName = name,
-                    Platform = platform,
-                    IpAddress = $"192.168.1.{rand.Next(2, 250)}",
-                    UserName = $"Khách_demo{i + 1}"
-                });
-            }
-        }
-
-        await _context.SaveChangesAsync();
-        return Ok(new { message = "Đã tạo dữ liệu demo. Vào trang Monitoring xem kết quả." });
-    }
-
     // ====================== DASHBOARD ANALYTICS (tổng quan, không realtime) ======================
     /// <summary>
     /// Tổng hợp cho trang Dashboard: tổng POI, tổng thiết bị từng truy cập,
@@ -370,36 +315,45 @@ public class AnalyticsController : ControllerBase
                 .AverageAsync(l => l.DurationSeconds) ?? 0;
             var avgMinutes = (int)Math.Round(avgSeconds / 60.0);
 
-            // Top POI
-            var topPoiList = await playQuery
-                .Include(l => l.POI)
-                .Where(l => l.POI != null)
-                .GroupBy(l => new { l.POIId, l.POI!.Name })
-                .Select(g => new TopPoiItem
+            // Top POI — dùng explicit JOIN để EF Core translate chuẩn, tránh lỗi Include+GroupBy
+            var topPoiList = await (
+                from pl in _context.PlaybackLogs
+                join poi in _context.POIs on pl.POIId equals (int?)poi.Id
+                where pl.POIId > 0
+                   && pl.TriggerType != "heartbeat"
+                   && pl.TriggerType != "online"
+                group pl by new { poi.Id, poi.Name } into g
+                select new TopPoiItem
                 {
-                    Name = g.Key.Name ?? $"POI #{g.Key.POIId}",
+                    Name = g.Key.Name,
                     Count = g.Count()
-                })
-                .OrderByDescending(x => x.Count)
-                .Take(5)
-                .ToListAsync();
+                }
+            ).OrderByDescending(x => x.Count)
+             .Take(5)
+             .ToListAsync();
 
             var topPoiName = topPoiList.FirstOrDefault()?.Name ?? "Chưa có dữ liệu";
 
-            // Lượt nghe theo ngày trong tuần (T2..CN)
-            var weeklyLogs = await playQuery
-                .Where(l => l.TriggeredAt >= weekStart)
-                .Select(l => l.TriggeredAt)
-                .ToListAsync();
+            // Lượt nghe theo POI trong 7 ngày qua (để chart hiển thị tên địa điểm)
+            var weeklyByPoi = await (
+                from pl in _context.PlaybackLogs
+                join poi in _context.POIs on pl.POIId equals (int?)poi.Id
+                where pl.POIId > 0
+                   && pl.TriggerType != "heartbeat"
+                   && pl.TriggerType != "online"
+                   && pl.TriggeredAt >= weekStart
+                group pl by poi.Name into g
+                select new TopPoiItem
+                {
+                    Name = g.Key,
+                    Count = g.Count()
+                }
+            ).OrderByDescending(x => x.Count).ToListAsync();
 
-            // DailyViews[0] = T2, [1] = T3, ... [6] = CN
-            var dailyViews = new int[7];
-            foreach (var t in weeklyLogs)
-            {
-                var dow = (int)t.DayOfWeek;   // Sunday=0, Monday=1,...Saturday=6
-                var idx = dow == 0 ? 6 : dow - 1;   // convert to Mon=0..Sun=6
-                dailyViews[idx]++;
-            }
+            // Giữ lại dailyViews cho tương thích (tính từ weeklyByPoi tổng hợp)
+            var dailyViews = new int[weeklyByPoi.Count];
+            for (int i = 0; i < weeklyByPoi.Count; i++)
+                dailyViews[i] = weeklyByPoi[i].Count;
 
             // Phân bố platform (những thiết bị đã từng nghe)
             var platformBreakdown = await playQuery
@@ -423,6 +377,7 @@ public class AnalyticsController : ControllerBase
                 avgTime = avgMinutes,
                 topPois = topPoiList,
                 dailyViews,
+                weeklyByPoi,
                 platformBreakdown = platforms
             });
         }
@@ -431,70 +386,6 @@ public class AnalyticsController : ControllerBase
             Console.WriteLine($"[Overview Error] {ex.Message}\n{ex.StackTrace}");
             return StatusCode(500, new { message = ex.Message });
         }
-    }
-
-    /// <summary>
-    /// Tạo dữ liệu demo cho Dashboard: rải ~150 lượt nghe trải đều 7 ngày qua
-    /// với nhiều thiết bị Android/iOS/Windows khác nhau.
-    /// </summary>
-    [HttpPost("seed-dashboard-demo")]
-    public async Task<IActionResult> SeedDashboardDemo()
-    {
-        var pois = await _context.POIs.Where(p => p.IsActive).Take(8).ToListAsync();
-        if (pois.Count == 0)
-            return BadRequest(new { message = "Cần có POI trong database trước" });
-
-        var rand = new Random();
-        var now = DateTime.UtcNow;
-        var platforms = new[] { "Android", "iOS", "Windows" };
-        var deviceNames = new Dictionary<string, string[]>
-        {
-            ["Android"] = new[] { "Pixel 7", "Pixel 8", "Samsung S23", "Samsung A54", "Xiaomi 13", "Oppo Reno8" },
-            ["iOS"] = new[] { "iPhone 14 Pro", "iPhone 15", "iPhone 13", "iPhone SE" },
-            ["Windows"] = new[] { "Surface Pro 9", "Dell XPS 13", "ThinkPad X1" }
-        };
-
-        // Tạo 12 thiết bị giả
-        var devices = new List<(string id, string name, string platform)>();
-        for (int i = 0; i < 12; i++)
-        {
-            var p = platforms[rand.Next(platforms.Length)];
-            var nameList = deviceNames[p];
-            devices.Add((
-                $"demo-dash-{Guid.NewGuid().ToString()[..8]}",
-                nameList[rand.Next(nameList.Length)],
-                p
-            ));
-        }
-
-        // Rải ~150 lượt nghe trong 7 ngày qua
-        for (int i = 0; i < 150; i++)
-        {
-            var dev = devices[rand.Next(devices.Count)];
-            var poi = pois[rand.Next(pois.Count)];
-
-            // Random time trong 7 ngày, thiên về giờ làm việc (9h-17h)
-            var dayOffset = rand.Next(0, 7);
-            var hour = 8 + rand.Next(0, 11);   // 8h-18h
-            var minute = rand.Next(0, 60);
-            var triggeredAt = now.Date.AddDays(-dayOffset).AddHours(hour).AddMinutes(minute);
-
-            _context.PlaybackLogs.Add(new PlaybackLog
-            {
-                POIId = poi.Id,
-                TriggerType = rand.Next(3) switch { 0 => "geofence", 1 => "qr", _ => "manual" },
-                TriggeredAt = triggeredAt,
-                DurationSeconds = rand.Next(60, 300),
-                DeviceId = dev.id,
-                DeviceName = dev.name,
-                Platform = dev.platform,
-                IpAddress = $"192.168.1.{rand.Next(2, 250)}",
-                UserName = $"Khách_{dev.id[..8]}"
-            });
-        }
-
-        await _context.SaveChangesAsync();
-        return Ok(new { message = $"Đã tạo 150 lượt nghe giả từ {devices.Count} thiết bị trong 7 ngày qua" });
     }
 
     // ====================== HELPERS ======================

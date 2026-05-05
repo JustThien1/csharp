@@ -211,64 +211,6 @@ namespace TourGuideHCM.API.Controllers
             return Ok(logs);
         }
 
-        /// <summary>MỚI: Tạo dữ liệu route giả để test UI khi chưa có app thật đang chạy.</summary>
-        [HttpPost("seed-demo")]
-        public async Task<IActionResult> SeedDemoRoutes()
-        {
-            var rand = new Random();
-            var now = DateTime.UtcNow;
-
-            // Trung tâm HCM
-            var centerLat = 10.7769;
-            var centerLng = 106.7009;
-
-            var platforms = new[] { "Android", "iOS", "Windows" };
-            var names = new[] { "Pixel 7", "iPhone 14 Pro", "Samsung Galaxy S23", "Xiaomi 13", "iPhone 15" };
-
-            for (int d = 0; d < 5; d++)
-            {
-                var devId = $"demo-route-{Guid.NewGuid().ToString()[..8]}";
-                var platform = platforms[rand.Next(platforms.Length)];
-                var deviceName = names[rand.Next(names.Length)];
-
-                // Tạo thông tin thiết bị qua PlaybackLog heartbeat
-                _context.PlaybackLogs.Add(new PlaybackLog
-                {
-                    POIId = 0,
-                    TriggerType = "heartbeat",
-                    TriggeredAt = now,
-                    DeviceId = devId,
-                    DeviceName = deviceName,
-                    Platform = platform,
-                    IpAddress = $"192.168.1.{rand.Next(2, 250)}",
-                    UserName = $"Khách_demo{d + 1}"
-                });
-
-                // Tạo chuỗi 8-15 điểm di chuyển cách nhau vài trăm mét
-                var numPoints = rand.Next(8, 16);
-                var lat = centerLat + (rand.NextDouble() - 0.5) * 0.02;
-                var lng = centerLng + (rand.NextDouble() - 0.5) * 0.02;
-                var baseTime = now.AddHours(-rand.Next(1, 72));
-
-                for (int i = 0; i < numPoints; i++)
-                {
-                    lat += (rand.NextDouble() - 0.5) * 0.003;
-                    lng += (rand.NextDouble() - 0.5) * 0.003;
-
-                    _context.RouteLogs.Add(new RouteLog
-                    {
-                        DeviceId = devId,
-                        Lat = lat,
-                        Lng = lng,
-                        Timestamp = baseTime.AddMinutes(i * rand.Next(3, 12))
-                    });
-                }
-            }
-
-            await _context.SaveChangesAsync();
-            return Ok(new { message = "Đã tạo dữ liệu route demo cho 5 thiết bị" });
-        }
-
         // Haversine formula tính khoảng cách (km)
         private static double Haversine(double lat1, double lng1, double lat2, double lng2)
         {

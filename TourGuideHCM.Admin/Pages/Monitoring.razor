@@ -21,13 +21,6 @@
         }
     </div>
     <div class="d-flex align-center" style="gap:8px;">
-        <MudTooltip Text="Tạo 8 thiết bị giả để test UI (khi không có app thật chạy)">
-            <MudButton Variant="Variant.Outlined" Color="Color.Warning"
-                       StartIcon="@Icons.Material.Filled.DataObject"
-                       OnClick="SeedDemoAsync" Disabled="@seeding">
-                @(seeding ? "Đang tạo..." : "Tạo dữ liệu demo")
-            </MudButton>
-        </MudTooltip>
         <MudButton Variant="Variant.Filled" Color="Color.Primary"
                    StartIcon="@Icons.Material.Filled.Refresh"
                    OnClick="ManualRefresh" Disabled="@loading">
@@ -157,7 +150,6 @@ else
                 {
                     <MudAlert Severity="Severity.Info" Class="my-3">
                         <strong>Hiện không có người dùng nào đang hoạt động.</strong><br />
-                        Để test giao diện, bấm <strong>"Tạo dữ liệu demo"</strong> ở trên cùng.<br />
                         Khi app MAUI chạy thật, heartbeat sẽ gửi mỗi 30 giây và hiển thị ở đây.
                     </MudAlert>
                 }
@@ -222,7 +214,6 @@ else
 
 @code {
     private bool loading = false;
-    private bool seeding = false;
     private bool autoRefresh = true;
     private DateTime? lastUpdated;
 
@@ -276,31 +267,6 @@ else
     }
 
     private async Task ManualRefresh() => await LoadDataAsync();
-
-    private async Task SeedDemoAsync()
-    {
-        seeding = true;
-        StateHasChanged();
-        try
-        {
-            var ok = await AnalyticsService.SeedDemoDataAsync();
-            if (ok)
-            {
-                Snackbar.Add("✅ Đã tạo 8 thiết bị giả. Đang refresh...", Severity.Success);
-                await Task.Delay(400);
-                await LoadDataAsync();
-            }
-            else
-            {
-                Snackbar.Add("❌ Không tạo được dữ liệu demo. Kiểm tra API còn chạy không.", Severity.Error);
-            }
-        }
-        finally
-        {
-            seeding = false;
-            StateHasChanged();
-        }
-    }
 
     // ====================== HELPERS ======================
     private int GetPercentage(int count)
