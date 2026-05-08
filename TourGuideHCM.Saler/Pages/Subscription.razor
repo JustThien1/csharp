@@ -4,6 +4,7 @@
 @inject SubscriptionService SubscriptionService
 @inject SubscriptionStateService SubscriptionState
 @inject ISnackbar Snackbar
+@inject IJSRuntime JS
 
 <div class="d-flex align-center mb-6">
     <MudText Typo="Typo.h4" Class="font-weight-bold">💳 Gia hạn gói Saler</MudText>
@@ -108,6 +109,124 @@ else
             </MudPaper>
         </MudItem>
     </MudGrid>
+
+    <!-- ════════════════════════════════════════════════════════
+         BƯỚC 2: OCR biên lai + 2 checkbox xác nhận
+         ════════════════════════════════════════════════════════ -->
+    <MudDivider Class="my-6" />
+    <MudText Typo="Typo.h6" Class="mb-1">📷 Bước 2: Tải biên lai & xác nhận thanh toán</MudText>
+    <MudText Typo="Typo.body2" Color="Color.Secondary" Class="mb-4">
+        Sau khi chuyển khoản, tải ảnh biên lai lên — hệ thống tự nhận dạng thông tin qua OCR.
+    </MudText>
+
+    <MudGrid Spacing="3">
+        <!-- Upload + preview + nút OCR -->
+        <MudItem xs="12" md="6">
+            <MudPaper Class="pa-4" Elevation="2" Style="border-radius:16px;">
+                <MudText Typo="Typo.subtitle2" Class="mb-3">Chọn ảnh biên lai chuyển khoản</MudText>
+
+                <InputFile OnChange="OnReceiptFileChanged" accept="image/*"
+                           style="display:block;width:100%;margin-bottom:14px;font-size:14px;" />
+
+                @if (receiptDataUrl != null)
+                {
+                    <img src="@receiptDataUrl" alt="Biên lai"
+                         style="max-width:100%;max-height:280px;object-fit:contain;border-radius:10px;border:1px solid #eee;margin-bottom:14px;display:block;" />
+                }
+
+                <MudButton Variant="Variant.Filled" Color="Color.Secondary"
+                           StartIcon="@Icons.Material.Filled.DocumentScanner"
+                           OnClick="RunOcrAsync"
+                           Disabled="@(!receiptSelected || isOcring)"
+                           FullWidth="true">
+                    @(isOcring ? "Đang nhận dạng…" : "🔍 Nhận dạng biên lai (OCR)")
+                </MudButton>
+
+                @if (isOcring)
+                {
+                    <MudProgressLinear Indeterminate="true" Color="Color.Secondary" Class="mt-2" />
+                    <MudText Typo="Typo.caption" Color="Color.Secondary" Class="mt-1" Style="display:block;text-align:center;">
+                        Lần đầu có thể mất vài giây để tải dữ liệu ngôn ngữ…
+                    </MudText>
+                }
+            </MudPaper>
+        </MudItem>
+
+        <!-- Kết quả OCR -->
+        <MudItem xs="12" md="6">
+            @if (ocrDone)
+            {
+                <MudPaper Class="pa-4" Elevation="2" Style="border-radius:16px;height:100%;">
+                    <MudText Typo="Typo.subtitle2" Class="mb-2">Nội dung nhận dạng được</MudText>
+                    <MudTextField Value="@ocrText"
+                                  ReadOnly="true"
+                                  Lines="8"
+                                  Variant="Variant.Outlined"
+                                  Style="font-family:monospace;font-size:12px;" />
+                    <MudText Typo="Typo.caption" Color="Color.Secondary" Class="mt-1">
+                        Kiểm tra nội dung trên rồi xác nhận bên dưới.
+                    </MudText>
+                </MudPaper>
+            }
+            else if (receiptSelected && !isOcring)
+            {
+                <MudAlert Severity="Severity.Info" Style="border-radius:16px;">
+                    Nhấn <strong>Nhận dạng biên lai</strong> để OCR tự động đọc thông tin từ ảnh.
+                </MudAlert>
+            }
+        </MudItem>
+    </MudGrid>
+
+    <!-- 2 ô tick xác nhận chứng chỉ — chỉ hiện sau khi OCR xong -->
+    @if (ocrDone)
+    {
+        <MudPaper Class="pa-5 mt-4" Elevation="3"
+                  Style="border-radius:18px;border:2px solid #FF7043;background:linear-gradient(135deg,#fff8f5,#fff);">
+            <MudText Typo="Typo.h6" Class="mb-1">✅ Xác nhận điều khoản thanh toán</MudText>
+            <MudText Typo="Typo.body2" Color="Color.Secondary" Class="mb-4">
+                Đọc kỹ và tích đủ <strong>2 ô bên dưới</strong> trước khi xác nhận.
+            </MudText>
+
+            <MudCheckBox T="bool" @bind-Checked="cert1" Color="Color.Error" Class="mb-2">
+                <ChildContent>
+                    <MudText Typo="Typo.body1" Style="line-height:1.6;">
+                        Tôi cam kết đã thực hiện chuyển khoản đúng số tiền
+                        <strong>@FormatCurrency(currentPayment?.PaymentInfo.AmountVnd ?? 0)</strong>
+                        đến tài khoản <strong>@(currentPayment?.PaymentInfo.AccountNumber ?? "—")</strong>
+                        theo thông tin được cung cấp.
+                    </MudText>
+                </ChildContent>
+            </MudCheckBox>
+
+            <MudDivider Class="my-2" />
+
+            <MudCheckBox T="bool" @bind-Checked="cert2" Color="Color.Error" Class="mt-2 mb-4">
+                <ChildContent>
+                    <MudText Typo="Typo.body1" Style="line-height:1.6;">
+                        Tôi cam kết nội dung chuyển khoản ghi đúng mã
+                        <strong style="font-family:monospace;">@(currentPayment?.PaymentInfo.TransferContent ?? "—")</strong>
+                        và biên lai tải lên là chính xác, không giả mạo.
+                    </MudText>
+                </ChildContent>
+            </MudCheckBox>
+
+            @if (!canConfirm)
+            {
+                <MudAlert Severity="Severity.Warning" Dense="true" Class="mb-3">
+                    Vui lòng tích đủ 2 ô xác nhận phía trên để tiếp tục.
+                </MudAlert>
+            }
+
+            <MudButton Variant="Variant.Filled" Color="Color.Success"
+                       StartIcon="@Icons.Material.Filled.Verified"
+                       OnClick="ConfirmPaymentAsync"
+                       Disabled="@(!canConfirm || loadingConfirm)"
+                       Size="Size.Large"
+                       FullWidth="true">
+                @(loadingConfirm ? "Đang xác nhận…" : "✔ Xác nhận đã thanh toán")
+            </MudButton>
+        </MudPaper>
+    }
 }
 
 @code {
@@ -115,6 +234,20 @@ else
     private RenewalRequestResponse? currentPayment;
     private bool loading = true;
     private bool loadingPayment;
+
+    // ── OCR state ──────────────────────────────────────────────────────────────
+    private string? receiptDataUrl;
+    private bool receiptSelected;
+    private bool isOcring;
+    private bool ocrDone;
+    private string ocrText = "";
+
+    // 2 ô tick xác nhận chứng chỉ
+    private bool cert1;
+    private bool cert2;
+    private bool loadingConfirm;
+
+    private bool canConfirm => cert1 && cert2;
 
     protected override async Task OnInitializedAsync()
     {
@@ -124,6 +257,7 @@ else
     private async Task LoadAsync()
     {
         loading = true;
+        ResetOcrState();
         try
         {
             subscriptionInfo = await SubscriptionService.GetInfoAsync();
@@ -141,6 +275,97 @@ else
         {
             loading = false;
         }
+    }
+
+    // ── OCR methods ────────────────────────────────────────────────────────────
+
+    private async Task OnReceiptFileChanged(InputFileChangeEventArgs e)
+    {
+        ResetOcrState();
+        var file = e.File;
+        if (file == null) return;
+
+        try
+        {
+            using var stream = file.OpenReadStream(maxAllowedSize: 10 * 1024 * 1024);
+            var bytes = new byte[file.Size];
+            await stream.ReadAsync(bytes);
+            receiptDataUrl = $"data:{file.ContentType};base64,{Convert.ToBase64String(bytes)}";
+            receiptSelected = true;
+        }
+        catch (Exception ex)
+        {
+            Snackbar.Add($"Không đọc được file: {ex.Message}", Severity.Error);
+        }
+    }
+
+    private async Task RunOcrAsync()
+    {
+        if (receiptDataUrl == null) return;
+
+        isOcring = true;
+        ocrDone = false;
+        ocrText = "";
+        StateHasChanged();
+
+        try
+        {
+            ocrText = await JS.InvokeAsync<string>("ocrHelper.recognize", receiptDataUrl, "eng+vie");
+            ocrDone = true;
+        }
+        catch (Exception ex)
+        {
+            Snackbar.Add($"OCR thất bại: {ex.Message}", Severity.Error);
+        }
+        finally
+        {
+            isOcring = false;
+            StateHasChanged();
+        }
+    }
+
+    private async Task ConfirmPaymentAsync()
+    {
+        if (!canConfirm || currentPayment == null) return;
+
+        loadingConfirm = true;
+        try
+        {
+            if (subscriptionInfo?.CanSimulatePayment == true)
+            {
+                // Dev mode: dùng simulate để xác nhận
+                var result = await SubscriptionService.SimulateSuccessAsync(currentPayment.PaymentId);
+                Snackbar.Add(result?.Message ?? "Gia hạn thành công!", Severity.Success);
+                await LoadAsync();
+            }
+            else
+            {
+                // Production: chờ đối soát thủ công từ admin
+                Snackbar.Add(
+                    "Biên lai đã được ghi nhận. Gói sẽ được kích hoạt sau khi đối soát (trong vòng 24h).",
+                    Severity.Success);
+                ResetOcrState();
+            }
+        }
+        catch (Exception ex)
+        {
+            Snackbar.Add($"Xác nhận thất bại: {ex.Message}", Severity.Error);
+        }
+        finally
+        {
+            loadingConfirm = false;
+        }
+    }
+
+    private void ResetOcrState()
+    {
+        receiptDataUrl = null;
+        receiptSelected = false;
+        isOcring = false;
+        ocrDone = false;
+        ocrText = "";
+        cert1 = false;
+        cert2 = false;
     }
 
     private async Task CreateRenewalRequestAsync()
